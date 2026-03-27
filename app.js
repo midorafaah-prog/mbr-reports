@@ -2919,3 +2919,246 @@ async function sendReportByEmail() {
   }
 }
 
+
+// ============================================================
+// PWA: Service Worker + Install Prompt
+// ============================================================
+let deferredPWAPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW error:', err));
+  });
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPWAPrompt = e;
+  // Show banner after 3 seconds
+  setTimeout(() => {
+    const banner = document.getElementById('pwaInstallBanner');
+    if (banner && !localStorage.getItem('pwa_installed')) banner.style.display = 'flex';
+  }, 3000);
+});
+
+function installPWA() {
+  if (!deferredPWAPrompt) return;
+  deferredPWAPrompt.prompt();
+  deferredPWAPrompt.userChoice.then(choice => {
+    if (choice.outcome === 'accepted') {
+      localStorage.setItem('pwa_installed', '1');
+      document.getElementById('pwaInstallBanner').style.display = 'none';
+      showToast('✅ تم تثبيت MBR Reports على جهازك!', 'success');
+    }
+    deferredPWAPrompt = null;
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  localStorage.setItem('pwa_installed', '1');
+  showToast('🎉 تم تثبيت التطبيق!', 'success');
+});
+
+// ============================================================
+// SHARE REPORT FEATURE
+// ============================================================
+let currentShareUrl = '';
+
+function openShareModal() {
+  document.getElementById('shareModal').style.display = 'flex';
+  document.getElementById('shareLinkInput').value = '';
+  document.getElementById('shareQR').style.display = 'none';
+}
+
+function closeShare() {
+  document.getElementById('shareModal').style.display = 'none';
+}
+
+function generateShareLink() {
+  const reportText = getCurrentReportText();
+  if (!reportText || reportText === 'لا يوجد محتوى تقرير حالياً') {
+    showToast('❌ لا يوجد تقرير لمشاركته. أنشئ تقريراً أولاً.', 'error');
+    return;
+  }
+  // Encode report in URL (base64)
+  const reportData = {
+    title: document.getElementById('reportTitle')?.value || 'تقرير MBR Reports',
+    type: document.getElementById('reportTypeSelect')?.value || 'general',
+    content: reportText.substring(0, 3000),
+    date: new Date().toISOString(),
+    author: currentUser?.fullName || 'MBR Reports'
+  };
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(reportData))));
+  const shareId = Date.now().toString(36);
+  // Save to localStorage so viewer can access
+  const key = 'mbrcst_share_' + shareId;
+  localStorage.setItem(key, JSON.stringify(reportData));
+
+  const baseUrl = window.location.origin || 'https://mbr-reports.vercel.app';
+  currentShareUrl = `${baseUrl}/?share=${shareId}`;
+  document.getElementById('shareLinkInput').value = currentShareUrl;
+
+  // Generate QR code link
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentShareUrl)}`;
+  const qrDiv = document.getElementById('shareQR');
+  qrDiv.style.display = 'block';
+  qrDiv.innerHTML = `<img src="${qrUrl}" style="border-radius:8px;border:4px solid rgba(108,99,255,0.2)" loading="lazy"><br><small style="color:var(--text-muted);font-size:0.72rem">امسح الـ QR لفتح التقرير</small>`;
+  showToast('✅ تم إنشاء رابط المشاركة', 'success');
+}
+
+function copyShareLink() {
+  const val = document.getElementById('shareLinkInput')?.value;
+  if (!val) { showToast('أنشئ الرابط أولاً', 'error'); return; }
+  navigator.clipboard.writeText(val).then(() => showToast('✅ تم نسخ الرابط', 'success'));
+}
+
+function shareViaWhatsApp() {
+  if (!currentShareUrl) { generateShareLink(); return; }
+  const msg = encodeURIComponent(`شاهد تقريري على MBR Reports: ${currentShareUrl}`);
+  window.open(`https://wa.me/?text=${msg}`, '_blank');
+}
+
+function shareViaEmail() {
+  if (!currentShareUrl) { generateShareLink(); return; }
+  const subject = encodeURIComponent('تقرير من MBR Reports');
+  const body = encodeURIComponent(`مرحباً،\n\nيمكنك مشاهدة التقرير من خلال الرابط التالي:\n${currentShareUrl}\n\n--\nأُرسل من MBR Reports`);
+  window.open(`mailto:?subject=${subject}&body=${body}`);
+}
+
+function shareViaCopy() { copyShareLink(); }
+
+// Check if opened via share link
+(function checkSharedReport() {
+  const params = new URLSearchParams(window.location.search);
+  const shareId = params.get('share');
+  if (!shareId) return;
+  const key = 'mbrcst_share_' + shareId;
+  const data = localStorage.getItem(key);
+  if (data) {
+    const report = JSON.parse(data);
+    // Show shared report view
+    setTimeout(() => {
+      showSharedReportView(report);
+    }, 800);
+  }
+})();
+
+function showSharedReportView(report) {
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;inset:0;background:#0e0e1a;z-index:99999;overflow:auto;padding:2rem;direction:rtl;font-family:Tajawal,sans-serif';
+  div.innerHTML = `
+    <div style="max-width:800px;margin:0 auto">
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:2rem">
+        <span style="font-size:2rem">📊</span>
+        <div>
+          <h1 style="color:#fff;font-size:1.4rem;margin:0">${report.title}</h1>
+          <div style="color:#a0a0c0;font-size:0.8rem">${report.author} • ${new Date(report.date).toLocaleDateString('ar-SA')}</div>
+        </div>
+        <a href="/" style="margin-right:auto;background:linear-gradient(135deg,#6c63ff,#00d4aa);color:white;text-decoration:none;padding:0.5rem 1.2rem;border-radius:8px;font-weight:700;font-size:0.85rem">🚀 أنشئ تقريرك</a>
+      </div>
+      <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:16px;padding:2rem;white-space:pre-wrap;color:#e0e0f0;line-height:1.8;font-size:0.9rem">${report.content}</div>
+      <div style="margin-top:1.5rem;text-align:center;color:#6060a0;font-size:0.78rem">🏢 أُنشئ بواسطة MBR Reports — <a href="/" style="color:#6c63ff">ابدأ الآن مجاناً</a></div>
+    </div>`;
+  document.body.appendChild(div);
+}
+
+// Add share button to report output area
+document.addEventListener('DOMContentLoaded', () => {
+  const reportOutput = document.getElementById('reportOutput') || document.querySelector('.report-output');
+  if (reportOutput) {
+    const shareBtn = document.createElement('button');
+    shareBtn.className = 'ai-tool-btn';
+    shareBtn.style.cssText = 'position:sticky;bottom:1rem;margin:0.5rem 0;background:linear-gradient(135deg,#6c63ff,#00d4aa)';
+    shareBtn.innerHTML = '🔗 مشاركة التقرير';
+    shareBtn.onclick = openShareModal;
+    reportOutput.parentNode?.appendChild(shareBtn);
+  }
+});
+
+// ============================================================
+// TEMPLATES LIBRARY (20+ templates)
+// ============================================================
+const TEMPLATES = [
+  // Government
+  { id:'gov1', cat:'gov', icon:'🏛️', title:'التقرير الدوري للوزارة', desc:'قالب رسمي للتقارير الأسبوعية والشهرية للجهات الحكومية', fields:{ type:'monthly', title:'التقرير الشهري لوزارة _____', dept:'الإدارة العامة', period:'مارس 2026' } },
+  { id:'gov2', cat:'gov', icon:'📜', title:'تقرير الأداء الحكومي', desc:'مؤشرات الأداء والإنجازات للجهات الحكومية', fields:{ type:'quarterly', title:'تقرير مؤشرات الأداء الربعي' } },
+  { id:'gov3', cat:'gov', icon:'🗺️', title:'تقرير خطة العمل', desc:'خطة العمل السنوية والأهداف الاستراتيجية', fields:{ type:'annual', title:'خطة العمل السنوية ١٤٤٦' } },
+  // Finance
+  { id:'fin1', cat:'finance', icon:'💰', title:'التقرير المالي الشهري', desc:'الإيرادات والمصروفات والميزانية', fields:{ type:'monthly', title:'التقرير المالي — مارس 2026' } },
+  { id:'fin2', cat:'finance', icon:'📈', title:'تقرير الاستثمارات', desc:'تحليل المحفظة الاستثمارية والعوائد', fields:{ type:'quarterly', title:'تقرير الاستثمارات الربعي' } },
+  { id:'fin3', cat:'finance', icon:'🏦', title:'تقرير التدفق النقدي', desc:'تحليل التدفقات النقدية الداخلة والخارجة', fields:{ type:'monthly', title:'تقرير التدفق النقدي' } },
+  // HR
+  { id:'hr1', cat:'hr', icon:'👥', title:'تقرير الموارد البشرية', desc:'إحصائيات الموظفين والتوظيف والتدريب', fields:{ type:'monthly', title:'تقرير الموارد البشرية الشهري' } },
+  { id:'hr2', cat:'hr', icon:'🎯', title:'تقرير تقييم الأداء', desc:'تقييم أداء الموظفين والكفاءات', fields:{ type:'quarterly', title:'تقييم الأداء الربعي' } },
+  { id:'hr3', cat:'hr', icon:'📚', title:'تقرير التدريب والتطوير', desc:'برامج التدريب وساعات التطوير المهني', fields:{ type:'monthly', title:'تقرير التدريب والتطوير' } },
+  // Projects
+  { id:'prj1', cat:'project', icon:'📁', title:'تقرير حالة المشروع', desc:'تقدم المشروع والمهام والمخاطر', fields:{ type:'weekly', title:'تقرير حالة المشروع الأسبوعي' } },
+  { id:'prj2', cat:'project', icon:'🏗️', title:'تقرير الإنجاز الشهري', desc:'إنجازات الفريق والمعالم المحققة', fields:{ type:'monthly', title:'تقرير الإنجاز الشهري للمشروع' } },
+  { id:'prj3', cat:'project', icon:'⚠️', title:'تقرير إدارة المخاطر', desc:'تحليل المخاطر وخطط التخفيف', fields:{ type:'monthly', title:'تقرير إدارة المخاطر' } },
+  // IT
+  { id:'it1', cat:'it', icon:'💻', title:'تقرير تقنية المعلومات', desc:'الأنظمة والبنية التحتية والأمن السيبراني', fields:{ type:'monthly', title:'تقرير تقنية المعلومات الشهري' } },
+  { id:'it2', cat:'it', icon:'🛡️', title:'تقرير الأمن السيبراني', desc:'الحوادث الأمنية وتقييم المخاطر', fields:{ type:'monthly', title:'التقرير الأمني الشهري' } },
+  { id:'it3', cat:'it', icon:'⚙️', title:'تقرير الدعم الفني', desc:'طلبات الدعم ووقت الاستجابة', fields:{ type:'monthly', title:'تقرير الدعم الفني' } },
+  // Marketing
+  { id:'mkt1', cat:'marketing', icon:'📢', title:'تقرير التسويق الرقمي', desc:'حملات السوشيال ميديا والإعلانات الرقمية', fields:{ type:'monthly', title:'تقرير التسويق الرقمي' } },
+  { id:'mkt2', cat:'marketing', icon:'📊', title:'تقرير المبيعات', desc:'إحصائيات المبيعات وتحليل العملاء', fields:{ type:'monthly', title:'تقرير المبيعات الشهري' } },
+  { id:'mkt3', cat:'marketing', icon:'🎪', title:'تقرير الفعاليات', desc:'ملخص الفعاليات والمؤتمرات والحفلات', fields:{ type:'general', title:'تقرير فعالية _____' } },
+];
+
+function showTemplates() {
+  const overlay = document.getElementById('templatesOverlay');
+  overlay.style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navTemplates')?.classList.add('active');
+  renderTemplatesGrid('all');
+}
+
+function closeTemplates() {
+  document.getElementById('templatesOverlay').style.display = 'none';
+  document.getElementById('navTemplates')?.classList.remove('active');
+}
+
+function filterTemplates(btn, cat) {
+  document.querySelectorAll('.tpl-cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTemplatesGrid(cat);
+}
+
+function renderTemplatesGrid(cat) {
+  const grid = document.getElementById('tplGrid');
+  if (!grid) return;
+  const list = cat === 'all' ? TEMPLATES : TEMPLATES.filter(t => t.cat === cat);
+  const catColors = { gov:'#6c63ff', finance:'#10b981', hr:'#f59e0b', project:'#0ea5e9', it:'#ef4444', marketing:'#a855f7' };
+  const catNames = { gov:'حكومي', finance:'مالي', hr:'موارد بشرية', project:'مشاريع', it:'تقنية', marketing:'تسويق' };
+
+  grid.innerHTML = list.map(t => `
+    <div class="tpl-card" onclick="applyTemplate('${t.id}')">
+      <div class="tpl-card-icon">${t.icon}</div>
+      <div class="tpl-card-cat" style="color:${catColors[t.cat]||'var(--accent)'};background:${catColors[t.cat]||'var(--accent)'}22">${catNames[t.cat]||t.cat}</div>
+      <h4>${t.title}</h4>
+      <p>${t.desc}</p>
+      <button class="tpl-card-btn">استخدم هذا القالب ←</button>
+    </div>
+  `).join('');
+}
+
+function applyTemplate(id) {
+  const tpl = TEMPLATES.find(t => t.id === id);
+  if (!tpl) return;
+  // Apply to report form
+  if (tpl.fields.title) {
+    const titleEl = document.getElementById('reportTitle');
+    if (titleEl) titleEl.value = tpl.fields.title;
+  }
+  if (tpl.fields.type) {
+    const typeEl = document.getElementById('reportTypeSelect');
+    if (typeEl) typeEl.value = tpl.fields.type;
+  }
+  // Close templates and navigate to create
+  closeTemplates();
+  showSection('create');
+  showToast(`✅ تم تطبيق قالب: ${tpl.title}`, 'success');
+}
+

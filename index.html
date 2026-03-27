@@ -49,6 +49,14 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- EmailJS -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#6c63ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MBR Reports">
+  <meta name="mobile-web-app-capable" content="yes">
 </head>
 <body>
 
@@ -160,6 +168,9 @@
         </button>
         <button class="nav-btn nav-btn-ai" id="navAi" onclick="showSection('ai')">
           <span>🤖</span> AI Tools
+        </button>
+        <button class="nav-btn nav-btn-templates" id="navTemplates" onclick="showTemplates()">
+          <span>📋</span> القوالب
         </button>
         <button class="nav-btn nav-btn-dashboard" id="navDashboard" onclick="showDashboard()">
           <span>📊</span> Dashboard
@@ -1172,6 +1183,61 @@
       <input type="text" id="chatInput" placeholder="اكتب رسالتك..." class="chatbot-input" onkeydown="if(event.key==='Enter')sendChatMessage()">
       <button onclick="sendChatMessage()" class="chatbot-send-btn">إرسال ↑</button>
     </div>
+  </div>
+
+
+  <!-- SHARE MODAL -->
+  <div id="shareModal" class="share-modal-overlay" style="display:none" onclick="if(event.target===this)closeShare()">
+    <div class="share-modal">
+      <div class="share-modal-header">
+        <span>🔗 مشاركة التقرير</span>
+        <button onclick="closeShare()" style="background:none;border:none;color:inherit;cursor:pointer;font-size:1.1rem">✕</button>
+      </div>
+      <div class="share-modal-body">
+        <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem">أنشئ رابطاً لمشاركة هذا التقرير مع أي شخص</p>
+        <div class="share-link-box">
+          <input type="text" id="shareLinkInput" class="share-link-input" readonly placeholder="سيظهر الرابط هنا...">
+          <button onclick="copyShareLink()" class="share-copy-btn">📋 نسخ</button>
+        </div>
+        <button onclick="generateShareLink()" class="ai-tool-btn" style="margin-top:1rem">🔗 إنشاء رابط المشاركة</button>
+        <div id="shareQR" style="display:none;text-align:center;margin-top:1rem"></div>
+        <div class="share-options">
+          <button onclick="shareViaWhatsApp()" class="share-opt-btn" style="background:#25d366">📱 WhatsApp</button>
+          <button onclick="shareViaEmail()" class="share-opt-btn" style="background:#ea4335">📧 إيميل</button>
+          <button onclick="shareViaCopy()" class="share-opt-btn" style="background:var(--accent)">🔗 نسخ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEMPLATES OVERLAY -->
+  <div id="templatesOverlay" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:1200px;margin:0 auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem">
+        <h2 style="color:#fff;font-size:1.6rem;font-weight:900">📋 مكتبة القوالب</h2>
+        <button onclick="closeTemplates()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:var(--text-secondary);padding:0.4rem 1rem;cursor:pointer;font-family:var(--font)">✕ إغلاق</button>
+      </div>
+      
+      <!-- Category Filter -->
+      <div class="tpl-filter-row" id="tplFilters">
+        <button class="tpl-cat-btn active" onclick="filterTemplates(this,'all')">الكل</button>
+        <button class="tpl-cat-btn" onclick="filterTemplates(this,'gov')">🏛️ حكومي</button>
+        <button class="tpl-cat-btn" onclick="filterTemplates(this,'finance')">💰 مالي</button>
+        <button class="tpl-cat-btn" onclick="filterTemplates(this,'hr')">👥 موارد بشرية</button>
+        <button class="tpl-cat-btn" onclick="filterTemplates(this,'project')">📁 مشاريع</button>
+        <button class="tpl-cat-btn" onclick="filterTemplates(this,'it')">💻 تقنية</button>
+        <button class="tpl-cat-btn" onclick="filterTemplates(this,'marketing')">📢 تسويق</button>
+      </div>
+
+      <div class="tpl-grid" id="tplGrid"></div>
+    </div>
+  </div>
+
+  <!-- PWA INSTALL BANNER -->
+  <div id="pwaInstallBanner" class="pwa-banner" style="display:none">
+    <span>📱 ثبّت MBR Reports على جهازك</span>
+    <button onclick="installPWA()" class="pwa-install-btn">تثبيت</button>
+    <button onclick="document.getElementById('pwaInstallBanner').style.display='none'" class="pwa-dismiss-btn">×</button>
   </div>
 
 </body>
