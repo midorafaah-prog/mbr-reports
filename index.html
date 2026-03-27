@@ -62,6 +62,16 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Apple Sign In -->
   <script src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js" async defer></script>
+
+  <script>
+    // Auto-set Google Client ID
+    (function() {
+      var GOOGLE_CLIENT_ID = '556231032867-43st8n4irtj67g0l467e5hncudbs9ra2.apps.googleusercontent.com';
+      if (!localStorage.getItem('mbrcst_google_client_id')) {
+        localStorage.setItem('mbrcst_google_client_id', GOOGLE_CLIENT_ID);
+      }
+    })();
+  </script>
 </head>
 <body>
 
@@ -1248,7 +1258,7 @@
 
   <!-- Google One Tap -->
   <div id="g_id_onload"
-       data-client_id="__GOOGLE_CLIENT_ID__"
+       data-client_id="556231032867-43st8n4irtj67g0l467e5hncudbs9ra2.apps.googleusercontent.com"
        data-context="signin"
        data-ux_mode="popup"
        data-callback="handleGoogleSignIn"
