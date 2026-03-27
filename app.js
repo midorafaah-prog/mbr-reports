@@ -2016,28 +2016,102 @@ function getGoogleClientId() {
 function signInWithGoogle() {
   const clientId = getGoogleClientId();
   if (!clientId) {
-    showAuthError('⚙️ أدخل Google Client ID في الإعدادات أولاً');
-    // Offer to go to settings
-    setTimeout(() => {
-      const go = confirm('هل تريد الذهاب للإعدادات لإدخال Google Client ID؟');
-      if (go) {
-        doLogout();
-        setTimeout(() => showSection('settings'), 600);
-      }
-    }, 300);
+    // Show inline setup modal
+    showGoogleSetupModal();
     return;
   }
-
-  // Initialize Google Identity Services
-  google.accounts.oauth2.initCodeClient({
+  // Use Google ID Token (works without backend!)
+  if (typeof google === 'undefined' || !google.accounts) {
+    showAuthError('❌ تعذّر تحميل Google Sign-In. تحقق من الإنترنت.');
+    return;
+  }
+  google.accounts.id.initialize({
     client_id: clientId,
-    scope: 'email profile',
-    callback: (response) => {
-      if (response.error) { showAuthError('❌ فشل تسجيل الدخول بـ Google'); return; }
-      // In production this code would go to backend
-      // For local use, we use the credential approach instead
+    callback: handleGoogleCredential,
+    auto_select: false,
+    cancel_on_tap_outside: true,
+    context: 'signin'
+  });
+  google.accounts.id.prompt(notification => {
+    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      // Fallback to popup button
+      google.accounts.id.renderButton(
+        document.createElement('div'),
+        { theme: 'outline', size: 'large' }
+      );
+      // Force popup via oauth2 token flow
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'email profile openid',
+        callback: async (tokenResponse) => {
+          if (tokenResponse.error) { showAuthError('❌ فشل تسجيل الدخول بـ Google'); return; }
+          // Fetch user info from Google
+          const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+          });
+          const user = await res.json();
+          if (!user.email) { showAuthError('❌ لم نحصل على بيانات المستخدم'); return; }
+          handleGoogleUserInfo(user.email, user.name || user.email, user.picture);
+        }
+      });
+      tokenClient.requestAccessToken({ prompt: 'select_account' });
     }
-  }).requestCode();
+  });
+}
+
+function handleGoogleUserInfo(email, name, picture) {
+  const users = getUsers();
+  if (!users[email]) {
+    users[email] = {
+      hash: 'google_sso_' + email,
+      fullName: name,
+      role: isAdmin(email) ? 'admin' : 'user',
+      provider: 'google',
+      avatar: picture || null,
+      created: Date.now()
+    };
+    saveUsers(users);
+  }
+  sessionStorage.setItem('mbrcst_session', JSON.stringify({ username: email, loginAt: Date.now() }));
+  loginSuccess(email, name);
+  showToast('✅ تم الدخول بحساب Google', 'success');
+}
+
+function showGoogleSetupModal() {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;display:flex;align-items:center;justify-content:center;direction:rtl;font-family:Tajawal,sans-serif';
+  modal.innerHTML = `
+    <div style="background:#12121e;border:1px solid rgba(108,99,255,0.4);border-radius:20px;padding:2rem;max-width:480px;width:95%;">
+      <h3 style="color:#fff;margin:0 0 1rem;font-size:1.1rem">⚙️ ربط حساب Google</h3>
+      <p style="color:#a0a0c0;font-size:0.82rem;line-height:1.6;margin-bottom:1rem">
+        للدخول بـ Google تحتاج إنشاء OAuth Client ID مجاناً من Google Cloud Console:
+      </p>
+      <ol style="color:#a0a0c0;font-size:0.8rem;line-height:2;padding-right:1.2rem">
+        <li>افتح <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:#6c63ff">console.cloud.google.com</a></li>
+        <li>أنشئ مشروع جديد ← Credentials ← Create OAuth 2.0 Client</li>
+        <li>النوع: <strong style="color:#fff">Web application</strong></li>
+        <li>Authorized JavaScript origins: <code style="color:#00d4aa;background:rgba(0,212,170,0.1);padding:2px 6px;border-radius:4px">https://mbr-reports.vercel.app</code></li>
+        <li>الصق الـ Client ID هنا:</li>
+      </ol>
+      <input type="text" id="quickGoogleClientId" placeholder="123456789-xxxx.apps.googleusercontent.com" style="width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(108,99,255,0.3);border-radius:8px;padding:0.7rem;color:#fff;font-size:0.82rem;margin:0.5rem 0 1rem;box-sizing:border-box;direction:ltr">
+      <div style="display:flex;gap:0.5rem">
+        <button onclick="saveQuickGoogleId()" style="flex:1;background:linear-gradient(135deg,#6c63ff,#00d4aa);border:none;border-radius:10px;color:white;font-weight:700;padding:0.7rem;cursor:pointer;font-family:Tajawal,sans-serif">💾 حفظ والمتابعة</button>
+        <button onclick="this.closest('[style]').remove()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:10px;color:#888;padding:0.7rem 1rem;cursor:pointer;font-family:Tajawal,sans-serif">إلغاء</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function saveQuickGoogleId() {
+  const id = document.getElementById('quickGoogleClientId')?.value?.trim();
+  if (!id || !id.includes('.apps.googleusercontent.com')) {
+    alert('Client ID غير صحيح');
+    return;
+  }
+  localStorage.setItem('mbrcst_google_client_id', id);
+  document.querySelector('[id="quickGoogleClientId"]')?.closest('[style*="fixed"]')?.remove();
+  showToast('✅ تم حفظ Google Client ID', 'success');
+  setTimeout(() => signInWithGoogle(), 500);
 }
 
 // Google One Tap callback
@@ -2088,11 +2162,11 @@ function getAppleClientId() {
 function signInWithApple() {
   const clientId = getAppleClientId();
   if (!clientId) {
-    showAuthError('⚙️ أدخل Apple Service ID في الإعدادات أولاً');
+    showAppleSetupModal();
     return;
   }
   if (typeof AppleID === 'undefined') {
-    showAuthError('❌ Apple Sign-In غير متاح على localhost');
+    showAuthError('❌ Apple Sign-In يعمل فقط على mbr-reports.vercel.app');
     return;
   }
   AppleID.auth.init({
@@ -2103,20 +2177,40 @@ function signInWithApple() {
   });
   AppleID.auth.signIn()
     .then(data => {
-      const email = data.authorization?.id_token
-        ? JSON.parse(atob(data.authorization.id_token.split('.')[1])).email
-        : (data.user?.email || '');
-      const name = [data.user?.name?.firstName, data.user?.name?.lastName].filter(Boolean).join(' ') || email;
+      const token = data.authorization?.id_token;
+      const payload = token ? JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))) : {};
+      const email = payload.email || data.user?.email || '';
+      const name = [data.user?.name?.firstName, data.user?.name?.lastName].filter(Boolean).join(' ') || email.split('@')[0];
       if (!email) { showAuthError('لم نتمكن من الحصول على البريد الإلكتروني'); return; }
-      const users = getUsers();
-      if (!users[email]) {
-        users[email] = { hash: 'apple_sso', fullName: name, provider: 'apple', created: Date.now() };
-        saveUsers(users);
-      }
-      sessionStorage.setItem('mbrcst_session', JSON.stringify({ username: email, loginAt: Date.now() }));
-      loginSuccess(email, name);
+      handleGoogleUserInfo(email, name, null);
+      showToast('✅ تم الدخول بحساب Apple', 'success');
     })
-    .catch(err => { showAuthError('❌ تم إلغاء تسجيل الدخول بـ Apple'); });
+    .catch(() => showAuthError('❌ تم إلغاء تسجيل الدخول بـ Apple'));
+}
+
+function showAppleSetupModal() {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;display:flex;align-items:center;justify-content:center;direction:rtl;font-family:Tajawal,sans-serif';
+  modal.innerHTML = `
+    <div style="background:#12121e;border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:2rem;max-width:480px;width:95%;">
+      <h3 style="color:#fff;margin:0 0 1rem;font-size:1.1rem">🍎 ربط حساب Apple</h3>
+      <p style="color:#a0a0c0;font-size:0.82rem;line-height:1.6">
+        تسجيل الدخول بـ Apple يتطلب:
+      </p>
+      <ul style="color:#a0a0c0;font-size:0.8rem;line-height:2;padding-right:1.2rem">
+        <li>حساب Apple Developer (99$ سنوياً)</li>
+        <li>تسجيل Service ID في Apple Developer Console</li>
+        <li>إضافة النطاق: <code style="color:#00d4aa">mbr-reports.vercel.app</code></li>
+      </ul>
+      <p style="color:#f59e0b;font-size:0.78rem;padding:0.7rem;background:rgba(245,158,11,0.08);border-radius:8px;margin-top:0.5rem">
+        💡 نوصي باستخدام <strong>تسجيل الدخول بـ Google</strong> كبديل مجاني وأسهل
+      </p>
+      <div style="display:flex;gap:0.5rem;margin-top:1rem">
+        <button onclick="this.closest('[style]').remove();signInWithGoogle()" style="flex:1;background:linear-gradient(135deg,#6c63ff,#00d4aa);border:none;border-radius:10px;color:white;font-weight:700;padding:0.7rem;cursor:pointer;font-family:Tajawal,sans-serif">🔵 الدخول بـ Google بدلاً</button>
+        <button onclick="this.closest('[style]').remove()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:10px;color:#888;padding:0.7rem 1rem;cursor:pointer;font-family:Tajawal,sans-serif">إغلاق</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
 }
 
 
