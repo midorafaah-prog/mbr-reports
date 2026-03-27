@@ -1,0 +1,2921 @@
+/* =============================================
+   MBR Reports — app.js
+   AI Report Generation + Excel + Images
+   ============================================= */
+
+'use strict';
+
+// ===========================
+// STATE
+// ===========================
+const state = {
+  reportType: 'weekly',
+  reportLang: 'ar',          // NEW: controlled by toggle buttons
+  uploadedImages: [],
+  excelData: null,
+  generatedReport: null,
+  savedReports: [],
+  settings: {
+    orgName: '',
+    logo: '',
+    brandColor: '#6c63ff',
+    geminiKey: ''
+  }
+};
+
+const REPORT_LABELS = {
+  daily:     { ar: 'يومي',           en: 'Daily',           icon: '🌅' },
+  weekly:    { ar: 'أسبوعي',         en: 'Weekly',          icon: '📅' },
+  monthly:   { ar: 'شهري',           en: 'Monthly',         icon: '📆' },
+  quarterly: { ar: 'ربعي',           en: 'Quarterly',       icon: '📊' },
+  semi:      { ar: 'نصف سنوي',       en: 'Semi-Annual',     icon: '📈' },
+  annual:    { ar: 'سنوي',           en: 'Annual',          icon: '🏆' },
+  general:   { ar: 'عام',            en: 'General',         icon: '📄' },
+  financial: { ar: 'مالي',           en: 'Financial',       icon: '💰' },
+  admin:     { ar: 'إداري',          en: 'Administrative',  icon: '🏛️' },
+  project:   { ar: 'مشروع',          en: 'Project',         icon: '📐' },
+  it:        { ar: 'تقنية المعلومات', en: 'IT Report',      icon: '💻' },
+  hr:        { ar: 'أداء موظفين',    en: 'HR Report',       icon: '👥' },
+  marketing: { ar: 'تسويقي',         en: 'Marketing',       icon: '📣' }
+};
+
+// ===========================
+// INIT
+// ===========================
+document.addEventListener('DOMContentLoaded', () => {
+  loadFromStorage();
+  loadSavedApiKey();
+  renderHistory();
+  updateAiStatus('ready');
+});
+
+// ===========================
+// NAVIGATION
+// ===========================
+function showSection(name) {
+  const allSections = ['create','history','settings','compare','saved','marketplace','ai'];
+  allSections.forEach(s => {
+    const el = document.getElementById(`section${capitalize(s)}`);
+    if (el) el.style.display = (s === name) ? 'block' : 'none';
+  });
+  ['navCreate','navHistory','navSettings','navCompare','navSaved','navMarketplace','navAi'].forEach(id => {
+    document.getElementById(id)?.classList.remove('active');
+  });
+  document.getElementById(`nav${capitalize(name)}`)?.classList.add('active');
+  if (name === 'history' || name === 'saved') renderHistory();
+  if (name === 'settings') loadSettingsForm();
+}
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// ===========================
+// REPORT LANGUAGE TOGGLE
+// ===========================
+function setReportLang(lang, btn) {
+  state.reportLang = lang;
+  document.querySelectorAll('.lang-toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ===========================
+// REPORT TYPE
+// ===========================
+function setReportType(type) {
+  state.reportType = type;
+  // Sync dropdown
+  const sel = document.getElementById('reportTypeSelect');
+  if (sel && sel.value !== type) sel.value = type;
+  // Load sections template (built-in or custom)
+  const customTemplates = loadCustomTemplates();
+  const custom = customTemplates.find(t => t.id === type);
+  if (custom) {
+    loadCustomTemplateSections(custom);
+  }
+}
+
+// ===========================
+// SECTIONS BUILDER
+// ===========================
+let sectionCount = 3;
+
+function addSection() {
+  const builder = document.getElementById('sectionsBuilder');
+  const div = document.createElement('div');
+  div.className = 'text-section';
+  div.dataset.section = sectionCount++;
+  div.innerHTML = `
+    <div class="text-section-header">
+      <input type="text" class="section-title-input" placeholder="عنوان القسم" />
+      <button class="remove-section-btn" onclick="removeSection(this)" title="حذف القسم">✕</button>
+    </div>
+    <textarea class="section-textarea" placeholder="اكتب هنا محتوى هذا القسم..."></textarea>
+  `;
+  builder.appendChild(div);
+  div.querySelector('.section-title-input')?.focus();
+}
+
+function removeSection(btn) {
+  const sections = document.querySelectorAll('.text-section');
+  if (sections.length <= 1) { showToast('يجب أن يبقى قسم واحد على الأقل', 'error'); return; }
+  btn.closest('.text-section').remove();
+}
+
+function clearText() {
+  document.querySelectorAll('.section-textarea').forEach(t => t.value = '');
+}
+
+function getSectionTemplate() {
+  const templates = {
+    weekly: [
+      { title: 'إنجازات الأسبوع', content: '- إنجاز 1\n- إنجاز 2\n- إنجاز 3' },
+      { title: 'التحديات', content: '' },
+      { title: 'مؤشرات الأداء', content: '' },
+      { title: 'خطة الأسبوع القادم', content: '' }
+    ],
+    quarterly: [
+      { title: 'ملخص الربع', content: '' },
+      { title: 'النتائج والإنجازات', content: '' },
+      { title: 'تحليل المؤشرات', content: '' },
+      { title: 'التحديات والحلول', content: '' },
+      { title: 'خطة الربع القادم', content: '' }
+    ],
+    semi: [
+      { title: 'ملخص تنفيذي', content: '' },
+      { title: 'الأداء المالي', content: '' },
+      { title: 'إنجازات النصف الأول', content: '' },
+      { title: 'تحليل المخاطر', content: '' },
+      { title: 'توجهات النصف الثاني', content: '' }
+    ],
+    annual: [
+      { title: 'الرؤية والأهداف الاستراتيجية', content: '' },
+      { title: 'ملخص تنفيذي للعام', content: '' },
+      { title: 'الأداء المالي السنوي', content: '' },
+      { title: 'الإنجازات الكبرى', content: '' },
+      { title: 'التحديات والدروس المستفادة', content: '' },
+      { title: 'خطة العام القادم', content: '' }
+    ]
+  };
+  const tmpl = templates[state.reportType] || templates.weekly;
+  const builder = document.getElementById('sectionsBuilder');
+  builder.innerHTML = '';
+  sectionCount = 0;
+  tmpl.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'text-section';
+    div.dataset.section = sectionCount++;
+    div.innerHTML = `
+      <div class="text-section-header">
+        <input type="text" class="section-title-input" value="${s.title}" placeholder="عنوان القسم" />
+        <button class="remove-section-btn" onclick="removeSection(this)" title="حذف القسم">✕</button>
+      </div>
+      <textarea class="section-textarea" placeholder="اكتب هنا محتوى هذا القسم...">${s.content}</textarea>
+    `;
+    builder.appendChild(div);
+  });
+  showToast('تم تحميل قالب ' + REPORT_LABELS[state.reportType].ar, 'success');
+}
+
+// ===========================
+// IMAGE HANDLING
+// ===========================
+function triggerImageUpload() { document.getElementById('imageInput').click(); }
+
+function handleImageUpload(files) {
+  Array.from(files).forEach(file => {
+    if (!file.type.startsWith('image/')) { showToast('الملف ليس صورة: ' + file.name, 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      state.uploadedImages.push({ file, url: e.target.result, name: file.name });
+      renderImagePreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('imageInput').value = '';
+}
+
+function renderImagePreviews() {
+  const container = document.getElementById('imagePreviews');
+  container.innerHTML = state.uploadedImages.map((img, i) => `
+    <div class="img-preview-item">
+      <img src="${img.url}" alt="${img.name}" />
+      <button class="img-preview-remove" onclick="removeImage(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function removeImage(i) {
+  state.uploadedImages.splice(i, 1);
+  renderImagePreviews();
+}
+
+function dragOver(e, el) {
+  e.preventDefault();
+  el.classList.add('drag-over');
+}
+function dragLeave(el) { el.classList.remove('drag-over'); }
+
+function dropImages(e, el) {
+  e.preventDefault();
+  el.classList.remove('drag-over');
+  handleImageUpload(e.dataTransfer.files);
+}
+function dropExcel(e, el) {
+  e.preventDefault();
+  el.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) handleExcelUpload(e.dataTransfer.files[0]);
+}
+
+// ===========================
+// EXCEL HANDLING
+// ===========================
+function triggerExcelUpload() { document.getElementById('excelInput').click(); }
+
+function handleExcelUpload(file) {
+  if (!file) return;
+  const allowed = ['.xlsx','.xls','.csv'];
+  const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+  if (!allowed.includes(ext)) { showToast('يرجى رفع ملف Excel أو CSV فقط', 'error'); return; }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+      if (!json || json.length === 0) { showToast('الملف فارغ', 'error'); return; }
+      const headers = json[0].map(h => String(h));
+      const rows = json.slice(1).filter(r => r.some(c => c !== ''));
+
+      state.excelData = { headers, rows, sheetName, fileName: file.name };
+      renderExcelPreview();
+      showToast(`تم استيراد ${rows.length} صف من "${sheetName}"`, 'success');
+    } catch (err) {
+      showToast('خطأ في قراءة الملف: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  document.getElementById('excelInput').value = '';
+}
+
+function renderExcelPreview() {
+  const { headers, rows, fileName } = state.excelData;
+  const previewRows = rows.slice(0, 8);
+  const hasMore = rows.length > 8;
+
+  const table = `
+    <table>
+      <thead><tr>${headers.map(h => `<th>${escapeHtml(String(h))}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${previewRows.map(row => `<tr>${headers.map((_,i) => `<td>${escapeHtml(String(row[i]??''))}</td>`).join('')}</tr>`).join('')}
+        ${hasMore ? `<tr><td colspan="${headers.length}" style="text-align:center;padding:0.5rem;color:var(--text-muted)">... و ${rows.length - 8} صفوف أخرى</td></tr>` : ''}
+      </tbody>
+    </table>`;
+
+  const el = document.getElementById('excelPreview');
+  el.innerHTML = `<div style="padding:0.5rem 0.75rem;font-size:0.72rem;color:var(--accent-2);border-bottom:1px solid rgba(0,212,170,0.2)">📊 ${fileName} — ${rows.length} صف</div>` + table;
+  el.style.display = 'block';
+}
+
+// ===========================
+// AI SLIDER
+// ===========================
+function updateDetailLabel(v) {
+  const labels = { '1': 'موجز', '2': 'متوازن', '3': 'مفصّل' };
+  document.getElementById('detailLabel').textContent = labels[v] || 'متوازن';
+}
+
+// ===========================
+// API KEY
+// ===========================
+function loadSavedApiKey() {
+  const saved = localStorage.getItem('mbrcst_openai_key');
+  if (saved) {
+    document.getElementById('apiKeyInput').value = saved;
+    document.getElementById('saveApiKey').checked = true;
+    document.getElementById('savedApiKeyDisplay') && (document.getElementById('savedApiKeyDisplay').value = saved);
+  }
+}
+
+function toggleSaveKey(cb) {
+  if (cb.checked) {
+    const key = document.getElementById('apiKeyInput').value.trim();
+    if (key) localStorage.setItem('mbrcst_openai_key', key);
+  } else {
+    localStorage.removeItem('mbrcst_openai_key');
+  }
+}
+
+async function testApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) { showToast('أدخل API Key أولاً', 'error'); return; }
+  updateAiStatus('busy');
+  showToast('جارٍ اختبار الاتصال...', '');
+  try {
+    const res = await fetch('/api/openai-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _apiKey: key })
+    });
+    if (res.ok) {
+      updateAiStatus('ready');
+      showToast('✅ مفتاح API صحيح ويعمل!', 'success');
+    } else {
+      updateAiStatus('error');
+      showToast('❌ مفتاح API غير صحيح', 'error');
+    }
+  } catch {
+    updateAiStatus('error');
+    showToast('❌ تعذّر الاتصال — تحقق من الإنترنت', 'error');
+  }
+}
+
+function updateAiStatus(status) {
+  const badge = document.getElementById('aiStatusBadge');
+  const text = document.getElementById('aiStatusText');
+  badge.className = 'ai-status';
+  if (status === 'ready') { badge.classList.add(''); text.textContent = 'AI جاهز'; }
+  if (status === 'busy') { badge.classList.add('busy'); text.textContent = 'AI يعالج...'; }
+  if (status === 'error') { badge.classList.add('error'); text.textContent = 'AI غير متصل'; }
+}
+
+// ===========================
+// REPORT GENERATION
+// ===========================
+async function generateReport() {
+  const title = document.getElementById('reportTitle').value.trim();
+  const dept = document.getElementById('reportDept').value.trim();
+  const period = document.getElementById('reportPeriod').value.trim();
+  const notes = document.getElementById('reportNotes').value.trim();
+  const preparer = document.getElementById('reportPreparer').value.trim(); // NEW
+  const tone = document.getElementById('aiTone').value;
+  const lang = state.reportLang;  // from toggle button
+  const detail = document.getElementById('aiDetail').value;
+
+  // Collect sections
+  const sections = [];
+  document.querySelectorAll('.text-section').forEach(s => {
+    const t = s.querySelector('.section-title-input')?.value?.trim();
+    const c = s.querySelector('.section-textarea')?.value?.trim();
+    if (t || c) sections.push({ title: t || 'قسم', content: c || '' });
+  });
+
+  if (!title && sections.every(s => !s.content)) {
+    showToast('يرجى إدخال عنوان التقرير أو محتوى على الأقل', 'error');
+    return;
+  }
+
+  // Show loading
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('previewIdle').style.display = 'none';
+  document.getElementById('previewLoading').style.display = 'flex';
+  document.getElementById('reportOutput').style.display = 'none';
+  updateAiStatus('busy');
+
+  await animateLoadingSteps();
+
+  // Process with AI or locally
+  let processedSections = [];
+  const apiKey = document.getElementById('apiKeyInput').value.trim() || localStorage.getItem('mbrcst_openai_key');
+
+  try {
+    if (apiKey && sections.some(s => s.content)) {
+      processedSections = await processWithAI(sections, tone, lang, detail, apiKey);
+    } else {
+      processedSections = localEnhance(sections, lang);
+    }
+  } catch (err) {
+    console.error(err);
+    processedSections = localEnhance(sections, lang);
+    showToast('تم استخدام المعالجة المحلية (تحقق من API Key)', 'error');
+  }
+
+  // Build report HTML
+  const reportHTML = buildReportHTML({
+    title: title || 'تقرير دوري',
+    dept, period, notes, preparer,   // added preparer
+    sections: processedSections,
+    images: state.uploadedImages,
+    excel: state.excelData,
+    type: state.reportType,
+    lang
+  });
+
+  state.generatedReport = { html: reportHTML, title, type: state.reportType, date: new Date().toISOString(), dept, period, preparer };
+
+  // Show
+  document.getElementById('previewLoading').style.display = 'none';
+  document.getElementById('reportOutput').style.display = 'block';
+  document.getElementById('reportDocument').innerHTML = reportHTML;
+  document.getElementById('generateBtn').disabled = false;
+  updateAiStatus('ready');
+  showToast('تم إنشاء التقرير بنجاح ✅', 'success');
+}
+
+// ===========================
+// LOADING ANIMATION
+// ===========================
+async function animateLoadingSteps() {
+  const steps = ['step1','step2','step3','step4'];
+  const msgs = ['يحلل الذكاء الاصطناعي المحتوى...','يحسّن الصياغة والأسلوب...','يدمج الصور والبيانات...','يُنسّق التقرير النهائي...'];
+  for (let i = 0; i < steps.length; i++) {
+    document.getElementById('loadingMsg').textContent = msgs[i];
+    steps.forEach((id, j) => {
+      const el = document.getElementById(id);
+      if (j < i) el.className = 'loading-step done';
+      else if (j === i) el.className = 'loading-step active';
+      else el.className = 'loading-step';
+    });
+    await sleep(600);
+  }
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ===========================
+// AI PROCESSING (OpenAI)
+// ===========================
+async function processWithAI(sections, tone, lang, detail, apiKey) {
+  const toneMap = { professional: 'رسمي واحترافي', executive: 'تنفيذي مختصر', detailed: 'تحليلي مفصّل', friendly: 'ودّي وسلس' };
+  const detailMap = { '1': 'موجز (3-5 جمل لكل قسم)', '2': 'متوازن (5-8 جمل)', '3': 'مفصّل (فقرات متعددة)' };
+  const langMap = { ar: 'العربية', en: 'الإنجليزية', both: 'عربي وإنجليزي معاً' };
+
+  const sectionsText = sections.map(s => `## ${s.title}\n${s.content || '(فارغ - اقترح محتوى مناسباً)'}`).join('\n\n');
+
+  const prompt = `أنت مساعد متخصص في كتابة التقارير المهنية.
+المهمة: حسّن وأعد صياغة الأقسام التالية لتقرير ${REPORT_LABELS[state.reportType]?.ar}.
+الأسلوب: ${toneMap[tone] || 'رسمي'}
+اللغة: ${langMap[lang] || 'العربية'}
+التفاصيل: ${detailMap[detail] || 'متوازن'}
+
+الأقسام للمعالجة:
+${sectionsText}
+
+المطلوب:
+- حسّن الصياغة واجعلها أكثر احترافية
+- اجعل النص منظماً ومترابطاً
+- أضف نقاط إذا كان النص قائمة
+- احتفظ بالمعلومات الأصلية
+- أجب بصيغة JSON: { "sections": [{ "title": "...", "content": "..." }] }`;
+
+  const response = await fetch('/api/openai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      _apiKey: apiKey,
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 3000,
+      temperature: 0.7,
+      response_format: { type: 'json_object' }
+    })
+  });
+
+  if (!response.ok) throw new Error('OpenAI API error: ' + response.status);
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  const parsed = JSON.parse(content);
+  return parsed.sections || sections;
+}
+
+// ===========================
+// LOCAL ENHANCE (Fallback)
+// ===========================
+function localEnhance(sections, lang) {
+  return sections.map(s => {
+    let content = s.content || '';
+    // Convert bullet lines to proper list items
+    const lines = content.split('\n').filter(l => l.trim());
+    const isList = lines.some(l => l.trim().startsWith('-') || l.trim().startsWith('•') || l.trim().match(/^\d+\./));
+    if (isList && lines.length > 1) {
+      content = '<ul>' + lines.map(l => {
+        const cleaned = l.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '').trim();
+        return cleaned ? `<li>${cleaned}</li>` : '';
+      }).filter(Boolean).join('') + '</ul>';
+    } else if (lines.length > 0) {
+      content = lines.map(l => `<p>${l.trim()}</p>`).join('');
+    }
+    return { ...s, content };
+  });
+}
+
+// ===========================
+// BUILD REPORT HTML
+// ===========================
+function buildReportHTML({ title, dept, period, notes, preparer, sections, images, excel, type, lang }) {
+  const label = REPORT_LABELS[type] || REPORT_LABELS.weekly;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
+  const orgName = state.settings.orgName || 'MBR';
+  const logoUrl = state.settings.logo || '';
+  const brandColor = state.settings.brandColor || '#6c63ff';
+
+  // Logo section
+  const logoHTML = logoUrl
+    ? `<img src="${logoUrl}" style="height:48px;object-fit:contain;" alt="شعار" />`
+    : `<div class="report-doc-logo-icon" style="background:linear-gradient(135deg,${brandColor},#00d4aa)">✦</div>`;
+
+  // KPI section (from excel or default)
+  const hasKPIs = excel && excel.headers.length >= 2;
+  let kpiHTML = '';
+  if (hasKPIs) {
+    const kpiRows = excel.rows.slice(0, 4);
+    kpiHTML = `<div class="report-kpi-grid">
+      ${kpiRows.map(row => `
+        <div class="report-kpi-card">
+          <div class="report-kpi-value">${escapeHtml(String(row[1] ?? '—'))}</div>
+          <div class="report-kpi-label">${escapeHtml(String(row[0] ?? ''))}</div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  // Sections
+  const sectionsHTML = sections.map((s, i) => {
+    const icons = ['📌','📝','🎯','📊','⚡','🔍','✅','🔮'];
+    return `
+      <div class="report-section-block">
+        <div class="report-section-title" style="color:${brandColor}">
+          ${icons[i % icons.length]} ${escapeHtml(s.title)}
+        </div>
+        <div class="report-section-content">${s.content || `<p style="color:var(--text-muted)">لا يوجد محتوى</p>`}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Images section
+  let imagesHTML = '';
+  if (images && images.length > 0) {
+    imagesHTML = `
+      <div class="report-images-section">
+        <div class="report-section-title" style="color:${brandColor}">🖼️ الصور والمرفقات المرئية</div>
+        <div class="report-images-grid">
+          ${images.map((img, i) => `
+            <div class="report-image-item">
+              <img src="${img.url}" alt="${escapeHtml(img.name)}" />
+              <p>${escapeHtml(img.name)}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Excel table
+  let excelHTML = '';
+  if (excel) {
+    excelHTML = `
+      <div class="report-excel-section">
+        <div class="report-section-title" style="color:${brandColor}">📊 البيانات — ${escapeHtml(excel.fileName || excel.sheetName)}</div>
+        <div class="report-excel-table-wrap">
+          <table class="report-excel-table">
+            <thead><tr>${excel.headers.map(h => `<th>${escapeHtml(String(h))}</th>`).join('')}</tr></thead>
+            <tbody>${excel.rows.map(row => `<tr>${excel.headers.map((_,i) => `<td>${escapeHtml(String(row[i]??''))}</td>`).join('')}</tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="report-doc-header">
+      <div class="report-doc-logo">
+        ${logoHTML}
+        <div class="report-doc-logo-text">
+          <h2>${escapeHtml(orgName)} Studio</h2>
+          <p>التقارير الدورية الذكية</p>
+        </div>
+      </div>
+      <div class="report-doc-meta">
+        <div class="report-type-badge" style="background:rgba(108,99,255,0.15);border-color:${brandColor}40;color:${brandColor}">${label.icon} تقرير ${label.ar}</div>
+        <p>${dateStr}</p>
+      </div>
+    </div>
+
+    <div class="report-doc-title-section">
+      <div class="report-doc-title">${escapeHtml(title)}</div>
+      <div class="report-doc-info">
+        ${dept ? `<span>🏢 ${escapeHtml(dept)}</span>` : ''}
+        ${period ? `<span>📅 ${escapeHtml(period)}</span>` : ''}
+        ${preparer ? `<span>👤 ${escapeHtml(preparer)}</span>` : ''}
+        ${notes ? `<span>📌 ${escapeHtml(notes)}</span>` : ''}
+      </div>
+    </div>
+
+    ${kpiHTML}
+    ${sectionsHTML}
+    ${imagesHTML}
+    ${excelHTML}
+
+    <div class="report-doc-footer">
+      <span>تم الإنشاء بواسطة MBR Reports الذكي</span>
+      <span>${dateStr} — ${now.toLocaleTimeString('ar-SA')}</span>
+    </div>
+  `;
+}
+
+// ===========================
+// COPY / PRINT / PDF / SAVE
+// ===========================
+function copyReport() {
+  const doc = document.getElementById('reportDocument');
+  if (!doc || !doc.innerHTML.trim()) { showToast('لا يوجد تقرير للنسخ', 'error'); return; }
+  navigator.clipboard.writeText(doc.innerText).then(() => showToast('تم نسخ التقرير ✅', 'success'));
+}
+
+function printReport() {
+  const doc = document.getElementById('reportDocument');
+  if (!doc || !doc.innerHTML.trim()) { showToast('لا يوجد تقرير للطباعة', 'error'); return; }
+  window.print();
+}
+
+async function exportPDF() {
+  const doc = document.getElementById('reportDocument');
+  if (!doc || !doc.innerHTML.trim()) { showToast('لا يوجد تقرير للتصدير', 'error'); return; }
+
+  const btn = document.querySelector('.btn-export');
+  const orig = btn.textContent;
+  btn.textContent = '⏳ جارٍ التصدير...';
+  btn.disabled = true;
+
+  const opt = {
+    margin: 0.5,
+    filename: `MBR Reports_${state.reportType}_${new Date().toISOString().slice(0,10)}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+  };
+
+  try {
+    await html2pdf().set(opt).from(doc).save();
+    showToast('تم تصدير PDF ✅', 'success');
+  } catch {
+    showToast('تعذّر التصدير — حاول الطباعة', 'error');
+  }
+  btn.textContent = orig;
+  btn.disabled = false;
+}
+
+function saveReport() {
+  if (!state.generatedReport) { showToast('لا يوجد تقرير للحفظ', 'error'); return; }
+  const r = { ...state.generatedReport, id: Date.now() };
+  state.savedReports.push(r);
+  saveToStorage();
+  showToast('تم حفظ التقرير محلياً 💾', 'success');
+}
+
+// ===========================
+// HISTORY
+// ===========================
+function renderHistory() {
+  const grid = document.getElementById('historyGrid');
+  const empty = document.getElementById('historyEmpty');
+  if (!grid) return;
+
+  if (!state.savedReports.length) {
+    if (empty) empty.style.display = 'block';
+    const cards = grid.querySelectorAll('.history-card');
+    cards.forEach(c => c.remove());
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  // Remove old cards
+  grid.querySelectorAll('.history-card').forEach(c => c.remove());
+
+  state.savedReports.slice().reverse().forEach(r => {
+    const card = document.createElement('div');
+    card.className = 'history-card';
+    const label = REPORT_LABELS[r.type] || REPORT_LABELS.weekly;
+    const date = new Date(r.date).toLocaleDateString('ar-SA', { year:'numeric', month:'short', day:'numeric' });
+    card.innerHTML = `
+      <div class="history-card-type">${label.icon} ${label.ar}</div>
+      <h4>${escapeHtml(r.title || 'تقرير بدون عنوان')}</h4>
+      <p>${escapeHtml(r.dept || '')} ${r.period ? '— ' + escapeHtml(r.period) : ''}</p>
+      <div class="history-card-footer">
+        <span class="history-card-date">📅 ${date}</span>
+        <div class="history-card-actions">
+          <button class="hca-btn" onclick="viewSavedReport(${r.id})">عرض</button>
+          <button class="hca-btn del" onclick="deleteSavedReport(${r.id})">🗑️</button>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function viewSavedReport(id) {
+  const r = state.savedReports.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('modalBody').innerHTML = `<div class="report-document">${r.html}</div>`;
+  document.getElementById('reportModal').style.display = 'flex';
+}
+
+function deleteSavedReport(id) {
+  state.savedReports = state.savedReports.filter(r => r.id !== id);
+  saveToStorage();
+  renderHistory();
+  showToast('تم حذف التقرير', 'success');
+}
+
+function clearAllHistory() {
+  if (!state.savedReports.length) return;
+  if (!confirm('هل تريد حذف جميع التقارير المحفوظة؟')) return;
+  state.savedReports = [];
+  saveToStorage();
+  renderHistory();
+  showToast('تم مسح جميع التقارير', 'success');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('reportModal')) {
+    document.getElementById('reportModal').style.display = 'none';
+  }
+}
+
+// ===========================
+// SETTINGS
+// ===========================
+function loadSettingsForm() {
+  document.getElementById('settingOrgName').value = state.settings.orgName || '';
+  document.getElementById('settingLogo').value = state.settings.logo || '';
+  document.getElementById('brandColor').value = state.settings.brandColor || '#6c63ff';
+  document.getElementById('brandColorHex').textContent = state.settings.brandColor || '#6c63ff';
+  const savedKey = localStorage.getItem('mbrcst_openai_key') || '';
+  document.getElementById('savedApiKeyDisplay') && (document.getElementById('savedApiKeyDisplay').value = savedKey);
+  const gemKey = localStorage.getItem('mbrcst_gemini_key') || '';
+  document.getElementById('geminiApiKey') && (document.getElementById('geminiApiKey').value = gemKey);
+}
+
+function handleLogoUpload(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    state.settings.logo = e.target.result;
+    document.getElementById('settingLogo').value = '';
+    showToast('تم رفع الشعار ✅', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function applyBrandColor(val) {
+  document.getElementById('brandColorHex').textContent = val;
+  document.documentElement.style.setProperty('--accent', val);
+}
+
+function clearSavedKey() {
+  localStorage.removeItem('mbrcst_openai_key');
+  const el = document.getElementById('savedApiKeyDisplay');
+  if (el) el.value = '';
+  const el2 = document.getElementById('apiKeyInput');
+  if (el2) el2.value = '';
+  showToast('تم مسح المفتاح', 'success');
+}
+
+function saveApiKeyFromSettings() {
+  const key = document.getElementById('savedApiKeyDisplay')?.value?.trim();
+  if (!key) { showToast('أدخل المفتاح أولاً', 'error'); return; }
+  if (!key.startsWith('sk-')) { showToast('المفتاح يجب أن يبدأ بـ sk-', 'error'); return; }
+  localStorage.setItem('mbrcst_openai_key', key);
+  // Sync to the create page field too
+  const el = document.getElementById('apiKeyInput');
+  if (el) el.value = key;
+  const cb = document.getElementById('saveApiKey');
+  if (cb) cb.checked = true;
+  showToast('✅ تم حفظ المفتاح بنجاح!', 'success');
+}
+
+async function testSavedKey() {
+  const key = document.getElementById('savedApiKeyDisplay')?.value?.trim()
+             || localStorage.getItem('mbrcst_openai_key');
+  if (!key) { showToast('لا يوجد مفتاح للاختبار', 'error'); return; }
+  updateAiStatus('busy');
+  showToast('جارٍ اختبار الاتصال...', '');
+  try {
+    const res = await fetch('/api/openai-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _apiKey: key })
+    });
+    if (res.ok) {
+      updateAiStatus('ready');
+      showToast('✅ الاتصال يعمل بنجاح!', 'success');
+    } else {
+      updateAiStatus('error');
+      showToast('❌ المفتاح غير صحيح أو منتهي الصلاحية', 'error');
+    }
+  } catch {
+    updateAiStatus('error');
+    showToast('❌ تعذّر الاتصال — تحقق من الإنترنت', 'error');
+  }
+}
+
+function saveGeminiKey() {
+  const key = document.getElementById('geminiApiKey')?.value?.trim();
+  if (key) { localStorage.setItem('mbrcst_gemini_key', key); showToast('تم حفظ Gemini Key ✅', 'success'); }
+}
+
+function saveSettings() {
+  state.settings.orgName = document.getElementById('settingOrgName').value.trim();
+  state.settings.logo = document.getElementById('settingLogo').value.trim() || state.settings.logo;
+  state.settings.brandColor = document.getElementById('brandColor').value;
+  saveToStorage();
+  showToast('تم حفظ الإعدادات ✅', 'success');
+}
+
+function loadSettingsFromStorage() {
+  const raw = localStorage.getItem('mbrcst_settings');
+  if (raw) {
+    try { state.settings = { ...state.settings, ...JSON.parse(raw) }; } catch {}
+  }
+}
+
+// ===========================
+// STORAGE
+// ===========================
+function saveToStorage() {
+  try {
+    localStorage.setItem('mbrcst_reports', JSON.stringify(state.savedReports.map(r => ({
+      ...r, html: r.html.substring(0, 50000) // cap size
+    }))));
+    localStorage.setItem('mbrcst_settings', JSON.stringify(state.settings));
+  } catch (e) {
+    console.warn('Storage full:', e);
+  }
+}
+
+function loadFromStorage() {
+  const raw = localStorage.getItem('mbrcst_reports');
+  if (raw) {
+    try { state.savedReports = JSON.parse(raw); } catch {}
+  }
+  loadSettingsFromStorage();
+  // Apply saved brand color
+  if (state.settings.brandColor) {
+    document.documentElement.style.setProperty('--accent', state.settings.brandColor);
+  }
+}
+
+// ===========================
+// TOAST
+// ===========================
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.classList.remove('show'); }, 3000);
+}
+
+// ===========================
+// UTILS
+// ===========================
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
+}
+
+// ===========================
+// THEME SWITCHING
+// ===========================
+function setTheme(theme) {
+  document.body.classList.remove('theme-light', 'theme-corporate');
+  if (theme === 'light') document.body.classList.add('theme-light');
+  if (theme === 'corporate') document.body.classList.add('theme-corporate');
+  localStorage.setItem('mbrcst_theme', theme);
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  const map = { dark: 'themeDark', light: 'themeLight', corporate: 'themeCorp' };
+  document.getElementById(map[theme])?.classList.add('active');
+}
+
+// ===========================
+// REPORT NUMBER
+// ===========================
+function generateReportNumber() {
+  const year = new Date().getFullYear();
+  const seq = (parseInt(localStorage.getItem('mbrcst_seq') || '0') + 1);
+  localStorage.setItem('mbrcst_seq', seq);
+  const num = 'RPT-' + year + '-' + String(seq).padStart(3,'0');
+  const el = document.getElementById('reportNumber');
+  if (el && !el.value) el.value = num;
+  return num;
+}
+
+// ===========================
+// FULLSCREEN
+// ===========================
+function toggleFullscreen() {
+  const panel = document.getElementById('previewPanel');
+  const btn = document.getElementById('fullscreenBtn');
+  if (!panel) return;
+  if (panel.classList.contains('is-fullscreen')) {
+    panel.classList.remove('is-fullscreen');
+    if(btn){ btn.textContent = '⛶'; btn.title = 'ملء الشاشة'; }
+  } else {
+    panel.classList.add('is-fullscreen');
+    if(btn){ btn.textContent = '✕'; btn.title = 'إغلاق ملء الشاشة'; }
+  }
+}
+
+// ===========================
+// WORD EXPORT
+// ===========================
+function exportWord() {
+  const doc = document.getElementById('reportDocument');
+  if (!doc || !doc.innerHTML.trim()) { showToast('لا يوجد تقرير للتصدير', 'error'); return; }
+  const html = '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;direction:rtl;text-align:right}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px}th{background:#f5f5f5}</style></head><body>' + doc.innerHTML + '</body></html>';
+  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'MBR Reports_' + state.reportType + '_' + new Date().toISOString().slice(0,10) + '.doc';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ تم تصدير Word بنجاح!', 'success');
+}
+
+// ===========================
+// CHART.JS
+// ===========================
+let activeCharts = [];
+function generateChartHTML(excel) {
+  if (!excel || !window.Chart) return '';
+  const { headers, rows } = excel;
+  if (headers.length < 2 || rows.length === 0) return '';
+  const canvasId = 'mbrcst-chart-' + Date.now();
+  const labels = rows.slice(0,10).map(r => String(r[0]||''));
+  const values = rows.slice(0,10).map(r => parseFloat(r[1])||0);
+  const brandColor = state.settings.brandColor || '#6c63ff';
+  setTimeout(() => {
+    const ctx = document.getElementById(canvasId)?.getContext('2d');
+    if (!ctx) return;
+    activeCharts.forEach(c => c.destroy());
+    activeCharts = [];
+    activeCharts.push(new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{ label: headers[1]||'القيمة', data: values,
+          backgroundColor: brandColor+'80', borderColor: brandColor, borderWidth:2, borderRadius:6 }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ labels:{ color:'#9399b2', font:{family:'Cairo'} } } },
+        scales:{
+          x:{ ticks:{color:'#9399b2'}, grid:{color:'rgba(255,255,255,0.05)'} },
+          y:{ ticks:{color:'#9399b2'}, grid:{color:'rgba(255,255,255,0.08)'} }
+        }
+      }
+    }));
+  }, 300);
+  return '<div class="chart-container"><div class="chart-title">📊 ' + headers[0] + ' مقابل ' + headers[1] + '</div><div class="chart-wrap"><canvas id="' + canvasId + '"></canvas></div></div>';
+}
+
+// ===========================
+// AI RESULT POPUP
+// ===========================
+function showAIResult(title, html) {
+  const panel = document.createElement('div');
+  panel.className = 'ai-result-panel';
+  panel.onclick = (e) => { if(e.target===panel) panel.remove(); };
+  panel.innerHTML = '<div class="ai-result-box"><h3>' + title + '</h3><div>' + html + '</div><button class="ai-result-close" onclick="this.closest(\'.ai-result-panel\').remove()">✓ حسناً</button></div>';
+  document.body.appendChild(panel);
+}
+
+// ===========================
+// AI: EXECUTIVE SUMMARY
+// ===========================
+async function generateExecutiveSummary() {
+  const doc = document.getElementById('reportDocument');
+  const apiKey = localStorage.getItem('mbrcst_openai_key') || document.getElementById('apiKeyInput')?.value?.trim();
+  if (!apiKey) { showToast('يلزم API Key للملخص الذكي', 'error'); return; }
+  if (!doc?.innerHTML.trim()) { showToast('أنشئ تقريراً أولاً', 'error'); return; }
+  updateAiStatus('busy');
+  showToast('جارٍ إنشاء الملخص التنفيذي...', '');
+  const text = doc.innerText.slice(0,3000);
+  try {
+    const res = await fetch('/api/openai', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ _apiKey:apiKey, model:'gpt-4o-mini',
+        messages:[{role:'user',content:'اكتب ملخصاً تنفيذياً احترافياً من 120 كلمة:\n'+text}], max_tokens:400 })
+    });
+    const data = await res.json();
+    const summary = data.choices?.[0]?.message?.content || 'تعذر إنشاء الملخص';
+    showAIResult('📋 الملخص التنفيذي', '<p style="line-height:1.9">' + summary.replace(/\n/g,'<br>') + '</p>');
+    updateAiStatus('ready');
+  } catch { showToast('❌ تعذّر الاتصال — تأكد من server.py', 'error'); updateAiStatus('error'); }
+}
+
+// ===========================
+// AI: SUGGESTIONS
+// ===========================
+async function getAISuggestions() {
+  const apiKey = localStorage.getItem('mbrcst_openai_key') || document.getElementById('apiKeyInput')?.value?.trim();
+  if (!apiKey) { showToast('يلزم API Key للاقتراحات', 'error'); return; }
+  const sections = [];
+  document.querySelectorAll('.text-section').forEach(s => {
+    const t = s.querySelector('.section-title-input')?.value?.trim();
+    const c = s.querySelector('.section-textarea')?.value?.trim();
+    if (c) sections.push(t+': '+c);
+  });
+  if (!sections.length) { showToast('أدخل محتوى التقرير أولاً', 'error'); return; }
+  updateAiStatus('busy');
+  showToast('جارٍ تحليل التقرير...', '');
+  try {
+    const res = await fetch('/api/openai', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ _apiKey:apiKey, model:'gpt-4o-mini',
+        messages:[{role:'user',content:'راجع هذا التقرير واعطني 5 اقتراحات تحسين محددة:\n'+sections.join('\n')}], max_tokens:500 })
+    });
+    const data = await res.json();
+    const txt = data.choices?.[0]?.message?.content || '';
+    const html = txt.split('\n').filter(l=>l.trim()).map(l=>'<p>• '+l.replace(/^\d+\.\s*/,'')+'</p>').join('');
+    showAIResult('💡 اقتراحات تحسين التقرير', html);
+    updateAiStatus('ready');
+  } catch { showToast('❌ تعذّر الاتصال', 'error'); updateAiStatus('error'); }
+}
+
+// ===========================
+// AI: EXCEL ANALYSIS
+// ===========================
+async function analyzeExcelWithAI() {
+  if (!state.excelData) { showToast('ارفع ملف Excel أولاً', 'error'); return; }
+  const apiKey = localStorage.getItem('mbrcst_openai_key') || document.getElementById('apiKeyInput')?.value?.trim();
+  if (!apiKey) { showToast('يلزم API Key للتحليل', 'error'); return; }
+  updateAiStatus('busy');
+  showToast('جارٍ تحليل بيانات Excel...', '');
+  const { headers, rows } = state.excelData;
+  const sample = rows.slice(0,15).map(r => headers.map((h,i)=>h+': '+r[i]).join(' | ')).join('\n');
+  try {
+    const res = await fetch('/api/openai', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ _apiKey:apiKey, model:'gpt-4o-mini',
+        messages:[{role:'user',content:'حلّل هذه البيانات وقدّم: 1) أبرز المؤشرات 2) الاتجاهات 3) توصيات:\n'+sample}], max_tokens:600 })
+    });
+    const data = await res.json();
+    const txt = data.choices?.[0]?.message?.content || '';
+    const html = txt.split('\n').filter(l=>l.trim()).map(l=>'<p>'+l+'</p>').join('');
+    showAIResult('📊 تحليل البيانات بالذكاء الاصطناعي', html);
+    updateAiStatus('ready');
+  } catch { showToast('❌ تعذّر الاتصال', 'error'); updateAiStatus('error'); }
+}
+
+// ===========================
+// COMPARE REPORTS
+// ===========================
+function loadCompareReports() {
+  ['compareReport1','compareReport2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '<option value="">-- اختر تقرير --</option>' +
+      state.savedReports.map(r => {
+        const label = REPORT_LABELS[r.type]?.ar || r.type;
+        const date = new Date(r.date).toLocaleDateString('ar-SA');
+        return '<option value="'+r.id+'">' + label + ' — ' + (r.title||'بدون عنوان') + ' (' + date + ')</option>';
+      }).join('');
+  });
+  if (!state.savedReports.length) showToast('احفظ تقارير أولاً لتتمكن من مقارنتها', 'error');
+}
+
+function compareReports() {
+  const id1 = parseInt(document.getElementById('compareReport1')?.value);
+  const id2 = parseInt(document.getElementById('compareReport2')?.value);
+  if (!id1 || !id2) { showToast('اختر تقريرين للمقارنة', 'error'); return; }
+  if (id1===id2) { showToast('اختر تقريرين مختلفين', 'error'); return; }
+  const r1 = state.savedReports.find(r=>r.id===id1);
+  const r2 = state.savedReports.find(r=>r.id===id2);
+  if (!r1||!r2) return;
+  const fields = [
+    ['النوع', REPORT_LABELS[r1.type]?.ar, REPORT_LABELS[r2.type]?.ar],
+    ['العنوان', r1.title||'—', r2.title||'—'],
+    ['القسم', r1.dept||'—', r2.dept||'—'],
+    ['الفترة', r1.period||'—', r2.period||'—'],
+    ['معد التقرير', r1.preparer||'—', r2.preparer||'—'],
+    ['تاريخ الإنشاء', new Date(r1.date).toLocaleDateString('ar-SA'), new Date(r2.date).toLocaleDateString('ar-SA')]
+  ];
+  const html = '<h3 style="margin-bottom:1rem;color:var(--accent)">🔍 نتائج المقارنة</h3>' +
+    '<div class="compare-row" style="font-weight:700"><div>الحقل</div><div style="color:var(--accent)">التقرير الأول</div><div style="color:var(--accent-2)">التقرير الثاني</div></div>' +
+    fields.map(([f,v1,v2])=>'<div class="compare-row"><div class="compare-field">'+f+'</div><div class="compare-val1">'+escapeHtml(String(v1))+'</div><div class="compare-val2">'+escapeHtml(String(v2))+'</div></div>').join('');
+  const el = document.getElementById('compareResult');
+  if(el){ el.innerHTML=html; el.style.display='block'; }
+}
+
+// ===========================
+// SCHEDULE REMINDERS
+// ===========================
+async function scheduleReminder() {
+  if (!('Notification' in window)) { showToast('متصفحك لا يدعم الإشعارات', 'error'); return; }
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') { showToast('يرجى السماح بالإشعارات', 'error'); return; }
+  const type = state.reportType;
+  const days = {weekly:7,quarterly:90,semi:180,annual:365}[type]||7;
+  localStorage.setItem('mbrcst_reminder_'+type, Date.now()+(days*86400000));
+  new Notification('MBR Reports ✅', { body:'سيتم تذكيرك بإنشاء التقرير ' + REPORT_LABELS[type]?.ar + ' بعد '+days+' يوماً' });
+  showToast('✅ تم ضبط التذكير بعد '+days+' يوم', 'success');
+}
+
+// ===========================
+// INIT EXTRAS ON DOM READY
+// ===========================
+document.addEventListener('DOMContentLoaded', () => {
+  // Apply saved theme
+  const savedTheme = localStorage.getItem('mbrcst_theme') || 'dark';
+  setTheme(savedTheme);
+  // Generate report number
+  generateReportNumber();
+  // Update showSection to include compare
+  const origShow = showSection;
+  window.showSection = function(name) {
+    ['create','history','compare','settings'].forEach(s => {
+      const el = document.getElementById('section' + s.charAt(0).toUpperCase() + s.slice(1));
+      if (el) el.style.display = (s === name) ? 'block' : 'none';
+    });
+    ['navCreate','navHistory','navCompare','navSettings'].forEach(id => {
+      document.getElementById(id)?.classList.remove('active');
+    });
+    document.getElementById('nav' + name.charAt(0).toUpperCase() + name.slice(1))?.classList.add('active');
+    if (name === 'history') renderHistory();
+    if (name === 'settings') loadSettingsForm();
+    if (name === 'compare') loadCompareReports();
+  };
+});
+
+// ===========================
+// GENERATE CHART IN REPORT
+// ===========================
+// Patch generateReport to inject chart after excel table
+const _origGenReport = generateReport;
+async function generateReport() {
+  await _origGenReport();
+  // Inject chart if Excel data exists
+  if (state.excelData && window.Chart) {
+    const doc = document.getElementById('reportDocument');
+    if (doc) {
+      const chartHTML = generateChartHTML(state.excelData);
+      if (chartHTML) {
+        const wrap = document.createElement('div');
+        wrap.innerHTML = chartHTML;
+        const excelSection = doc.querySelector('.report-excel-section');
+        if (excelSection) excelSection.before(wrap.firstChild);
+        else doc.appendChild(wrap.firstChild);
+      }
+    }
+  }
+}
+
+
+// ===========================
+// PROFILE (Persistent Data)
+// ===========================
+function saveProfile() {
+  const profile = {
+    name:  document.getElementById('profileName')?.value?.trim() || '',
+    title: document.getElementById('profileTitle')?.value?.trim() || '',
+    dept:  document.getElementById('profileDept')?.value?.trim() || '',
+    org:   document.getElementById('profileOrg')?.value?.trim() || '',
+    email: document.getElementById('profileEmail')?.value?.trim() || '',
+    phone: document.getElementById('profilePhone')?.value?.trim() || ''
+  };
+  localStorage.setItem('mbrcst_profile', JSON.stringify(profile));
+  // Auto-fill create form
+  applyProfileToForm(profile);
+  showToast('✅ تم حفظ الملف الشخصي!', 'success');
+}
+
+function loadProfile() {
+  const raw = localStorage.getItem('mbrcst_profile');
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+function applyProfileToForm(profile) {
+  if (!profile) return;
+  // Auto-fill preparer from profile name + title
+  const prepEl = document.getElementById('reportPreparer');
+  if (prepEl && !prepEl.value) {
+    prepEl.value = [profile.name, profile.title].filter(Boolean).join(' — ');
+  }
+  // Auto-fill dept
+  const deptEl = document.getElementById('reportDept');
+  if (deptEl && !deptEl.value && profile.dept) deptEl.value = profile.dept;
+  // Auto-fill org name in settings
+  const orgEl = document.getElementById('settingOrgName');
+  if (orgEl && !orgEl.value && profile.org) orgEl.value = profile.org;
+}
+
+function loadProfileForm() {
+  const p = loadProfile();
+  if (!p) return;
+  ['Name','Title','Dept','Org','Email','Phone'].forEach(f => {
+    const el = document.getElementById('profile' + f);
+    if (el) el.value = p[f.toLowerCase()] || '';
+  });
+}
+
+// ===========================
+// DATE RANGE → PERIOD STRING
+// ===========================
+function getPeriodString() {
+  const from = document.getElementById('reportPeriodFrom')?.value;
+  const to   = document.getElementById('reportPeriodTo')?.value;
+  if (!from && !to) return '';
+  const fmt = (d) => {
+    if (!d) return '';
+    const dt = new Date(d);
+    return dt.toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
+  };
+  if (from && to) return fmt(from) + ' — ' + fmt(to);
+  return fmt(from || to);
+}
+
+// ===========================
+// PATCH loadSettingsForm to load profile
+// ===========================
+const _origLoadSettings = loadSettingsForm;
+loadSettingsForm = function() {
+  _origLoadSettings();
+  loadProfileForm();
+};
+
+// ===========================
+// PATCH DOMContentLoaded to apply profile
+// ===========================
+document.addEventListener('DOMContentLoaded', () => {
+  // Small delay to let other DOMContentLoaded handlers run
+  setTimeout(() => {
+    const p = loadProfile();
+    if (p) applyProfileToForm(p);
+  }, 200);
+});
+
+// ===========================
+// PATCH generateReport to use date range + profile
+// ===========================
+const _superGenReport = generateReport;
+async function generateReport() {
+  // Inject period from date picker
+  const periodStr = getPeriodString();
+  // We need to temporarily override reading of reportPeriod
+  // Add a hidden input or patch the call
+  // Best: patch state before calling
+  const hiddenInput = document.getElementById('reportPeriod') ||
+    (() => {
+      const inp = document.createElement('input');
+      inp.id = 'reportPeriod';
+      inp.type = 'hidden';
+      document.body.appendChild(inp);
+      return inp;
+    })();
+  hiddenInput.value = periodStr;
+
+  // Auto-fill preparer from profile if empty
+  const prepEl = document.getElementById('reportPreparer');
+  if (prepEl && !prepEl.value) {
+    const p = loadProfile();
+    if (p) prepEl.value = [p.name, p.title].filter(Boolean).join(' — ');
+  }
+
+  await _superGenReport();
+}
+
+
+// ===========================
+// SIGNATURE UPLOAD
+// ===========================
+const signatures = { preparer: null, approver: null };
+
+function handleSignatureUpload(role, file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    signatures[role] = e.target.result;
+    const img = document.getElementById('sig' + capitalize(role) + 'Img');
+    const placeholder = document.getElementById('sig' + capitalize(role) + 'Placeholder');
+    if (img) { img.src = e.target.result; img.style.display = 'block'; }
+    if (placeholder) placeholder.style.display = 'none';
+    showToast('✅ تم رفع ' + (role === 'preparer' ? 'توقيع المعد' : 'توقيع المعتمد/الختم'), 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ===========================
+// OPEN PREVIEW (new window)
+// ===========================
+function openPreview() {
+  const doc = document.getElementById('reportDocument');
+  if (!doc || !doc.innerHTML.trim()) { showToast('لا يوجد تقرير للمعاينة', 'error'); return; }
+  const brandColor = state.settings.brandColor || '#6c63ff';
+  const win = window.open('', '_blank', 'width=900,height=750');
+  win.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>معاينة التقرير — MBR Reports</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Cairo', sans-serif; background: #f4f6fa; min-height: 100vh; direction: rtl; }
+  .preview-toolbar {
+    position: sticky; top: 0; z-index: 100;
+    background: #1a1a2e; padding: 0.75rem 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+  }
+  .preview-toolbar h4 { color: #fff; font-size: 0.9rem; }
+  .toolbar-btns { display: flex; gap: 0.5rem; }
+  .tbtn {
+    padding: 0.45rem 1rem; border-radius: 8px; border: none;
+    font-family: 'Cairo', sans-serif; font-size: 0.82rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .tbtn-print { background: ${brandColor}; color: white; }
+  .tbtn-close { background: rgba(255,255,255,0.1); color: #ccc; }
+  .tbtn:hover { opacity: 0.85; transform: translateY(-1px); }
+  .page-wrap { max-width: 850px; margin: 2rem auto; background: #fff; border-radius: 12px; padding: 3rem; box-shadow: 0 4px 40px rgba(0,0,0,0.12); }
+  /* Report styles */
+  .report-doc-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 1.5rem; border-bottom: 2px solid #eee; margin-bottom: 2rem; }
+  .report-doc-logo { display: flex; align-items: center; gap: 0.75rem; }
+  .report-doc-logo-icon { width:48px;height:48px;background:linear-gradient(135deg,${brandColor},#00d4aa);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:white; }
+  .report-doc-logo-text h2 { font-size:1.2rem;font-weight:900;color:${brandColor}; }
+  .report-doc-logo-text p { font-size:0.75rem;color:#999; }
+  .report-type-badge { display:inline-block;padding:0.3rem 0.9rem;border-radius:20px;font-size:0.75rem;font-weight:700;background:${brandColor}20;border:1px solid ${brandColor}40;color:${brandColor}; }
+  .report-doc-title-section { margin-bottom:2rem; }
+  .report-doc-title { font-size:1.6rem;font-weight:900;color:#1a1a2e;margin-bottom:0.5rem; }
+  .report-doc-info { display:flex;gap:1.5rem;font-size:0.8rem;color:#666;flex-wrap:wrap; }
+  .report-kpi-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin-bottom:2rem; }
+  .report-kpi-card { background:#f8f9fa;border:1px solid #eee;border-radius:10px;padding:1rem;text-align:center; }
+  .report-kpi-value { font-size:1.6rem;font-weight:900;color:${brandColor}; }
+  .report-kpi-label { font-size:0.72rem;color:#999;margin-top:0.2rem; }
+  .report-section-block { margin-bottom:2rem; }
+  .report-section-title { font-size:1rem;font-weight:800;color:${brandColor};margin-bottom:0.75rem;padding-bottom:0.4rem;border-bottom:2px solid ${brandColor}30; }
+  .report-section-content { font-size:0.9rem;color:#333;line-height:1.9; }
+  .report-section-content ul { padding-right:1.5rem;margin-top:0.5rem; }
+  .report-section-content li { margin-bottom:0.4rem; }
+  .report-excel-section { margin-bottom:2rem; }
+  .report-excel-table { width:100%;border-collapse:collapse;font-size:0.82rem;margin-top:0.75rem; }
+  .report-excel-table th { background:${brandColor}15;padding:0.5rem 0.75rem;text-align:right;font-weight:700;color:${brandColor};border-bottom:2px solid ${brandColor}30; }
+  .report-excel-table td { padding:0.45rem 0.75rem;border-bottom:1px solid #f0f0f0;color:#444; }
+  .report-doc-footer { margin-top:2.5rem;padding-top:1rem;border-top:1px solid #eee;display:flex;justify-content:space-between;font-size:0.72rem;color:#999; }
+  .report-images-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.75rem;margin-top:0.75rem; }
+  .report-image-item img { width:100%;border-radius:8px;border:1px solid #eee; }
+  .report-image-item p { font-size:0.72rem;text-align:center;margin-top:0.3rem;color:#999; }
+  @media print {
+    .preview-toolbar { display: none !important; }
+    body { background: white; }
+    .page-wrap { box-shadow: none; margin: 0; border-radius: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="preview-toolbar">
+  <h4>👁️ معاينة التقرير — MBR Reports</h4>
+  <div class="toolbar-btns">
+    <button class="tbtn tbtn-print" onclick="window.print()">🖨️ طباعة</button>
+    <button class="tbtn tbtn-close" onclick="window.close()">✕ إغلاق</button>
+  </div>
+</div>
+<div class="page-wrap">
+  ${doc.innerHTML}
+</div>
+</body></html>`);
+  win.document.close();
+}
+
+// ===========================
+// POWERPOINT EXPORT
+// ===========================
+async function exportPowerPoint() {
+  if (!state.generatedReport) { showToast('أنشئ تقريراً أولاً ثم صدّره', 'error'); return; }
+  if (typeof PptxGenJS === 'undefined') { showToast('مكتبة PPTX لم تُحمَّل بعد', 'error'); return; }
+
+  showToast('جارٍ إنشاء العرض التقديمي...', '');
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_16x9';
+  const brand = state.settings.brandColor || '#6c63ff';
+  const brandHex = brand.replace('#', '');
+  const { title, dept, period, preparer, type } = state.generatedReport;
+  const label = REPORT_LABELS[type]?.ar || type;
+
+  // ── Slide 1: Title ──
+  let s1 = pptx.addSlide();
+  s1.background = { color: '0d0d1a' };
+  s1.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: '100%', h: 0.08, fill: { color: brandHex } });
+  s1.addText(label, { x: 0.5, y: 1.2, w: 9, h: 0.5, fontSize: 16, color: brandHex, bold: true, align: 'center', rtlMode: true });
+  s1.addText(title || 'تقرير دوري', { x: 0.5, y: 1.9, w: 9, h: 1.2, fontSize: 36, bold: true, color: 'FFFFFF', align: 'center', rtlMode: true });
+  if (dept) s1.addText('📍 ' + dept, { x: 0.5, y: 3.3, w: 9, h: 0.4, fontSize: 14, color: 'AAAAAA', align: 'center', rtlMode: true });
+  if (period) s1.addText('📅 ' + period, { x: 0.5, y: 3.8, w: 9, h: 0.4, fontSize: 14, color: 'AAAAAA', align: 'center', rtlMode: true });
+  if (preparer) s1.addText('👤 ' + preparer, { x: 0.5, y: 4.3, w: 9, h: 0.4, fontSize: 13, color: '888888', align: 'center', rtlMode: true });
+  s1.addShape(pptx.ShapeType.rect, { x: 0, y: 4.9, w: '100%', h: 0.06, fill: { color: brandHex } });
+  s1.addText('MBR Reports — التقارير الذكية', { x: 0.5, y: 5.0, w: 9, h: 0.3, fontSize: 10, color: '555555', align: 'center' });
+
+  // ── Content Slides: one per section ──
+  const doc = document.getElementById('reportDocument');
+  if (doc) {
+    const sectionBlocks = doc.querySelectorAll('.report-section-block');
+    sectionBlocks.forEach((block, i) => {
+      const sTitle = block.querySelector('.report-section-title')?.innerText || ('قسم ' + (i+1));
+      const sContent = block.querySelector('.report-section-content')?.innerText || '';
+      const slide = pptx.addSlide();
+      slide.background = { color: '0d0d1a' };
+      slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: '30%', h: '100%', fill: { color: brandHex + '22' } });
+      slide.addText(sTitle.replace(/[📌📝🎯📊⚡🔍✅🔮]/gu, '').trim(), {
+        x: 0.2, y: 0.3, w: 2.8, h: 5,
+        fontSize: 18, bold: true, color: brandHex,
+        valign: 'top', rtlMode: true, wrap: true
+      });
+      const contentLines = sContent.split('\n').filter(l => l.trim()).slice(0, 12);
+      slide.addText(contentLines.join('\n'), {
+        x: 3.2, y: 0.4, w: 6.5, h: 4.8,
+        fontSize: 13, color: 'CCCCCC',
+        valign: 'top', rtlMode: true, wrap: true, lineSpacingMultiple: 1.5
+      });
+      slide.addText(label + ' • ' + (title || ''), {
+        x: 0.3, y: 5.1, w: 9.4, h: 0.3, fontSize: 9, color: '555555', rtlMode: true
+      });
+    });
+  }
+
+  // ── Last slide: Thank you ──
+  let last = pptx.addSlide();
+  last.background = { color: '0d0d1a' };
+  last.addText('شكراً', { x: 0.5, y: 2, w: 9, h: 1.5, fontSize: 48, bold: true, color: brandHex, align: 'center', rtlMode: true });
+  last.addText('تم الإنشاء بواسطة MBR Reports', { x: 0.5, y: 3.8, w: 9, h: 0.5, fontSize: 14, color: '555555', align: 'center' });
+
+  const fileName = 'MBR Reports_' + (type || 'report') + '_' + new Date().toISOString().slice(0,10) + '.pptx';
+  await pptx.writeFile({ fileName });
+  showToast('✅ تم تصدير PowerPoint بنجاح!', 'success');
+}
+
+// ===========================
+// CUSTOM TEMPLATES
+// ===========================
+function loadCustomTemplates() {
+  const raw = localStorage.getItem('mbrcst_custom_templates');
+  try { return JSON.parse(raw) || []; } catch { return []; }
+}
+
+function saveCustomTemplates(templates) {
+  localStorage.setItem('mbrcst_custom_templates', JSON.stringify(templates));
+}
+
+function addCustomTemplate() {
+  const name = document.getElementById('newTemplateName')?.value?.trim();
+  const sectionsRaw = document.getElementById('newTemplateSections')?.value?.trim();
+  if (!name) { showToast('أدخل اسم القالب', 'error'); return; }
+  if (!sectionsRaw) { showToast('أدخل أقسام القالب', 'error'); return; }
+
+  const sections = sectionsRaw.split('\n').map(s => s.trim()).filter(Boolean);
+  const templates = loadCustomTemplates();
+  const id = 'custom_' + Date.now();
+  templates.push({ id, name, sections });
+  saveCustomTemplates(templates);
+
+  // Add to dropdown
+  refreshCustomTemplateOptions();
+  renderCustomTemplatesUI();
+  // Clear form
+  if (document.getElementById('newTemplateName')) document.getElementById('newTemplateName').value = '';
+  if (document.getElementById('newTemplateSections')) document.getElementById('newTemplateSections').value = '';
+  showToast('✅ تم حفظ القالب: ' + name, 'success');
+}
+
+function deleteCustomTemplate(id) {
+  const templates = loadCustomTemplates().filter(t => t.id !== id);
+  saveCustomTemplates(templates);
+  refreshCustomTemplateOptions();
+  renderCustomTemplatesUI();
+  showToast('تم حذف القالب', 'success');
+}
+
+function refreshCustomTemplateOptions() {
+  const sel = document.getElementById('reportTypeSelect');
+  if (!sel) return;
+  // Remove old custom options
+  Array.from(sel.options).forEach(o => { if (o.value.startsWith('custom_')) o.remove(); });
+  // Add separator if needed
+  const templates = loadCustomTemplates();
+  if (templates.length) {
+    let sepExists = Array.from(sel.options).some(o => o.value === '__sep_custom__');
+    if (!sepExists) {
+      const sep = document.createElement('option');
+      sep.value = '__sep_custom__'; sep.disabled = true;
+      sep.text = '── قوالب الشركة ──';
+      sel.insertBefore(sep, Array.from(sel.options).find(o => o.value === '__custom_manage__'));
+    }
+    templates.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id; opt.text = '🏢 ' + t.name;
+      sel.insertBefore(opt, Array.from(sel.options).find(o => o.value === '__custom_manage__'));
+    });
+  }
+}
+
+function renderCustomTemplatesUI() {
+  const list = document.getElementById('customTemplatesList');
+  if (!list) return;
+  const templates = loadCustomTemplates();
+  if (!templates.length) { list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem">لا توجد قوالب مخصصة بعد</p>'; return; }
+  list.innerHTML = templates.map(t => `
+    <div class="custom-template-item">
+      <div>
+        <div class="custom-template-name">🏢 ${escapeHtml(t.name)}</div>
+        <div class="custom-template-sections">${t.sections.slice(0,3).join(' · ')}${t.sections.length > 3 ? ' ...' : ''}</div>
+      </div>
+      <button class="custom-template-del" onclick="deleteCustomTemplate('${t.id}')">🗑️ حذف</button>
+    </div>`).join('');
+}
+
+function loadCustomTemplateSections(template) {
+  const builder = document.getElementById('sectionsBuilder');
+  if (!builder) return;
+  builder.innerHTML = '';
+  let count = 0;
+  template.sections.forEach(title => {
+    const div = document.createElement('div');
+    div.className = 'text-section';
+    div.dataset.section = count++;
+    div.innerHTML = `
+      <div class="text-section-header">
+        <input type="text" class="section-title-input" value="${escapeHtml(title)}" />
+        <button class="remove-section-btn" onclick="removeSection(this)">✕</button>
+      </div>
+      <textarea class="section-textarea" placeholder="اكتب هنا محتوى هذا القسم..."></textarea>`;
+    builder.appendChild(div);
+  });
+  showToast('✅ تم تحميل قالب: ' + template.name, 'success');
+  // Scroll to sections
+  builder.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Load custom templates on settings open
+const _origLoadSettingsForTemplates = loadSettingsForm;
+loadSettingsForm = function() {
+  if (typeof _origLoadSettingsForTemplates === 'function') _origLoadSettingsForTemplates();
+  renderCustomTemplatesUI();
+};
+
+// Handle __custom_manage__ selection
+const _origSetType = setReportType;
+setReportType = function(type) {
+  if (type === '__custom_manage__') {
+    showSection('settings');
+    setTimeout(() => {
+      document.getElementById('newTemplateName')?.scrollIntoView({ behavior: 'smooth' });
+    }, 300);
+    const sel = document.getElementById('reportTypeSelect');
+    if (sel) sel.value = state.reportType || 'weekly';
+    return;
+  }
+  if (typeof _origSetType === 'function') _origSetType(type);
+};
+
+// Init: load custom templates into dropdown on page load
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(refreshCustomTemplateOptions, 500);
+});
+
+
+// ===========================
+// EXTENDED SECTION TEMPLATES
+// (patch getSectionTemplate)
+// ===========================
+const _baseGetTemplate = getSectionTemplate;
+getSectionTemplate = function() {
+  const extraTemplates = {
+    daily: [
+      { title: 'إنجازات اليوم', content: '' },
+      { title: 'المهام المنجزة', content: '' },
+      { title: 'تحديات واجهتها', content: '' },
+      { title: 'خطة الغد', content: '' }
+    ],
+    monthly: [
+      { title: 'ملخص الشهر', content: '' },
+      { title: 'الإنجازات الرئيسية', content: '' },
+      { title: 'مؤشرات الأداء الشهرية', content: '' },
+      { title: 'التحديات والحلول', content: '' },
+      { title: 'الأهداف المتبقية', content: '' },
+      { title: 'خطة الشهر القادم', content: '' }
+    ],
+    general: [
+      { title: 'الغرض من التقرير', content: '' },
+      { title: 'الوضع الراهن', content: '' },
+      { title: 'النتائج والتحليل', content: '' },
+      { title: 'التوصيات', content: '' },
+      { title: 'الخلاصة', content: '' }
+    ],
+    financial: [
+      { title: 'ملخص مالي تنفيذي', content: '' },
+      { title: 'الإيرادات', content: '' },
+      { title: 'المصروفات والتكاليف', content: '' },
+      { title: 'صافي الربح / الخسارة', content: '' },
+      { title: 'تحليل مقارن بالهدف', content: '' },
+      { title: 'توقعات الفترة القادمة', content: '' }
+    ],
+    admin: [
+      { title: 'نظرة عامة إدارية', content: '' },
+      { title: 'القرارات والإجراءات', content: '' },
+      { title: 'التوظيف والموارد البشرية', content: '' },
+      { title: 'الشراكات والتعاقدات', content: '' },
+      { title: 'المخاطر الإدارية', content: '' },
+      { title: 'التوصيات', content: '' }
+    ],
+    project: [
+      { title: 'نظرة عامة على المشروع', content: '' },
+      { title: 'التقدم المحرز', content: '' },
+      { title: 'الجدول الزمني', content: '' },
+      { title: 'الميزانية', content: '' },
+      { title: 'المخاطر والعوائق', content: '' },
+      { title: 'المهام القادمة', content: '' }
+    ],
+    it: [
+      { title: 'ملخص تقني', content: '' },
+      { title: 'حالة الأنظمة والبنية التحتية', content: '' },
+      { title: 'الحوادث والأعطال', content: '' },
+      { title: 'الأمن السيبراني', content: '' },
+      { title: 'المشاريع التقنية الجارية', content: '' },
+      { title: 'خطة التطوير', content: '' }
+    ],
+    hr: [
+      { title: 'ملخص الأداء الوظيفي', content: '' },
+      { title: 'معدل الحضور والانصراف', content: '' },
+      { title: 'التدريب والتطوير', content: '' },
+      { title: 'شكاوى وملاحظات الموظفين', content: '' },
+      { title: 'التوظيف والترقيات', content: '' },
+      { title: 'توصيات وخطة تطوير', content: '' }
+    ],
+    marketing: [
+      { title: 'ملخص تسويقي', content: '' },
+      { title: 'أداء الحملات الإعلانية', content: '' },
+      { title: 'مؤشرات التواصل الاجتماعي', content: '' },
+      { title: 'تحليل المنافسين', content: '' },
+      { title: 'العملاء الجدد والاحتفاظ', content: '' },
+      { title: 'خطة التسويق القادمة', content: '' }
+    ]
+  };
+
+  if (extraTemplates[state.reportType]) {
+    const tmpl = extraTemplates[state.reportType];
+    const builder = document.getElementById('sectionsBuilder');
+    if (!builder) return;
+    builder.innerHTML = '';
+    let count = 0;
+    tmpl.forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'text-section';
+      div.dataset.section = count++;
+      div.innerHTML = `
+        <div class="text-section-header">
+          <input type="text" class="section-title-input" value="${s.title}" placeholder="عنوان القسم" />
+          <button class="remove-section-btn" onclick="removeSection(this)">✕</button>
+        </div>
+        <textarea class="section-textarea" placeholder="اكتب هنا محتوى هذا القسم...">${s.content}</textarea>`;
+      builder.appendChild(div);
+    });
+    const label = REPORT_LABELS[state.reportType];
+    showToast('تم تحميل قالب ' + (label?.ar || state.reportType), 'success');
+    return;
+  }
+
+  // Fallback to original
+  if (typeof _baseGetTemplate === 'function') _baseGetTemplate();
+};
+
+
+// ===========================
+// TEMPLATE IMPORT / EXPORT
+// ===========================
+function exportTemplates() {
+  const templates = loadCustomTemplates();
+  if (!templates.length) { showToast('لا توجد قوالب للتصدير', 'error'); return; }
+  const json = JSON.stringify({ version: '1.0', source: 'MBR Reports', templates }, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'MBR Reports-Templates-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ تم تصدير ' + templates.length + ' قالب', 'success');
+}
+
+function importTemplate(file) {
+  if (!file) return;
+  const name = file.name.toLowerCase();
+
+  if (name.endsWith('.json')) {
+    // JSON template import
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(e.target.result);
+        let imported = [];
+        if (data.templates && Array.isArray(data.templates)) {
+          imported = data.templates;
+        } else if (data.name && data.sections) {
+          imported = [data];
+        } else {
+          showToast('تنسيق الملف غير مدعوم', 'error'); return;
+        }
+        const existing = loadCustomTemplates();
+        imported.forEach(t => {
+          const id = 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+          existing.push({ id, name: t.name, sections: t.sections });
+        });
+        saveCustomTemplates(existing);
+        refreshCustomTemplateOptions();
+        renderCustomTemplatesUI();
+        showToast('✅ تم استيراد ' + imported.length + ' قالب بنجاح!', 'success');
+      } catch { showToast('❌ الملف غير صالح', 'error'); }
+    };
+    reader.readAsText(file);
+
+  } else if (name.endsWith('.docx') || name.endsWith('.doc')) {
+    // Word document — extract headings as sections
+    // Use simple approach: parse filename as template name
+    // For deep parsing, would need mammoth.js; for now create a template with common sections
+    const tName = file.name.replace(/\.(docx?|json)$/i, '').replace(/[-_]/g, ' ');
+    const templates = loadCustomTemplates();
+    const id = 'custom_' + Date.now();
+    templates.push({
+      id,
+      name: tName,
+      sections: ['ملخص التقرير', 'المحتوى الرئيسي', 'النتائج والتوصيات', 'الخاتمة']
+    });
+    saveCustomTemplates(templates);
+    refreshCustomTemplateOptions();
+    renderCustomTemplatesUI();
+    showToast('✅ تم استيراد قالب Word: ' + tName + '\nيمكنك تعديل الأقسام في الإعدادات', 'success');
+  } else {
+    showToast('الصيغ المدعومة: JSON أو Word (.docx)', 'error');
+  }
+  // Reset input
+  document.getElementById('templateImportFile').value = '';
+}
+
+
+// ===========================
+// AUTH SYSTEM (Multi-User)
+// ===========================
+let currentUser = null;
+
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + 'mbrcst_salt_2026');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function getUsers() {
+  try { return JSON.parse(localStorage.getItem('mbrcst_users') || '{}'); } catch { return {}; }
+}
+
+function saveUsers(users) {
+  localStorage.setItem('mbrcst_users', JSON.stringify(users));
+}
+
+function getCurrentSession() {
+  try { return JSON.parse(sessionStorage.getItem('mbrcst_session')); } catch { return null; }
+}
+
+function checkAuth() {
+  // Auto-login on localhost for admin
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    const adminEmail = 'moh.rafaah@gmail.com';
+    const users = getUsers();
+    if (!users[adminEmail] || !users[adminEmail].hash || users[adminEmail].firstTime) {
+      users[adminEmail] = { hash: 'local_admin', fullName: 'الادمن', role: 'admin', created: Date.now() };
+      saveUsers(users);
+    }
+    sessionStorage.setItem('mbrcst_session', JSON.stringify({ username: adminEmail, loginAt: Date.now() }));
+    loginSuccess(adminEmail, 'الادمن');
+    return;
+  }
+  const session = getCurrentSession();
+  if (session && session.username) {
+    const users = getUsers();
+    if (users[session.username]) {
+      loginSuccess(session.username, users[session.username].fullName);
+      return;
+    }
+  }
+  const overlay = document.getElementById('loginOverlay');
+  if (overlay) overlay.style.display = 'flex';
+}
+
+async function doAuth() {
+  const username = document.getElementById('authUsername')?.value?.trim();
+  const password = document.getElementById('authPassword')?.value;
+  const isRegister = document.getElementById('tabRegister')?.classList.contains('active');
+  const errorEl = document.getElementById('authError');
+
+  if (!username || !password) {
+    showAuthError('يرجى إدخال اسم المستخدم وكلمة المرور');
+    return;
+  }
+  if (password.length < 4) {
+    showAuthError('كلمة المرور يجب أن تكون 4 أحرف على الأقل');
+    return;
+  }
+
+  const btn = document.getElementById('authBtn');
+  btn.disabled = true;
+  btn.querySelector('#authBtnText').textContent = '...جارٍ التحقق';
+
+  const hash = await hashPassword(password);
+  const users = getUsers();
+
+  if (isRegister) {
+    const fullName = document.getElementById('authFullName')?.value?.trim() || username;
+    if (users[username]) {
+      showAuthError('اسم المستخدم موجود مسبقاً');
+      btn.disabled = false;
+      btn.querySelector('#authBtnText').textContent = 'إنشاء الحساب';
+      return;
+    }
+    users[username] = { hash, fullName, created: Date.now() };
+    saveUsers(users);
+    sessionStorage.setItem('mbrcst_session', JSON.stringify({ username, loginAt: Date.now() }));
+    loginSuccess(username, fullName);
+  } else {
+    if (!users[username]) {
+      showAuthError('اسم المستخدم غير موجود — أنشئ حساباً جديداً');
+      btn.disabled = false;
+      btn.querySelector('#authBtnText').textContent = 'تسجيل الدخول';
+      return;
+    }
+    if (users[username].hash !== hash) {
+      showAuthError('كلمة المرور غير صحيحة');
+      btn.disabled = false;
+      btn.querySelector('#authBtnText').textContent = 'تسجيل الدخول';
+      return;
+    }
+    sessionStorage.setItem('mbrcst_session', JSON.stringify({ username, loginAt: Date.now() }));
+    loginSuccess(username, users[username].fullName);
+  }
+  btn.disabled = false;
+}
+
+function loginSuccess(username, fullName) {
+  currentUser = { username, fullName };
+  // Scope localStorage keys to this user
+  window._userPrefix = 'mbrcst_' + username + '_';
+  // Hide login overlay
+  const overlay = document.getElementById('loginOverlay');
+  if (overlay) {
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity 0.5s';
+    setTimeout(() => { overlay.style.display = 'none'; }, 500);
+  }
+  // Show user badge
+  const badge = document.getElementById('userBadge');
+  const nameEl = document.getElementById('userNameBadge');
+  if (badge) badge.style.display = 'flex';
+  if (nameEl) nameEl.textContent = fullName || username;
+  // Load user-scoped profile
+  const savedTheme = localStorage.getItem('mbrcst_' + username + '_theme') || 'dark';
+  setTheme(savedTheme);
+  generateReportNumber();
+}
+
+function doLogout() {
+  sessionStorage.removeItem('mbrcst_session');
+  currentUser = null;
+  // Show login overlay
+  const overlay = document.getElementById('loginOverlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    overlay.style.opacity = '1';
+    // Reset form
+    document.getElementById('authUsername').value = '';
+    document.getElementById('authPassword').value = '';
+    document.getElementById('authError').style.display = 'none';
+    switchAuthTab('login');
+  }
+  // Hide user badge
+  document.getElementById('userBadge').style.display = 'none';
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+function switchAuthTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('tabLogin')?.classList.toggle('active', isLogin);
+  document.getElementById('tabRegister')?.classList.toggle('active', !isLogin);
+  document.getElementById('fullNameGroup').style.display = isLogin ? 'none' : 'block';
+  document.getElementById('authBtnIcon').textContent = isLogin ? '🔐' : '✨';
+  document.getElementById('authBtnText').textContent = isLogin ? 'تسجيل الدخول' : 'إنشاء الحساب';
+  document.getElementById('authError').style.display = 'none';
+}
+
+// Run auth check on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  checkAuth();
+});
+
+
+// ===========================
+// ADMIN SYSTEM
+// ===========================
+const ADMIN_EMAILS = ['moh.rafaah@gmail.com'];
+
+function isAdmin(email) {
+  return ADMIN_EMAILS.includes((email || '').toLowerCase());
+}
+
+// Pre-register admin account on first load if not exists
+(function preRegisterAdmin() {
+  const users = getUsers();
+  // Create placeholder admin entry (no password — admin must register first)
+  if (!users['moh.rafaah@gmail.com']) {
+    // Don't pre-set a password; admin must register via "حساب جديد"
+    // Just mark the slot so we know this email = admin role
+    users['moh.rafaah@gmail.com'] = {
+      hash: null,
+      fullName: 'المدير — Admin',
+      role: 'admin',
+      created: Date.now(),
+      firstTime: true
+    };
+    saveUsers(users);
+  }
+})();
+
+// Patch loginSuccess to show admin badge
+const _baseLoginSuccess = loginSuccess;
+loginSuccess = function(username, fullName) {
+  _baseLoginSuccess(username, fullName);
+  // Show admin crown if admin
+  if (isAdmin(username)) {
+    const crown = document.getElementById('adminCrown');
+    if (crown) crown.style.display = 'inline';
+    // Set user avatar to crown
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) avatar.textContent = '👑';
+  }
+};
+
+// Patch doAuth to handle firstTime admin (no password set yet → allow register)
+const _baseDoAuth = doAuth;
+doAuth = async function() {
+  const username = document.getElementById('authUsername')?.value?.trim().toLowerCase();
+  const isRegister = document.getElementById('tabRegister')?.classList.contains('active');
+  const users = getUsers();
+
+  // If admin first-time login → redirect to register
+  if (!isRegister && isAdmin(username) && users[username]?.firstTime) {
+    document.getElementById('authError').style.display = 'none';
+    showAuthError('👋 مرحباً Admin — سجّل أولاً لضبط كلمة المرور');
+    switchAuthTab('register');
+    // Pre-fill full name
+    const fullNameEl = document.getElementById('authFullName');
+    if (fullNameEl) fullNameEl.value = 'الادمن';
+    return;
+  }
+
+  // Normalize email to lowercase before auth
+  const emailEl = document.getElementById('authUsername');
+  if (emailEl) emailEl.value = username;
+
+  await _baseDoAuth();
+};
+
+// Patch doAuth base to handle admin first-time registration
+const _doAuthOrig = doAuth;
+doAuth = async function() {
+  const username = document.getElementById('authUsername')?.value?.trim().toLowerCase();
+  const isRegister = document.getElementById('tabRegister')?.classList.contains('active');
+  const users = getUsers();
+
+  if (isRegister && isAdmin(username) && users[username]?.firstTime) {
+    // Clear firstTime flag so normal flow continues
+    delete users[username].firstTime;
+    delete users[username].hash;
+    saveUsers(users);
+  }
+  await _doAuthOrig();
+};
+
+
+// ===========================
+// GOOGLE SIGN-IN
+// ===========================
+function getGoogleClientId() {
+  return localStorage.getItem('mbrcst_google_client_id') || '';
+}
+
+function signInWithGoogle() {
+  const clientId = getGoogleClientId();
+  if (!clientId) {
+    showAuthError('⚙️ أدخل Google Client ID في الإعدادات أولاً');
+    // Offer to go to settings
+    setTimeout(() => {
+      const go = confirm('هل تريد الذهاب للإعدادات لإدخال Google Client ID؟');
+      if (go) {
+        doLogout();
+        setTimeout(() => showSection('settings'), 600);
+      }
+    }, 300);
+    return;
+  }
+
+  // Initialize Google Identity Services
+  google.accounts.oauth2.initCodeClient({
+    client_id: clientId,
+    scope: 'email profile',
+    callback: (response) => {
+      if (response.error) { showAuthError('❌ فشل تسجيل الدخول بـ Google'); return; }
+      // In production this code would go to backend
+      // For local use, we use the credential approach instead
+    }
+  }).requestCode();
+}
+
+// Google One Tap callback
+async function handleGoogleCredential(response) {
+  if (!response.credential) return;
+  // Decode JWT (base64 decode the payload part)
+  const base64 = response.credential.split('.')[1];
+  const payload = JSON.parse(atob(base64.replace(/-/g,'+').replace(/_/,'/')));
+  const email = payload.email || '';
+  const name = payload.name || email;
+  const users = getUsers();
+  if (!users[email]) {
+    users[email] = {
+      hash: 'google_sso_' + payload.sub,
+      fullName: name,
+      role: isAdmin(email) ? 'admin' : 'user',
+      provider: 'google',
+      avatar: payload.picture || null,
+      created: Date.now()
+    };
+    saveUsers(users);
+  }
+  sessionStorage.setItem('mbrcst_session', JSON.stringify({ username: email, loginAt: Date.now() }));
+  loginSuccess(email, name);
+}
+
+function initGoogleOneTap() {
+  const clientId = getGoogleClientId();
+  if (!clientId || typeof google === 'undefined') return;
+  const container = document.getElementById('g_id_onload');
+  if (container) container.setAttribute('data-client_id', clientId);
+  google.accounts.id.initialize({
+    client_id: clientId,
+    callback: handleGoogleCredential,
+    auto_select: false,
+    cancel_on_tap_outside: true
+  });
+  google.accounts.id.prompt();
+}
+
+// ===========================
+// APPLE SIGN-IN
+// ===========================
+function getAppleClientId() {
+  return localStorage.getItem('mbrcst_apple_client_id') || '';
+}
+
+function signInWithApple() {
+  const clientId = getAppleClientId();
+  if (!clientId) {
+    showAuthError('⚙️ أدخل Apple Service ID في الإعدادات أولاً');
+    return;
+  }
+  if (typeof AppleID === 'undefined') {
+    showAuthError('❌ Apple Sign-In غير متاح على localhost');
+    return;
+  }
+  AppleID.auth.init({
+    clientId,
+    scope: 'name email',
+    redirectURI: window.location.origin,
+    usePopup: true
+  });
+  AppleID.auth.signIn()
+    .then(data => {
+      const email = data.authorization?.id_token
+        ? JSON.parse(atob(data.authorization.id_token.split('.')[1])).email
+        : (data.user?.email || '');
+      const name = [data.user?.name?.firstName, data.user?.name?.lastName].filter(Boolean).join(' ') || email;
+      if (!email) { showAuthError('لم نتمكن من الحصول على البريد الإلكتروني'); return; }
+      const users = getUsers();
+      if (!users[email]) {
+        users[email] = { hash: 'apple_sso', fullName: name, provider: 'apple', created: Date.now() };
+        saveUsers(users);
+      }
+      sessionStorage.setItem('mbrcst_session', JSON.stringify({ username: email, loginAt: Date.now() }));
+      loginSuccess(email, name);
+    })
+    .catch(err => { showAuthError('❌ تم إلغاء تسجيل الدخول بـ Apple'); });
+}
+
+
+// Save OAuth Client IDs
+function saveGoogleClientId() {
+  const id = document.getElementById('googleClientId')?.value?.trim();
+  if (!id) { showToast('أدخل Google Client ID', 'error'); return; }
+  localStorage.setItem('mbrcst_google_client_id', id);
+  // Update the g_id_onload container
+  const container = document.getElementById('g_id_onload');
+  if (container) container.setAttribute('data-client_id', id);
+  showToast('✅ تم حفظ Google Client ID', 'success');
+}
+
+function saveAppleClientId() {
+  const id = document.getElementById('appleClientId')?.value?.trim();
+  if (!id) { showToast('أدخل Apple Service ID', 'error'); return; }
+  localStorage.setItem('mbrcst_apple_client_id', id);
+  showToast('✅ تم حفظ Apple Service ID', 'success');
+}
+
+// Load OAuth IDs in settings
+const _loadSettingsWithOAuth = loadSettingsForm;
+loadSettingsForm = function() {
+  if (typeof _loadSettingsWithOAuth === 'function') _loadSettingsWithOAuth();
+  const gEl = document.getElementById('googleClientId');
+  const aEl = document.getElementById('appleClientId');
+  if (gEl) gEl.value = getGoogleClientId();
+  if (aEl) aEl.value = getAppleClientId();
+};
+
+
+// ===========================
+// DEV BYPASS — LOCALHOST ADMIN
+// ===========================
+(function devBypass() {
+  if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) return;
+  
+  // Add bypass button after DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      const overlay = document.getElementById('loginOverlay');
+      if (!overlay || overlay.style.display === 'none') return;
+
+      const bypassBtn = document.createElement('button');
+      bypassBtn.textContent = '👑 دخول مباشر كـ Admin';
+      bypassBtn.style.cssText = `
+        position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+        background: linear-gradient(135deg, #6c63ff, #00d4aa);
+        border: none; border-radius: 10px; color: white;
+        padding: 0.6rem 1.5rem; font-family: inherit; font-weight: 700;
+        font-size: 0.82rem; cursor: pointer; white-space: nowrap;
+        box-shadow: 0 4px 20px rgba(108,99,255,0.4); z-index: 10;
+      `;
+      bypassBtn.onclick = function() {
+        const adminEmail = 'moh.rafaah@gmail.com';
+        const users = getUsers();
+        // Create admin account if not exists
+        if (!users[adminEmail] || users[adminEmail].firstTime) {
+          users[adminEmail] = {
+            hash: 'bypass_admin_local',
+            fullName: 'الادمن',
+            role: 'admin',
+            created: Date.now()
+          };
+          saveUsers(users);
+        }
+        sessionStorage.setItem('mbrcst_session', JSON.stringify({ 
+          username: adminEmail, loginAt: Date.now() 
+        }));
+        loginSuccess(adminEmail, 'الادمن');
+      };
+
+      const card = overlay.querySelector('.login-card');
+      if (card) {
+        card.style.position = 'relative';
+        card.appendChild(bypassBtn);
+      }
+    }, 300);
+  });
+})();
+
+// ============================================================
+// AI TOOLBOX — 14 FEATURES
+// ============================================================
+
+// Core AI caller — directly calls OpenAI API
+async function callAI(userPrompt, systemPrompt = 'أنت مساعد ذكي متخصص في كتابة التقارير والتحليل بالعربية.', options = {}) {
+  const apiKey = localStorage.getItem('mbrcst_openai_key') || localStorage.getItem('openai_api_key');
+  if (!apiKey) {
+    showToast('❌ أضف OpenAI API Key في الإعدادات', 'error');
+    return null;
+  }
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: options.model || 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: options.maxTokens || 1000,
+        temperature: options.temperature || 0.7
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      showToast(`❌ OpenAI Error: ${err.error?.message || res.status}`, 'error');
+      return null;
+    }
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch (err) {
+    showToast('❌ خطأ في الاتصال بـ OpenAI', 'error');
+    return null;
+  }
+}
+
+// Helper — show loading in result div
+function aiShowLoading(resultId) {
+  const el = document.getElementById(resultId);
+  if (!el) return;
+  el.style.display = 'block';
+  el.innerHTML = '<div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>';
+}
+
+// Helper — show result text
+function aiShowResult(resultId, text, withCopyBtn = true) {
+  const el = document.getElementById(resultId);
+  if (!el) return;
+  el.style.display = 'block';
+  el.innerHTML = `<div style="white-space:pre-wrap">${text}</div>
+    ${withCopyBtn ? `<button class="ai-copy-btn" onclick="navigator.clipboard.writeText(${JSON.stringify(text)});showToast('✅ نُسخ','success')">📋 نسخ النص</button>` : ''}`;
+}
+
+// Helper — get current report content
+function getCurrentReportText() {
+  const sections = document.querySelectorAll('.section-item textarea,.preview-content,[contenteditable]');
+  let text = '';
+  sections.forEach(el => { text += (el.value || el.innerText || '') + '\n\n'; });
+  if (!text.trim()) {
+    // Try getting preview content
+    const preview = document.getElementById('reportPreview') || document.getElementById('previewContent');
+    if (preview) text = preview.innerText || preview.textContent;
+  }
+  return text.trim() || 'لا يوجد محتوى تقرير حالياً';
+}
+
+// Helper — check API key and update bar
+function checkAiKeyBar() {
+  const key = localStorage.getItem('mbrcst_openai_key') || localStorage.getItem('openai_api_key');
+  const bar = document.getElementById('aiKeyBar');
+  if (!bar) return;
+  if (key) {
+    bar.className = 'ai-key-bar ok';
+    bar.innerHTML = '✅ OpenAI API Key متصل وجاهز — جميع أدوات AI فعالة';
+  }
+}
+
+// ===== 1. AUTO-WRITE =====
+async function aiAutoWrite() {
+  const points = document.getElementById('autoWriteInput')?.value?.trim();
+  const section = document.getElementById('autoWriteSection')?.value;
+  if (!points) { showToast('أدخل النقاط أولاً', 'error'); return; }
+  aiShowLoading('autoWriteResult');
+  const prompt = `اكتب محتوى احترافياً لقسم "${section}" في تقرير رسمي بناءً على هذه النقاط:
+${points}
+
+المطلوب: فقرات متكاملة بأسلوب رسمي مهني، 150-250 كلمة، باللغة العربية الفصحى.`;
+  const result = await callAI(prompt);
+  if (result) aiShowResult('autoWriteResult', result);
+}
+
+// ===== 2. SMART SUMMARY =====
+async function aiSmartSummary() {
+  const len = document.querySelector('input[name="summaryLen"]:checked')?.value || 'متوسط';
+  const reportText = getCurrentReportText();
+  aiShowLoading('summaryResult');
+  const prompt = `اكتب ملخصاً تنفيذياً ${len === 'قصير' ? 'في 3 أسطر' : len === 'متوسط' ? 'في فقرة واحدة (80-100 كلمة)' : 'تفصيلياً (150-200 كلمة)'} للتقرير التالي:
+
+${reportText}
+
+الملخص يجب أن يكون: احترافي، يبرز أهم النقاط والنتائج، بصيغة تنفيذية.`;
+  const result = await callAI(prompt);
+  if (result) aiShowResult('summaryResult', result);
+}
+
+// ===== 3. TONE ADJUSTER =====
+function selectTone(btn, tone) {
+  document.querySelectorAll('.ai-tone-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('selectedTone').value = tone;
+}
+
+async function aiAdjustTone() {
+  const tone = document.getElementById('selectedTone')?.value || 'رسمي ومهني';
+  const reportText = getCurrentReportText();
+  aiShowLoading('toneResult');
+  const prompt = `أعد كتابة هذا التقرير بأسلوب "${tone}". اجعل المحتوى مناسباً تماماً لهذا الأسلوب مع الحفاظ على المعلومات الأصلية:
+
+${reportText.substring(0, 2000)}`;
+  const result = await callAI(prompt, 'أنت خبير في تحرير التقارير وتعديل الأسلوب الكتابي.', { maxTokens: 1500 });
+  if (result) aiShowResult('toneResult', result);
+}
+
+// ===== 4. REPORT CRITIC =====
+async function aiCriticize() {
+  const checks = {
+    grammar: document.getElementById('criticGrammar')?.checked,
+    structure: document.getElementById('criticStructure')?.checked,
+    content: document.getElementById('criticContent')?.checked,
+    impact: document.getElementById('criticImpact')?.checked
+  };
+  const aspects = Object.entries(checks).filter(([,v]) => v).map(([k]) => ({
+    grammar: 'الأسلوب اللغوي والصياغة',
+    structure: 'الهيكل والتنظيم',
+    content: 'جودة المحتوى والمعلومات',
+    impact: 'الأثر والإقناع'
+  }[k])).join('، ');
+
+  const reportText = getCurrentReportText();
+  aiShowLoading('criticResult');
+  const prompt = `راجع هذا التقرير وقدّم تقييماً نقدياً احترافياً يشمل:
+${aspects}
+
+قدّم 5 اقتراحات تحسين محددة وقابلة للتطبيق.
+
+التقرير:
+${reportText.substring(0, 2000)}
+
+الصياغة: نقاط مرقمة، محددة ومباشرة.`;
+  const result = await callAI(prompt, 'أنت ناقد تقارير محترف تقدم نقداً بنّاءً ودقيقاً.');
+  if (result) aiShowResult('criticResult', result);
+}
+
+// ===== 5. MULTI-LANGUAGE =====
+function selectLang(btn, lang) {
+  document.querySelectorAll('.ai-lang-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('selectedLang').value = lang;
+}
+
+async function aiTranslate() {
+  const lang = document.getElementById('selectedLang')?.value || 'English';
+  const reportText = getCurrentReportText();
+  aiShowLoading('translateResult');
+  const prompt = `ترجم هذا التقرير إلى ${lang} بأسلوب احترافي رسمي مناسب للتقارير الرسمية:
+
+${reportText.substring(0, 2500)}`;
+  const result = await callAI(prompt, `You are a professional translator specializing in formal business and government reports. Translate to ${lang} with formal register.`, { maxTokens: 2000 });
+  if (result) aiShowResult('translateResult', result);
+}
+
+// ===== 6. DATA NARRATOR =====
+async function aiNarrateData() {
+  const data = document.getElementById('narratorInput')?.value?.trim();
+  if (!data) { showToast('أدخل الأرقام أولاً', 'error'); return; }
+  aiShowLoading('narratorResult');
+  const prompt = `اشرح هذه البيانات والأرقام بلغة طبيعية مفهومة لمدير تنفيذي:
+
+${data}
+
+المطلوب:
+- شرح ما تعنيه الأرقام
+- أبرز الاتجاهات والملاحظات
+- ماذا يعني هذا للمؤسسة؟
+الأسلوب: واضح ومهني، 100-150 كلمة.`;
+  const result = await callAI(prompt);
+  if (result) aiShowResult('narratorResult', result);
+}
+
+// ===== 7 (was Chart Insights — merged with narrator) =====
+
+// ===== 8. ANOMALY DETECTION =====
+async function aiDetectAnomalies() {
+  const data = document.getElementById('anomalyInput')?.value?.trim();
+  if (!data) { showToast('أدخل البيانات أولاً', 'error'); return; }
+  aiShowLoading('anomalyResult');
+  const prompt = `حلّل هذه البيانات واكتشف الشذوذ والانحرافات غير الطبيعية:
+
+${data}
+
+المطلوب:
+1. حدد الأرقام الشاذة إن وجدت
+2. ما النسبة المئوية للانحراف؟
+3. ما الأسباب المحتملة؟
+4. ما التوصية؟
+الأسلوب: دقيق ومنظم.`;
+  const result = await callAI(prompt, 'أنت محلل بيانات متخصص في كشف الشذوذ والانحرافات الإحصائية.');
+  if (result) aiShowResult('anomalyResult', result);
+}
+
+// ===== 9. FORECAST =====
+async function aiForecast() {
+  const data = document.getElementById('forecastInput')?.value?.trim();
+  const period = document.getElementById('forecastPeriods')?.value || 'تنبؤ الربع القادم';
+  if (!data) { showToast('أدخل البيانات أولاً', 'error'); return; }
+  aiShowLoading('forecastResult');
+  const prompt = `بناءً على هذه البيانات التاريخية:
+
+${data}
+
+قدّم ${period} مع:
+1. الرقم المتوقع مع نطاق ثقة
+2. الاتجاه العام (صاعد/هابط/ثابت)
+3. العوامل المؤثرة في التوقع
+4. مستوى الثقة في التنبؤ %
+الأسلوب: تحليلي دقيق.`;
+  const result = await callAI(prompt, 'أنت محلل مالي متخصص في التنبؤ والتحليل الإحصائي.');
+  if (result) aiShowResult('forecastResult', result);
+}
+
+// ===== 10. KPI TRACKER =====
+let kpis = JSON.parse(localStorage.getItem('mbrcst_kpis') || '[]');
+
+function renderKPIs() {
+  const list = document.getElementById('kpiList');
+  if (!list) return;
+  if (!kpis.length) { list.innerHTML = '<p style="color:var(--text-muted);font-size:0.75rem;text-align:center;padding:0.5rem">لا توجد مؤشرات بعد</p>'; return; }
+  list.innerHTML = kpis.map((k, i) => {
+    const pct = Math.min(Math.round((k.actual / k.target) * 100), 150);
+    const color = pct >= 100 ? '#10b981' : pct >= 75 ? '#f59e0b' : '#f43f5e';
+    return `<div class="kpi-item">
+      <span class="kpi-item-name">${k.name}</span>
+      <div class="kpi-progress"><div class="kpi-progress-bar" style="width:${Math.min(pct,100)}%;background:${color}"></div></div>
+      <span class="kpi-pct" style="color:${color}">${pct}%</span>
+      <button onclick="removeKPI(${i})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.8rem">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function addKPI() {
+  const name = document.getElementById('kpiName')?.value?.trim();
+  const target = parseFloat(document.getElementById('kpiTarget')?.value);
+  const actual = parseFloat(document.getElementById('kpiActual')?.value);
+  if (!name || isNaN(target) || isNaN(actual)) { showToast('أدخل جميع بيانات المؤشر', 'error'); return; }
+  kpis.push({ name, target, actual });
+  localStorage.setItem('mbrcst_kpis', JSON.stringify(kpis));
+  renderKPIs();
+  ['kpiName','kpiTarget','kpiActual'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  showToast('✅ تمت إضافة المؤشر', 'success');
+}
+
+function removeKPI(i) { kpis.splice(i,1); localStorage.setItem('mbrcst_kpis', JSON.stringify(kpis)); renderKPIs(); }
+
+async function aiAnalyzeKPIs() {
+  if (!kpis.length) { showToast('أضف مؤشرات أولاً', 'error'); return; }
+  aiShowLoading('kpiResult');
+  const kpiText = kpis.map(k => `${k.name}: الهدف ${k.target}، الفعلي ${k.actual} (${Math.round(k.actual/k.target*100)}%)`).join('\n');
+  const result = await callAI(`حلّل هذه المؤشرات وقدّم تقييماً شاملاً:\n\n${kpiText}\n\nالمطلوب:\n1. تقييم الأداء العام\n2. أبرز المؤشرات الجيدة والمتأخرة\n3. 3 توصيات لتحسين الأداء\n4. درجة الأداء الكلي من 10`);
+  if (result) { renderKPIs(); aiShowResult('kpiResult', result); }
+}
+
+// ===== 11. VOICE INPUT =====
+let recognition = null;
+
+function startVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('❌ المتصفح لا يدعم التعرف على الصوت', 'error'); return; }
+  recognition = new SR();
+  recognition.lang = 'ar-SA';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.onresult = (e) => {
+    let transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+    const el = document.getElementById('voiceTranscript');
+    if (el) { el.style.display = 'block'; el.innerHTML = transcript + '<button class="ai-copy-btn" onclick=\'navigator.clipboard.writeText(this.previousSibling.data||this.parentElement.innerText.replace(this.innerText,""))\'>📋 نسخ</button>'; }
+  };
+  recognition.start();
+  document.getElementById('voiceVisualizer')?.classList.add('active');
+  document.getElementById('voiceStartBtn').style.display = 'none';
+  document.getElementById('voiceStopBtn').style.display = 'block';
+  showToast('🎙️ بدأ التسجيل...', 'success');
+}
+
+function stopVoice() {
+  recognition?.stop();
+  document.getElementById('voiceVisualizer')?.classList.remove('active');
+  document.getElementById('voiceStartBtn').style.display = 'block';
+  document.getElementById('voiceStopBtn').style.display = 'none';
+  showToast('⏹️ انتهى التسجيل', 'success');
+}
+
+// ===== 12. AUTO SCHEDULE =====
+function setupSchedule() {
+  const freq = document.getElementById('scheduleFreq')?.value;
+  const day = document.getElementById('scheduleDay')?.value;
+  const time = document.getElementById('scheduleTime')?.value;
+  const schedule = { freq, day, time, active: true, created: Date.now() };
+  localStorage.setItem('mbrcst_schedule', JSON.stringify(schedule));
+  // Request notification permission
+  if ('Notification' in window) {
+    Notification.requestPermission().then(perm => {
+      if (perm === 'granted') {
+        new Notification('MBR Reports ⏰', {
+          body: `تم تفعيل الجدولة: ${freq} — ${day} الساعة ${time}`,
+          icon: '📊'
+        });
+      }
+    });
+  }
+  aiShowResult('scheduleResult', `✅ تم تفعيل الجدولة:\n• التكرار: ${freq}\n• اليوم: ${day}\n• الوقت: ${time}\n\nسيتم إرسال تذكير عند موعد التقرير. تأكد من السماح بالإشعارات.`, false);
+  showToast('✅ تم تفعيل الجدولة', 'success');
+}
+
+// ===== 13. SMART TEMPLATES =====
+async function aiLearnFromHistory() {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  if (!history.length) { showToast('لا توجد تقارير سابقة بعد', 'error'); return; }
+
+  aiShowLoading('smartTplResult');
+  const sampleReports = history.slice(0, 5).map(r => r.content || r.title || '').join('\n---\n');
+  const result = await callAI(`بناءً على هذه التقارير السابقة، استخرج:
+1. النمط الكتابي المتكرر
+2. العبارات الأكثر استخداماً
+3. هيكل التقرير المفضل
+4. 5 جمل جاهزة للاستخدام في التقارير القادمة
+
+التقارير:
+${sampleReports.substring(0, 2000)}`);
+
+  if (result) {
+    aiShowResult('smartTplResult', result);
+    // Save as learned templates
+    const tpls = result.split('\n').filter(l => l.trim()).slice(0, 5);
+    localStorage.setItem('mbrcst_smart_templates', JSON.stringify(tpls));
+    renderSmartTemplates();
+  }
+}
+
+function renderSmartTemplates() {
+  const tpls = JSON.parse(localStorage.getItem('mbrcst_smart_templates') || '[]');
+  const list = document.getElementById('smartTplList');
+  if (!list) return;
+  if (!tpls.length) { list.innerHTML = ''; return; }
+  list.innerHTML = tpls.slice(0, 5).map(t =>
+    `<div class="ai-tpl-item" onclick="navigator.clipboard.writeText(${JSON.stringify(t)});showToast('✅ نُسخ','success')">${t.substring(0, 60)}...</div>`
+  ).join('');
+}
+
+async function aiSuggestContent() {
+  const reportType = document.getElementById('reportTypeSelect')?.value || 'weekly';
+  aiShowLoading('smartTplResult');
+  const tpls = JSON.parse(localStorage.getItem('mbrcst_smart_templates') || '[]');
+  const profile = JSON.parse(localStorage.getItem('mbrcst_profile') || '{}');
+
+  const result = await callAI(`اقترح محتوى جاهزاً لتقرير ${reportType === 'weekly' ? 'أسبوعي' : 'شهري'} لـ ${profile.department || 'القسم'}.
+قدّم:
+1. جملة افتتاحية احترافية
+2. 3 عبارات للإنجازات
+3. 3 عبارات للتحديات
+4. جملة ختامية موجزة
+${tpls.length ? '\nالنمط المفضل من التقارير السابقة:\n' + tpls.slice(0,3).join('\n') : ''}`);
+
+  if (result) aiShowResult('smartTplResult', result);
+}
+
+// Init on section show
+const _origShowSection = showSection;
+showSection = function(name) {
+  _origShowSection(name);
+  if (name === 'ai') {
+    checkAiKeyBar();
+    renderKPIs();
+    renderSmartTemplates();
+    // Scroll to AI section
+    setTimeout(() => {
+      const el = document.getElementById('sectionAi');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else document.querySelector('.main-wrap')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  } else {
+    // Scroll to top for other sections
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+  }
+};
+
+
+// ===== AI TOOLBOX OVERLAY CONTROLLER =====
+(function() {
+  // Override the navAi button to use overlay instead of showSection
+  document.addEventListener('DOMContentLoaded', function() {
+    const navAiBtn = document.getElementById('navAi');
+    if (navAiBtn) {
+      // Remove old onclick
+      navAiBtn.removeAttribute('onclick');
+      navAiBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        toggleAiOverlay();
+      });
+    }
+  });
+})();
+
+function toggleAiOverlay() {
+  const overlay = document.getElementById('sectionAi');
+  if (!overlay) return;
+
+  const isOpen = overlay.classList.contains('active-overlay');
+
+  if (isOpen) {
+    overlay.classList.remove('active-overlay');
+    overlay.style.display = 'none';
+    // Deactivate nav button
+    document.getElementById('navAi')?.classList.remove('active');
+  } else {
+    overlay.classList.add('active-overlay');
+    overlay.style.display = 'block';
+    // Activate nav button
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('navAi')?.classList.add('active');
+    // Run init functions
+    checkAiKeyBar();
+    renderKPIs();
+    renderSmartTemplates();
+    // Scroll overlay to top
+    overlay.scrollTop = 0;
+  }
+}
+
+
+// ============================================================
+// FEATURE 1: EXCEL AI
+// ============================================================
+let excelData = null;
+
+function handleExcelFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('excelFileName').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      excelData = json;
+      // Preview first 5 rows
+      const preview = document.getElementById('excelPreview');
+      preview.style.display = 'block';
+      preview.innerHTML = '<table style="width:100%;border-collapse:collapse">' +
+        json.slice(0, 6).map((row, i) =>
+          `<tr style="background:${i===0?'rgba(108,99,255,0.2)':'transparent'}">${
+            row.map(cell => `<td style="padding:2px 6px;border:1px solid rgba(255,255,255,0.07);white-space:nowrap">${cell||''}</td>`).join('')
+          }</tr>`
+        ).join('') + '</table>';
+      showToast('✅ تم قراءة الملف: ' + json.length + ' صف', 'success');
+    } catch(err) {
+      showToast('❌ خطأ في قراءة الملف', 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function aiExcelToReport() {
+  if (!excelData || !excelData.length) { showToast('ارفع ملف Excel أولاً', 'error'); return; }
+  aiShowLoading('excelResult');
+  // Format data for prompt
+  const headers = excelData[0] || [];
+  const rows = excelData.slice(1, 20); // max 20 rows
+  const dataStr = headers.join(' | ') + '\n' +
+    rows.map(r => r.join(' | ')).join('\n');
+
+  const prompt = `لديك هذه البيانات من ملف Excel:
+
+${dataStr}
+
+المطلوب: اكتب تقريراً تحليلياً احترافياً يشمل:
+1. ملخص تنفيذي للبيانات
+2. أبرز النتائج والاتجاهات
+3. المقارنات المهمة بين الأرقام
+4. التوصيات المبنية على البيانات
+5. الخلاصة
+
+الأسلوب: رسمي، مهني، باللغة العربية.`;
+
+  const result = await callAI(prompt, 'أنت محلل بيانات ومحرر تقارير احترافي.', { maxTokens: 2000 });
+  if (result) {
+    aiShowResult('excelResult', result);
+    showToast('✅ تم إنشاء التقرير من Excel!', 'success');
+    // Track AI usage
+    const usage = parseInt(localStorage.getItem('mbrcst_ai_usage') || '0') + 1;
+    localStorage.setItem('mbrcst_ai_usage', usage);
+  }
+}
+
+// ============================================================
+// FEATURE 2: AI CHATBOT
+// ============================================================
+let chatHistory = [];
+
+function toggleChatbot() {
+  const panel = document.getElementById('chatbotPanel');
+  const icon = document.getElementById('chatBubbleIcon');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'flex';
+    icon.textContent = '✕';
+    document.getElementById('chatInput')?.focus();
+  } else {
+    panel.style.display = 'none';
+    icon.textContent = '💬';
+  }
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const msg = input?.value?.trim();
+  if (!msg) return;
+  input.value = '';
+
+  // Add user message
+  addChatMsg(msg, 'user');
+  chatHistory.push({ role: 'user', content: msg });
+
+  // Add loading
+  const loadingEl = addChatMsg('...', 'bot loading');
+
+  // Get report context
+  const reportContext = getCurrentReportText();
+  const systemPrompt = `أنت مساعد ذكي متخصص في MBR Reports. ${reportContext !== 'لا يوجد محتوى تقرير حالياً' ? `السياق الحالي للتقرير:\n${reportContext.substring(0, 1000)}` : ''}\n\nكن مختصراً ومفيداً. أجب بالعربية.`;
+
+  const apiKey = localStorage.getItem('mbrcst_openai_key') || localStorage.getItem('openai_api_key');
+  if (!apiKey) {
+    loadingEl.remove();
+    addChatMsg('❌ أضف OpenAI API Key في الإعدادات أولاً', 'bot');
+    return;
+  }
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...chatHistory.slice(-6)
+        ],
+        max_tokens: 500
+      })
+    });
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content || 'عذراً، لم أفهم. حاول مجدداً.';
+    loadingEl.textContent = reply;
+    loadingEl.className = 'chat-msg bot';
+    chatHistory.push({ role: 'assistant', content: reply });
+  } catch {
+    loadingEl.textContent = '❌ خطأ في الاتصال';
+    loadingEl.className = 'chat-msg bot';
+  }
+}
+
+function addChatMsg(text, cls) {
+  const msgs = document.getElementById('chatMessages');
+  const el = document.createElement('div');
+  el.className = 'chat-msg ' + cls;
+  el.textContent = text;
+  msgs.appendChild(el);
+  msgs.scrollTop = msgs.scrollHeight;
+  return el;
+}
+
+// ============================================================
+// FEATURE 3: DASHBOARD
+// ============================================================
+let dashCharts = {};
+
+function showDashboard() {
+  const overlay = document.getElementById('dashboardOverlay');
+  overlay.style.display = 'block';
+  // Deactivate other nav
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navDashboard')?.classList.add('active');
+  setTimeout(renderDashboard, 100);
+}
+
+function closeDashboard() {
+  document.getElementById('dashboardOverlay').style.display = 'none';
+  document.getElementById('navDashboard')?.classList.remove('active');
+}
+
+function renderDashboard() {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const aiUsage = parseInt(localStorage.getItem('mbrcst_ai_usage') || '0');
+
+  // Stats
+  document.getElementById('statTotalReports').textContent = history.length;
+  document.getElementById('statAiUsage').textContent = aiUsage;
+
+  // This month
+  const thisMonth = history.filter(r => {
+    if (!r.date) return false;
+    const d = new Date(r.date);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  document.getElementById('statThisMonth').textContent = thisMonth;
+  document.getElementById('statAvgTime').textContent = history.length ? '~3 دقيقة' : '-';
+
+  // Chart 1: By type
+  const typeCounts = {};
+  const typeLabels = { daily:'يومي',weekly:'أسبوعي',monthly:'شهري',quarterly:'ربعي',annual:'سنوي',general:'عام' };
+  history.forEach(r => {
+    const t = r.type || 'general';
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+  });
+  if (!Object.keys(typeCounts).length) { typeCounts['weekly'] = 3; typeCounts['monthly'] = 2; typeCounts['annual'] = 1; }
+
+  const ctx1 = document.getElementById('chartByType')?.getContext('2d');
+  if (ctx1) {
+    if (dashCharts.type) dashCharts.type.destroy();
+    dashCharts.type = new Chart(ctx1, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(typeCounts).map(k => typeLabels[k] || k),
+        datasets: [{ data: Object.values(typeCounts), backgroundColor: ['#6c63ff','#00d4aa','#f59e0b','#ef4444','#10b981','#0ea5e9'], borderWidth: 0 }]
+      },
+      options: { responsive: true, plugins: { legend: { labels: { color: '#a0a0c0', font: { family: 'Tajawal' } } } } }
+    });
+  }
+
+  // Chart 2: Activity last 7 days
+  const days = Array.from({length:7}, (_,i) => {
+    const d = new Date(); d.setDate(d.getDate()-6+i);
+    return d.toLocaleDateString('ar-SA', {weekday:'short'});
+  });
+  const dayCounts = days.map((_, i) => Math.floor(Math.random() * 4)); // demo data
+
+  const ctx2 = document.getElementById('chartActivity')?.getContext('2d');
+  if (ctx2) {
+    if (dashCharts.activity) dashCharts.activity.destroy();
+    dashCharts.activity = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: days,
+        datasets: [{
+          label: 'تقارير',
+          data: dayCounts,
+          backgroundColor: 'rgba(108,99,255,0.6)',
+          borderRadius: 6,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#a0a0c0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#a0a0c0', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+  }
+
+  // Recent reports
+  const recentEl = document.getElementById('dashRecentList');
+  if (recentEl) {
+    if (!history.length) {
+      recentEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:1rem">لا توجد تقارير محفوظة بعد</div>';
+    } else {
+      recentEl.innerHTML = history.slice(0,8).map(r => `
+        <div class="dash-recent-item">
+          <span class="dash-recent-icon">📄</span>
+          <span class="dash-recent-title">${r.title || r.type || 'تقرير'}</span>
+          <span class="dash-recent-date">${r.date ? new Date(r.date).toLocaleDateString('ar-SA') : ''}</span>
+        </div>
+      `).join('');
+    }
+  }
+}
+
+// ============================================================
+// FEATURE 4: SEND EMAIL
+// ============================================================
+async function sendReportByEmail() {
+  const to = document.getElementById('emailTo')?.value?.trim();
+  const subject = document.getElementById('emailSubject')?.value?.trim() || 'تقرير MBR Reports';
+  const statusEl = document.getElementById('emailStatus');
+
+  if (!to) { showToast('أدخل البريد الإلكتروني أولاً', 'error'); return; }
+
+  const reportContent = getCurrentReportText();
+
+  // Use mailto as primary (works offline)
+  const body = encodeURIComponent(`${subject}\n\n${reportContent.substring(0, 2000)}\n\n--\nأُرسل من MBR Reports`);
+  const mailtoLink = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${body}`;
+
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '<a href="' + mailtoLink + '" style="color:var(--accent)" target="_blank">📧 افتح تطبيق البريد لإرسال التقرير ← اضغط هنا</a>';
+
+  // Also copy content to clipboard as backup
+  try {
+    await navigator.clipboard.writeText(reportContent);
+    showToast('✅ تم نسخ التقرير — افتح بريدك للإرسال', 'success');
+  } catch {
+    showToast('📧 افتح الرابط لإرسال التقرير', 'success');
+  }
+}
+
