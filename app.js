@@ -4998,7 +4998,7 @@ const TRANSLATIONS = {
     charts: 'رسوم بيانية', send: 'إرسال', chartsTitle: '📈 مولّد الرسوم البيانية',
     chartsSubtitle: 'أدخل بياناتك واحصل على رسم بياني فوري',
     newReport: '+ تقرير جديد', generate: 'توليد بـ AI', save: 'حفظ',
-    'ai-tools': 'أدوات AI', dashboard: 'Dashboard', templates: 'قوالب',
+    'ai-tools': 'أدوات الذكاء', dashboard: 'لوحة التحكم', templates: 'قوالب',
     history: 'المكتبة', voice: 'مساعد صوتي', profile: 'ملفي',
   },
   en: {

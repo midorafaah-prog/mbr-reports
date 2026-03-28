@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=1774710287" />
+  <link rel="stylesheet" href="style.css?v=1774714413" />
   <!-- SheetJS for Excel parsing -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <!-- html2pdf for PDF export -->
@@ -185,7 +185,7 @@
             <span>📁</span><span class="tab-label">المكتبة</span>
           </button>
           <button class="nav-tab" id="navAi" onclick="showSection('ai')">
-            <span>🤖</span><span class="tab-label">AI Tools</span>
+            <span>🤖</span><span class="tab-label">أدوات الذكاء</span>
           </button>
           <button class="nav-tab" id="navSettings" onclick="showSection('settings')">
             <span>⚙️</span><span class="tab-label">إعدادات</span>
@@ -738,8 +738,8 @@
       <div class="ai-toolbox-wrap">
 
         <div class="ai-toolbox-header">
-          <div class="ai-tb-badge">🤖 Powered by GPT-4</div>
-          <h2 class="ai-tb-title">AI Toolbox</h2>
+          <div class="ai-tb-badge">🤖 مدعوم بـ GPT-4</div>
+          <h2 class="ai-tb-title">🧠 صندوق أدوات الذكاء</h2>
           <p class="ai-tb-sub">14 أداة ذكاء اصطناعي لتحسين تقاريرك وتحليل بياناتك</p>
         </div>
 
@@ -756,7 +756,7 @@
             <!-- Auto-Write -->
             <div class="ai-tool-card" id="toolAutoWrite">
               <div class="ai-tool-icon" style="background:linear-gradient(135deg,#6c63ff,#a855f7)">✍️</div>
-              <h4>Auto-Write</h4>
+              <h4>✍️ الكتابة التلقائية</h4>
               <p>اكتب نقاطاً مختصرة وسيكمل AI التقرير كاملاً</p>
               <textarea id="autoWriteInput" class="ai-tool-input" placeholder="• حققنا 120% من الهدف&#10;• تحديات: نقص الكوادر&#10;• مبادرة جديدة للتطوير" rows="4"></textarea>
               <div class="ai-tool-select-row">
@@ -775,7 +775,7 @@
             <!-- Smart Summary -->
             <div class="ai-tool-card" id="toolSummary">
               <div class="ai-tool-icon" style="background:linear-gradient(135deg,#0ea5e9,#06b6d4)">📋</div>
-              <h4>Smart Summary</h4>
+              <h4>📋 الملخص الذكي</h4>
               <p>ملخص تنفيذي احترافي للتقرير المكتوب بضغطة واحدة</p>
               <div class="ai-tool-options">
                 <label><input type="radio" name="summaryLen" value="قصير"> مختصر</label>
@@ -789,7 +789,7 @@
             <!-- Tone Adjuster -->
             <div class="ai-tool-card" id="toolTone">
               <div class="ai-tool-icon" style="background:linear-gradient(135deg,#f59e0b,#f97316)">🎭</div>
-              <h4>Tone Adjuster</h4>
+              <h4>🎭 ضابط الأسلوب</h4>
               <p>حوّل أسلوب التقرير حسب الجمهور المستهدف</p>
               <div class="ai-tone-grid">
                 <button class="ai-tone-chip active" onclick="selectTone(this,'رسمي ومهني')">👔 رسمي</button>
@@ -807,7 +807,7 @@
             <!-- Report Critic -->
             <div class="ai-tool-card" id="toolCritic">
               <div class="ai-tool-icon" style="background:linear-gradient(135deg,#ef4444,#f43f5e)">🔍</div>
-              <h4>Report Critic</h4>
+              <h4>🔍 ناقد التقارير</h4>
               <p>AI يراجع تقريرك ويعطيك 5 اقتراحات تحسين</p>
               <div class="ai-tool-options">
                 <label><input type="checkbox" id="criticGrammar" checked> الأسلوب اللغوي</label>
@@ -1005,7 +1005,7 @@
             <!-- Smart Templates -->
             <div class="ai-tool-card" id="toolSmartTpl">
               <div class="ai-tool-icon" style="background:linear-gradient(135deg,#8b5cf6,#f59e0b)">🧩</div>
-              <h4>Smart Templates</h4>
+              <h4>🧩 القوالب الذكية</h4>
               <p>قوالب تتعلم من تقاريرك السابقة وتقترح محتوى</p>
               <div id="smartTplList" class="ai-tpl-list"></div>
               <button class="ai-tool-btn" onclick="aiLearnFromHistory()">🧩 تعلّم من تقاريري</button>
@@ -1258,7 +1258,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=1774710287"></script>
+  <script src="app.js?v=1774714413"></script>
 
   <!-- ===== DASHBOARD OVERLAY ===== -->
   <div id="dashboardOverlay" class="ai-fullpage-overlay" style="display:none">
