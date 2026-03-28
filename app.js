@@ -6206,13 +6206,17 @@ function showSection(section) {
     if (profileBtn) {
       profileBtn.title = name + ' — اضغط لعرض الملف';
     }
-    // Also show AI status based on API key
+    // AI status — only show if API key is present, hide otherwise (non-intrusive)
     var hasKey = !!localStorage.getItem('mbrcst_openai_key');
     var statusEl = document.getElementById('aiStatusBadge');
     if (statusEl) {
-      if (!hasKey) {
-        statusEl.className = 'ai-status error';
-        document.getElementById('aiStatusText').textContent = 'أضف OpenAI Key';
+      if (hasKey) {
+        statusEl.className = 'ai-status';
+        statusEl.style.display = 'flex';
+        var stxt = document.getElementById('aiStatusText');
+        if (stxt) stxt.textContent = 'AI';
+      } else {
+        statusEl.style.display = 'none';
       }
     }
   }
