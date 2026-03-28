@@ -175,97 +175,94 @@
         <div class="logo-badge">التقارير الذكية</div>
       </div>
       <nav class="header-nav">
-        <button class="nav-btn active" id="navCreate" onclick="showSection('create')">
-          <span>✏️</span> إنشاء تقرير
-        </button>
-        <button class="nav-btn" id="navHistory" onclick="showSection('history')">
-          <span>📁</span> التقارير المحفوظة
-        </button>
-        <button class="nav-btn" id="navCompare" onclick="showSection('compare')">
-          <span>🔄</span> مقارنة
-        </button>
-        <button class="nav-btn" id="navSettings" onclick="showSection('settings')">
-          <span>⚙️</span> الإعدادات
-        </button>
-        <button class="nav-btn nav-btn-ai" id="navAi" onclick="showSection('ai')">
-          <span>🤖</span> AI Tools
-        </button>
-        <button class="nav-btn nav-btn-voice" id="navVoice" onclick="showVoicePanel()" title="إدخال صوتي">
-          <span>🎙️</span> مساعد صوتي
-        </button>
-        <button class="nav-btn nav-btn-profile" id="navProfile" onclick="showProfilePanel()" title="ملفي">
-          <span id="navAvatarIcon">👤</span> ملفي
-        </button>
-        <button class="nav-btn nav-btn-lang" id="navLang" onclick="toggleLanguage()" title="تبديل اللغة">
-          <span id="langIcon">🌐</span> <span id="langLabel">EN</span>
-        </button>
-        <button class="nav-btn nav-btn-reading" id="navReading" onclick="enterReadingMode()" title="وضع القراءة">
-          <span>📖</span> قراءة
-        </button>
-        <button class="nav-btn nav-btn-favorites" id="navFavorites" onclick="showFavorites()" title="المفضلة">
-          <span>⭐</span> المفضلة
-        </button>
-        <button class="nav-btn nav-btn-translate" id="navTranslate" onclick="showTranslatePanel()" title="ترجمة التقرير">
-          <span>🌍</span> ترجمة
-        </button>
-        <button class="nav-btn nav-btn-focus" id="navFocus" onclick="toggleFocusMode()" title="وضع التركيز">
-          <span>🎯</span> تركيز
-        </button>
-        <button class="nav-btn nav-btn-merge" id="navMerge" onclick="showMergePanel()" title="دمج التقارير">
-          <span>🔀</span> دمج
-        </button>
-        <button class="nav-btn nav-btn-analytics" id="navAnalytics" onclick="showAnalytics()" title="تحليلاتي">
-          <span>📊</span> Analytics
-        </button>
-        <button class="nav-btn nav-btn-writer" id="navWriter" onclick="toggleAIWritingSidebar()" title="مساعد الكتابة">
-          <span>✍️</span> مساعد
-        </button>
-        <button class="nav-btn nav-btn-cover" id="navCover" onclick="showCoverPage()" title="غلاف التقرير">
-          <span>🎨</span> غلاف
-        </button>
-        <button class="nav-btn nav-btn-charts" id="navCharts" onclick="showChartsPanel()" title="مولّد الرسوم">
-          <span>📈</span> <span data-i18n="charts">رسوم بيانية</span>
-        </button>
-        <button class="nav-btn nav-btn-email" id="navEmail" onclick="showEmailPanel()" title="إرسال البريد">
-          <span>📧</span> <span data-i18n="send">إرسال</span>
-        </button>
-        <button class="nav-btn nav-btn-quickreport" id="navQuickReport" onclick="showQuickReport()" title="تقرير سريع">
-          <span>⚡</span> سريع
-        </button>
-        <button class="nav-btn nav-btn-prompts" id="navPrompts" onclick="showPromptsLib()" title="مكتبة Prompts">
-          <span>💬</span> Prompts
-        </button>
-        <button class="nav-btn nav-btn-bell" id="navBell" onclick="toggleNotifCenter()" title="الإشعارات" style="position:relative">
-          <span>🔔</span>
-          <span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;background:#ef4444;color:white;border-radius:50%;width:16px;height:16px;font-size:0.6rem;display:none;align-items:center;justify-content:center;font-weight:900">0</span>
-        </button>
-        <button class="nav-btn nav-btn-search" id="navSearch" onclick="openGlobalSearch()" title="بحث شامل Ctrl+Shift+F">
-          <span>🔍</span>
-        </button>
-        <button class="nav-btn nav-btn-theme" id="navTheme" onclick="toggleTheme()" title="تغيير المظهر">
-          <span id="themeIcon">🌙</span>
-        </button>
-        <button class="nav-btn nav-btn-shortcuts" id="navShortcuts" onclick="showShortcuts()" title="اختصارات">
-          <span>⌨️</span>
-        </button>
-        <button class="nav-btn nav-btn-history" id="navHistory2" onclick="showReportsHistory()"><span>📚</span> مكتبة</button>
-        <button class="nav-btn nav-btn-compare" id="navCompare" onclick="showComparePanel()"><span>📊</span> مقارنة</button>
-        <button class="nav-btn nav-btn-powerpoint" id="navPPT" onclick="exportPowerPoint()"><span>🎯</span> PowerPoint</button>
-        <button class="nav-btn nav-btn-pdf" id="navPdf" onclick="showPdfPanel()">
-          <span>📄</span> PDF
-        </button>
-        <button class="nav-btn nav-btn-schedule" id="navSchedule" onclick="showSchedulePanel()">
-          <span>⏰</span> جدولة
-        </button>
-        <button class="nav-btn nav-btn-templates" id="navTemplates" onclick="showTemplates()">
-          <span>📋</span> القوالب
-        </button>
-        <button class="nav-btn nav-btn-dashboard" id="navDashboard" onclick="showDashboard()">
-          <span>📊</span> Dashboard
-        </button>
-        <button class="nav-btn nav-btn-marketplace" id="navMarketplace" onclick="showSection('marketplace')">
-          <span>🏪</span> المنصات
-        </button>
+
+        <!-- PRIMARY TABS -->
+        <div class="nav-primary">
+          <button class="nav-tab active" id="navCreate" onclick="showSection('create')">
+            <span>✏️</span><span class="tab-label">إنشاء</span>
+          </button>
+          <button class="nav-tab" id="navHistory" onclick="showSection('history')">
+            <span>📁</span><span class="tab-label">المكتبة</span>
+          </button>
+          <button class="nav-tab" id="navAi" onclick="showSection('ai')">
+            <span>🤖</span><span class="tab-label">AI Tools</span>
+          </button>
+          <button class="nav-tab" id="navSettings" onclick="showSection('settings')">
+            <span>⚙️</span><span class="tab-label">إعدادات</span>
+          </button>
+        </div>
+
+        <!-- DROPDOWN GROUPS -->
+        <div class="nav-dropdowns">
+
+          <div class="nav-dropdown-wrap" id="dropAI">
+            <button class="nav-dropdown-btn" onclick="toggleNavDropdown('dropAI')">🧠 AI <span class="dd-arrow">▾</span></button>
+            <div class="nav-dropdown-menu">
+              <button onclick="showVoicePanel();closeAllDropdowns()">🎙️ مساعد صوتي</button>
+              <button onclick="showQuickReport();closeAllDropdowns()">⚡ تقرير سريع</button>
+              <button onclick="toggleAIWritingSidebar();closeAllDropdowns()">✍️ مساعد الكتابة</button>
+              <button onclick="showPromptsLib();closeAllDropdowns()">💬 مكتبة Prompts</button>
+              <button onclick="showChartsPanel();closeAllDropdowns()">📈 رسوم بيانية</button>
+              <button onclick="showTranslatePanel();closeAllDropdowns()">🌍 ترجمة التقرير</button>
+              <button onclick="toggleFocusMode();closeAllDropdowns()">🎯 وضع التركيز</button>
+              <div class="dd-divider"></div>
+              <button onclick="showSection('ai');closeAllDropdowns()" style="color:var(--accent);font-weight:800">🔧 كل أدوات AI ←</button>
+            </div>
+          </div>
+
+          <div class="nav-dropdown-wrap" id="dropExport">
+            <button class="nav-dropdown-btn" onclick="toggleNavDropdown('dropExport')">📤 تصدير <span class="dd-arrow">▾</span></button>
+            <div class="nav-dropdown-menu">
+              <button onclick="showPdfPanel();closeAllDropdowns()">📄 تصدير PDF</button>
+              <button onclick="exportWordDoc();closeAllDropdowns()">📝 Word (.doc)</button>
+              <button onclick="exportPowerPoint();closeAllDropdowns()">🎯 PowerPoint</button>
+              <button onclick="showCoverPage();closeAllDropdowns()">🎨 غلاف + PDF</button>
+              <button onclick="showEmailPanel();closeAllDropdowns()">📧 إرسال بريد</button>
+              <button onclick="printReport();closeAllDropdowns()">🖨️ طباعة</button>
+            </div>
+          </div>
+
+          <div class="nav-dropdown-wrap" id="dropManage">
+            <button class="nav-dropdown-btn" onclick="toggleNavDropdown('dropManage')">📂 إدارة <span class="dd-arrow">▾</span></button>
+            <div class="nav-dropdown-menu">
+              <button onclick="enterReadingMode();closeAllDropdowns()">📖 وضع القراءة</button>
+              <button onclick="showFavorites();closeAllDropdowns()">⭐ المفضلة</button>
+              <button onclick="showAnalytics();closeAllDropdowns()">📊 تحليلاتي</button>
+              <button onclick="showMergePanel();closeAllDropdowns()">🔀 دمج + نسخ</button>
+              <button onclick="showComparePanel();closeAllDropdowns()">🔄 مقارنة تقريرين</button>
+              <button onclick="showSchedulePanel();closeAllDropdowns()">⏰ جدولة تلقائية</button>
+              <button onclick="showTemplates();closeAllDropdowns()">📋 القوالب</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- UTILITY ICONS -->
+        <div class="nav-utils">
+          <button class="nav-icon-btn" onclick="showDashboard()" title="Dashboard" id="navDashboard2">📊</button>
+          <button class="nav-icon-btn" onclick="openGlobalSearch()" title="بحث Ctrl+Shift+F" id="navSearch">🔍</button>
+          <div style="position:relative;display:inline-flex;align-items:center">
+            <button class="nav-icon-btn" onclick="toggleNotifCenter()" title="الإشعارات" id="navBell">🔔</button>
+            <span id="notifBadge" style="display:none;position:absolute;top:0;right:0;background:#ef4444;color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-weight:900">0</span>
+          </div>
+          <button class="nav-icon-btn" onclick="toggleTheme()" title="المظهر" id="navTheme"><span id="themeIcon">🌙</span></button>
+          <button class="nav-icon-btn" onclick="toggleLanguage()" title="اللغة" id="navLang"><span id="langIcon">🌐</span><span id="langLabel" style="font-size:0.65rem;margin-right:2px">AR</span></button>
+          <button class="nav-icon-btn" onclick="showProfilePanel()" title="ملفي" id="navProfile"><span id="navAvatarIcon">👤</span></button>
+        </div>
+
+        <!-- hidden stubs for old IDs still referenced in JS -->
+        <span style="display:none" id="navVoice"></span><span style="display:none" id="navReading"></span>
+        <span style="display:none" id="navFavorites"></span><span style="display:none" id="navTranslate"></span>
+        <span style="display:none" id="navFocus"></span><span style="display:none" id="navMerge"></span>
+        <span style="display:none" id="navAnalytics"></span><span style="display:none" id="navWriter"></span>
+        <span style="display:none" id="navCover"></span><span style="display:none" id="navCharts"></span>
+        <span style="display:none" id="navEmail"></span><span style="display:none" id="navQuickReport"></span>
+        <span style="display:none" id="navPrompts"></span><span style="display:none" id="navSchedule"></span>
+        <span style="display:none" id="navTemplates"></span><span style="display:none" id="navDashboard"></span>
+        <span style="display:none" id="navHistory2"></span><span style="display:none" id="navCompare"></span>
+        <span style="display:none" id="navPPT"></span><span style="display:none" id="navPdf"></span>
+        <span style="display:none" id="navMarketplace"></span>
+
       </nav>
       <div class="header-actions">
         <!-- User Badge + Logout -->
@@ -1229,7 +1226,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=1774705494"></script>
+  <script src="app.js?v=1774707424"></script>
 
   <!-- ===== DASHBOARD OVERLAY ===== -->
   <div id="dashboardOverlay" class="ai-fullpage-overlay" style="display:none">

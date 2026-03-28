@@ -6108,3 +6108,36 @@ function showForgotMsg(msg, type) {
   el.style.color = colors[type] || '#fff';
   el.textContent = msg;
 }
+
+// ============================================================
+// NAV DROPDOWN LOGIC
+// ============================================================
+function toggleNavDropdown(id) {
+  var wrap = document.getElementById(id);
+  if (!wrap) return;
+  var isOpen = wrap.classList.contains('open');
+  closeAllDropdowns();
+  if (!isOpen) wrap.classList.add('open');
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.nav-dropdown-wrap').forEach(function(el) {
+    el.classList.remove('open');
+  });
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.nav-dropdown-wrap')) closeAllDropdowns();
+});
+
+// Sync nav-tab active state with showSection
+// Nav-tab sync patch - inline in showSection override
+function showSection(section) {
+  // call original logic by name
+  _doShowSection(section);
+  document.querySelectorAll('.nav-tab').forEach(function(b) { b.classList.remove('active'); });
+  var map = { create:'navCreate', history:'navHistory', ai:'navAi', settings:'navSettings' };
+  var btn = document.getElementById(map[section]);
+  if (btn) btn.classList.add('active');
+}
