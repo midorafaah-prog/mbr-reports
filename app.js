@@ -2042,36 +2042,44 @@ function getGoogleClientId() {
   return localStorage.getItem('mbrcst_google_client_id') || '';
 }
 
+// ✅ FIX: Single-use token client — no race condition, no double init
+let _gTokenClient = null;
+let _gInitialized = false;
+
 function signInWithGoogle() {
   const clientId = getGoogleClientId();
   if (!clientId) {
     showGoogleSetupModal();
     return;
   }
-  // Wait for GIS to load if not ready
-  if (typeof google === 'undefined' || !google.accounts) {
-    showToast('⏳ جاري تحميل Google Sign-In...', 'success');
+
+  // Wait for GIS library to load
+  if (typeof google === 'undefined' || !google?.accounts?.oauth2) {
+    showToast('⏳ جاري تحميل Google...', 'info');
     let tries = 0;
     const wait = setInterval(() => {
       tries++;
-      if (typeof google !== 'undefined' && google.accounts) {
-        clearInterval(wait); signInWithGoogle();
-      } else if (tries > 10) {
+      if (typeof google !== 'undefined' && google?.accounts?.oauth2) {
         clearInterval(wait);
-        showAuthError('❌ تعذّر تحميل Google. حاول مرة أخرى.');
+        signInWithGoogle();
+      } else if (tries > 20) {
+        clearInterval(wait);
+        showAuthError('❌ تعذّر تحميل Google. تحقق من الاتصال بالإنترنت.');
       }
-    }, 500);
+    }, 300);
     return;
   }
-  // Direct OAuth Token flow — most reliable, opens popup immediately
-  try {
-    const tokenClient = google.accounts.oauth2.initTokenClient({
+
+  // Create token client once
+  if (!_gTokenClient) {
+    _gTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: 'email profile openid',
-      prompt: 'select_account',
       callback: async (tokenResponse) => {
-        if (tokenResponse.error) {
-          showAuthError('❌ تم إلغاء تسجيل الدخول');
+        if (tokenResponse.error || !tokenResponse.access_token) {
+          if (tokenResponse.error !== 'access_denied') {
+            showAuthError('❌ تم إلغاء تسجيل الدخول');
+          }
           return;
         }
         try {
@@ -2079,16 +2087,17 @@ function signInWithGoogle() {
             headers: { Authorization: 'Bearer ' + tokenResponse.access_token }
           });
           const user = await res.json();
-          if (!user.email) { showAuthError('❌ لم نحصل على بيانات المستخدم'); return; }
-          handleGoogleUserInfo(user.email, user.name || user.email, user.picture);
-        } catch(e) { showAuthError('❌ خطأ في الاتصال بـ Google'); }
+          if (!user.email) { showAuthError('❌ لم نتمكن من الحصول على بيانات الحساب'); return; }
+          handleGoogleUserInfo(user.email, user.name || user.email, user.picture || '');
+        } catch(e) {
+          showAuthError('❌ خطأ في الاتصال بـ Google — حاول مجدداً');
+        }
       }
     });
-    tokenClient.requestAccessToken({ prompt: 'select_account' });
-  } catch(e) {
-    showAuthError('❌ خطأ: ' + e.message);
   }
-  // Dummy block to balance braces
+
+  // Request token — always prompts account chooser
+  _gTokenClient.requestAccessToken({ prompt: 'select_account' });
 }
 
 function handleGoogleUserInfo(email, name, picture) {
@@ -2137,13 +2146,16 @@ function showGoogleSetupModal() {
 function saveQuickGoogleId() {
   const id = document.getElementById('quickGoogleClientId')?.value?.trim();
   if (!id || !id.includes('.apps.googleusercontent.com')) {
-    alert('Client ID غير صحيح');
+    showToast('⚠️ Client ID غير صحيح — يجب أن ينتهي بـ .apps.googleusercontent.com', 'error');
     return;
   }
   localStorage.setItem('mbrcst_google_client_id', id);
+  // Reset cached clients so next call uses new ID
+  _gTokenClient = null;
+  _gInitialized = false;
   document.querySelector('[id="quickGoogleClientId"]')?.closest('[style*="fixed"]')?.remove();
   showToast('✅ تم حفظ Google Client ID', 'success');
-  setTimeout(() => signInWithGoogle(), 500);
+  setTimeout(() => signInWithGoogle(), 600);
 }
 
 // Google One Tap callback
@@ -2171,17 +2183,24 @@ async function handleGoogleCredential(response) {
 }
 
 function initGoogleOneTap() {
+  // ✅ FIX: Only run once, and only if client_id is present
+  if (_gInitialized) return;
   const clientId = getGoogleClientId();
-  if (!clientId || typeof google === 'undefined') return;
-  const container = document.getElementById('g_id_onload');
-  if (container) container.setAttribute('data-client_id', clientId);
-  google.accounts.id.initialize({
-    client_id: clientId,
-    callback: handleGoogleCredential,
-    auto_select: false,
-    cancel_on_tap_outside: true
-  });
-  google.accounts.id.prompt();
+  if (!clientId || clientId.length < 10) return;
+  if (typeof google === 'undefined' || !google?.accounts?.id) return;
+  _gInitialized = true;
+  try {
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleCredential,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      itp_support: true
+    });
+    // Don't auto-prompt — wait for user to click
+  } catch(e) {
+    console.warn('[MBR] Google One Tap init failed:', e.message);
+  }
 }
 
 // ===========================
