@@ -2040,41 +2040,39 @@ doAuth = async function() {
 
 
 // ===========================
-// GOOGLE SIGN-IN
+// GOOGLE SIGN-IN — Mobile-aware
 // ===========================
 function getGoogleClientId() {
   return localStorage.getItem('mbrcst_google_client_id') || '';
 }
 
-// ✅ FIX: Single-use token client — no race condition, no double init
 let _gTokenClient = null;
 let _gInitialized = false;
 
-function signInWithGoogle() {
-  const clientId = getGoogleClientId();
-  if (!clientId) {
-    showGoogleSetupModal();
-    return;
-  }
+// Detect mobile browsers (iOS/Android)
+function _isMobile() {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+         (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent));
+}
 
-  // Wait for GIS library to load
-  if (typeof google === 'undefined' || !google?.accounts?.oauth2) {
-    showToast('⏳ جاري تحميل Google...', 'info');
-    let tries = 0;
-    const wait = setInterval(() => {
-      tries++;
-      if (typeof google !== 'undefined' && google?.accounts?.oauth2) {
-        clearInterval(wait);
-        signInWithGoogle();
-      } else if (tries > 20) {
-        clearInterval(wait);
-        showAuthError('❌ تعذّر تحميل Google. تحقق من الاتصال بالإنترنت.');
-      }
-    }, 300);
-    return;
-  }
+// ✅ MOBILE: Redirect flow (no popup — works on all mobile browsers)
+function _googleRedirectFlow(clientId) {
+  const redirectUri = window.location.origin + window.location.pathname;
+  const scope = 'email profile openid';
+  const state = btoa(JSON.stringify({ t: Date.now(), r: redirectUri }));
+  localStorage.setItem('mbrcst_oauth_state', state);
+  const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('redirect_uri', redirectUri);
+  url.searchParams.set('response_type', 'token');
+  url.searchParams.set('scope', scope);
+  url.searchParams.set('prompt', 'select_account');
+  url.searchParams.set('state', state);
+  window.location.href = url.toString();
+}
 
-  // Create token client once
+// ✅ DESKTOP: Popup flow via GIS token client
+function _googlePopupFlow(clientId) {
   if (!_gTokenClient) {
     _gTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: clientId,
@@ -2086,23 +2084,76 @@ function signInWithGoogle() {
           }
           return;
         }
-        try {
-          const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-            headers: { Authorization: 'Bearer ' + tokenResponse.access_token }
-          });
-          const user = await res.json();
-          if (!user.email) { showAuthError('❌ لم نتمكن من الحصول على بيانات الحساب'); return; }
-          handleGoogleUserInfo(user.email, user.name || user.email, user.picture || '');
-        } catch(e) {
-          showAuthError('❌ خطأ في الاتصال بـ Google — حاول مجدداً');
-        }
+        await _fetchGoogleUser(tokenResponse.access_token);
       }
     });
   }
-
-  // Request token — always prompts account chooser
   _gTokenClient.requestAccessToken({ prompt: 'select_account' });
 }
+
+async function _fetchGoogleUser(accessToken) {
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    const user = await res.json();
+    if (!user.email) { showAuthError('❌ لم نتمكن من الحصول على بيانات الحساب'); return; }
+    handleGoogleUserInfo(user.email, user.name || user.email, user.picture || '');
+  } catch(e) {
+    showAuthError('❌ خطأ في الاتصال بـ Google — حاول مجدداً');
+  }
+}
+
+// Handle redirect return (token in URL hash)
+function _handleGoogleRedirectReturn() {
+  const hash = window.location.hash;
+  if (!hash || !hash.includes('access_token')) return;
+  const params = new URLSearchParams(hash.slice(1));
+  const token = params.get('access_token');
+  const state = params.get('state');
+  if (!token) return;
+  // Clean URL without reload
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+  // Process token
+  _fetchGoogleUser(token);
+}
+
+function signInWithGoogle() {
+  const clientId = getGoogleClientId();
+  if (!clientId) { showGoogleSetupModal(); return; }
+
+  // Mobile: redirect flow (no popup)
+  if (_isMobile()) {
+    _googleRedirectFlow(clientId);
+    return;
+  }
+
+  // Desktop: GIS popup flow
+  if (typeof google === 'undefined' || !google?.accounts?.oauth2) {
+    showToast('⏳ جاري تحميل Google...', 'success');
+    let tries = 0;
+    const wait = setInterval(() => {
+      tries++;
+      if (typeof google !== 'undefined' && google?.accounts?.oauth2) {
+        clearInterval(wait); signInWithGoogle();
+      } else if (tries > 20) {
+        clearInterval(wait);
+        // Fallback to redirect on timeout
+        _googleRedirectFlow(clientId);
+      }
+    }, 300);
+    return;
+  }
+  _googlePopupFlow(clientId);
+}
+
+// Check for redirect return on page load
+(function() {
+  if (window.location.hash.includes('access_token')) {
+    _handleGoogleRedirectReturn();
+  }
+})();
+
 
 function handleGoogleUserInfo(email, name, picture) {
   const users = getUsers();
