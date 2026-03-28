@@ -2055,3 +2055,60 @@ body.theme-corporate .generate-btn { background: linear-gradient(135deg, #0078d4
 #historyViewModal { display: none; }
 #historyViewModal.open { display: flex !important; }
 
+
+/* ===== NEW NAV BUTTONS ===== */
+.nav-btn-voice    { background: rgba(239,68,68,0.1) !important; border: 1px solid rgba(239,68,68,0.3) !important; color: #ef4444 !important; }
+.nav-btn-profile  { background: rgba(16,185,129,0.1) !important; border: 1px solid rgba(16,185,129,0.3) !important; color: #10b981 !important; }
+.nav-btn-theme    { background: rgba(255,255,255,0.06) !important; border: 1px solid var(--border) !important; font-size: 1rem; padding: 0.35rem 0.7rem !important; }
+.nav-btn-shortcuts { background: rgba(255,255,255,0.04) !important; border: 1px solid var(--border) !important; padding: 0.35rem 0.7rem !important; }
+
+/* ===== VOICE BARS ===== */
+.voice-bar {
+  width: 6px; height: 8px; background: linear-gradient(180deg,#6c63ff,#00d4aa);
+  border-radius: 3px; transition: height 0.1s ease;
+}
+
+/* ===== VOICE MODE BUTTONS ===== */
+.voice-mode-btn {
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  border-radius: 20px; padding: 0.35rem 0.9rem; font-size: 0.78rem;
+  font-weight: 700; cursor: pointer; color: var(--text-muted);
+  font-family: var(--font); transition: all 0.15s;
+}
+.voice-mode-btn.active, .voice-mode-btn:hover {
+  background: rgba(108,99,255,0.2); border-color: rgba(108,99,255,0.4); color: var(--accent);
+}
+
+/* ===== KEYBOARD SHORTCUTS ===== */
+.shortcut-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.5rem 0.8rem; background: rgba(255,255,255,0.04);
+  border-radius: 8px; font-size: 0.82rem;
+}
+.shortcut-row kbd {
+  background: rgba(108,99,255,0.15); border: 1px solid rgba(108,99,255,0.3);
+  border-radius: 6px; padding: 3px 8px; font-size: 0.75rem;
+  color: var(--accent); font-family: monospace; font-weight: 700;
+}
+.shortcut-row span { color: var(--text-secondary); }
+
+/* ===== LIGHT MODE ===== */
+body.light-mode {
+  --bg-primary: #f4f4f8;
+  --bg-card: #ffffff;
+  --bg-hover: #f0f0f6;
+  --text-primary: #1a1a2e;
+  --text-secondary: #2d2d4e;
+  --text-muted: #6060a0;
+  --border: rgba(0,0,0,0.1);
+}
+body.light-mode .glass-sidebar { background: rgba(255,255,255,0.9); border-color: rgba(0,0,0,0.1); }
+body.light-mode .glass-card, body.light-mode .ai-tool-card { background: rgba(255,255,255,0.95); border-color: rgba(0,0,0,0.08); }
+body.light-mode nav { background: rgba(255,255,255,0.95); border-bottom: 1px solid rgba(0,0,0,0.08); }
+body.light-mode input, body.light-mode textarea, body.light-mode select { background: rgba(0,0,0,0.04) !important; color: #1a1a2e !important; }
+body.light-mode .ai-fullpage-overlay { background: #f4f4f8 !important; }
+
+/* ===== SHORTCUT PANEL ===== */
+#shortcutsPanel { display: none; }
+#shortcutsPanel.open { display: flex !important; }
+

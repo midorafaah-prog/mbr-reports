@@ -3853,3 +3853,315 @@ async function runAICompare() {
     showToast('✅ تمت المقارنة بالـ AI!', 'success');
   }
 }
+
+// ============================================================
+// 8. VOICE INPUT (Web Speech API)
+// ============================================================
+let voiceRecognition = null;
+let isVoiceListening = false;
+let voiceMode = 'dictate'; // dictate | report | command
+let voiceFullText = '';
+let voiceAnimInterval = null;
+
+function showVoicePanel() {
+  document.getElementById('voicePanel').style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navVoice')?.classList.add('active');
+  initVoiceRecognition();
+}
+function closeVoicePanel() {
+  document.getElementById('voicePanel').style.display = 'none';
+  document.getElementById('navVoice')?.classList.remove('active');
+  stopVoice();
+}
+function setVoiceMode(mode) {
+  voiceMode = mode;
+  document.querySelectorAll('.voice-mode-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`vMode${mode.charAt(0).toUpperCase()+mode.slice(1)}`)?.classList.add('active');
+  const msgs = {dictate:'تكلّم وسيُكتب نصك مباشرة', report:'تكلّم وسيُحوَّل كلامك لتقرير احترافي', command:'أصدر أوامر مثل: "أنشئ تقرير شهري"'};
+  const st = document.getElementById('voiceStatus');
+  if (st) st.textContent = msgs[mode] || '';
+}
+
+function initVoiceRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    const st = document.getElementById('voiceStatus');
+    if (st) st.textContent = '❌ المتصفح لا يدعم الإدخال الصوتي. استخدم Chrome أو Edge';
+    return null;
+  }
+  const r = new SpeechRecognition();
+  r.continuous = true;
+  r.interimResults = true;
+  r.lang = 'ar-SA';
+  r.onresult = e => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const txt = e.results[i][0].transcript;
+      if (e.results[i].isFinal) { final += txt + ' '; voiceFullText += txt + ' '; }
+      else interim += txt;
+    }
+    const el = document.getElementById('voiceTranscript');
+    if (el) el.textContent = (voiceFullText + interim) || 'استمر في الكلام...';
+  };
+  r.onerror = e => {
+    const st = document.getElementById('voiceStatus');
+    if (st) st.textContent = e.error === 'not-allowed' ? '❌ اسمح للمتصفح باستخدام الميكروفون' : '❌ خطأ: ' + e.error;
+    stopVoiceAnim();
+    isVoiceListening = false;
+    const btn = document.getElementById('voiceMicBtn');
+    if (btn) { btn.textContent = '🎙️'; btn.style.background = 'linear-gradient(135deg,#6c63ff,#00d4aa)'; }
+  };
+  r.onend = () => {
+    if (isVoiceListening) { try { r.start(); } catch(e) {} }
+    else { stopVoiceAnim(); }
+  };
+  voiceRecognition = r;
+  return r;
+}
+
+function toggleVoice() {
+  if (!voiceRecognition) initVoiceRecognition();
+  if (!voiceRecognition) return;
+  if (isVoiceListening) { stopVoice(); } else { startVoice(); }
+}
+
+function startVoice() {
+  if (!voiceRecognition) { initVoiceRecognition(); if (!voiceRecognition) return; }
+  voiceRecognition.lang = document.documentElement.lang === 'en' ? 'en-US' : 'ar-SA';
+  try { voiceRecognition.start(); } catch(e) { voiceRecognition = null; initVoiceRecognition(); try { voiceRecognition.start(); } catch(ee) { return; } }
+  isVoiceListening = true;
+  const st = document.getElementById('voiceStatus');
+  if (st) st.textContent = '🔴 جارٍ الاستماع... تكلّم الآن';
+  const btn = document.getElementById('voiceMicBtn');
+  if (btn) { btn.textContent = '⏹️'; btn.style.background = 'linear-gradient(135deg,#ef4444,#b91c1c)'; }
+  startVoiceAnim();
+}
+
+function stopVoice() {
+  isVoiceListening = false;
+  if (voiceRecognition) { try { voiceRecognition.stop(); } catch(e) {} }
+  const st = document.getElementById('voiceStatus');
+  if (st) st.textContent = voiceFullText ? '✅ تم التسجيل. اضغط "نقل للمحرر" أو "ولّد تقرير"' : 'اضغط الميكروفون للبدء';
+  const btn = document.getElementById('voiceMicBtn');
+  if (btn) { btn.textContent = '🎙️'; btn.style.background = 'linear-gradient(135deg,#6c63ff,#00d4aa)'; }
+  stopVoiceAnim();
+}
+
+function clearVoice() {
+  voiceFullText = '';
+  const el = document.getElementById('voiceTranscript');
+  if (el) el.textContent = 'سيظهر كلامك هنا...';
+  const st = document.getElementById('voiceStatus');
+  if (st) st.textContent = 'اضغط الميكروفون للبدء';
+}
+
+function applyVoiceText() {
+  if (!voiceFullText.trim()) { showToast('لا يوجد نص لنقله', 'error'); return; }
+  const areaEl = document.getElementById('reportNotes') || document.getElementById('reportObjectives') || document.querySelector('textarea');
+  if (areaEl) { areaEl.value += (areaEl.value ? '\n' : '') + voiceFullText.trim(); }
+  closeVoicePanel();
+  showSection('create');
+  showToast('✅ تم نقل النص للمحرر', 'success');
+}
+
+async function voiceToAIReport() {
+  const text = voiceFullText.trim();
+  if (!text) { showToast('سجّل كلامك أولاً', 'error'); return; }
+  stopVoice();
+  closeVoicePanel();
+  showSection('ai-tools');
+  const st = document.getElementById('voiceStatus');
+  const resultArea = document.querySelector('.ai-tool-result') || document.createElement('div');
+  resultArea.style.display = 'block';
+  resultArea.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>AI يحوّل كلامك لتقرير...</span></div>';
+  const result = await callAI(
+    `حوّل هذه الملاحظات الصوتية العشوائية إلى تقرير احترافي منظّم بالعربية:\n\n"${text}"\n\nالمطلوب:\n١. رتّب الأفكار وأضف هيكلاً احترافياً\n٢. صحّح الأخطاء وحسّن الأسلوب\n٣. أضف مقدمة وخاتمة\n٤. الأسلوب رسمي ومهني`,
+    'أنت كاتب تقارير محترف متخصص في تحويل الملاحظات الشفهية لتقارير مكتوبة منظمة.'
+  );
+  if (result && resultArea) {
+    resultArea.innerHTML = `<div class="ai-result-content" style="white-space:pre-wrap">${result}</div>`;
+    showToast('✅ تم تحويل كلامك لتقرير!', 'success');
+  }
+}
+
+function startVoiceAnim() {
+  const bars = document.querySelectorAll('.voice-bar');
+  if (!bars.length) return;
+  voiceAnimInterval = setInterval(() => {
+    bars.forEach(b => {
+      const h = Math.random() * 50 + 10;
+      b.style.height = h + 'px';
+    });
+  }, 100);
+}
+
+function stopVoiceAnim() {
+  clearInterval(voiceAnimInterval);
+  document.querySelectorAll('.voice-bar').forEach(b => { b.style.height = '8px'; });
+}
+
+// ============================================================
+// 9. USER PROFILE
+// ============================================================
+function showProfilePanel() {
+  const overlay = document.getElementById('profileOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navProfile')?.classList.add('active');
+  loadProfileData();
+}
+function closeProfilePanel() {
+  document.getElementById('profileOverlay').style.display = 'none';
+  document.getElementById('navProfile')?.classList.remove('active');
+}
+
+function loadProfileData() {
+  const user = currentUser;
+  if (!user) return;
+  document.getElementById('profileName').textContent = user.fullName || user.username || '';
+  document.getElementById('profileEmail').textContent = user.username || '';
+  document.getElementById('profileRole').textContent = user.role === 'admin' ? '👑 مدير النظام' : '👤 مستخدم';
+  document.getElementById('editFullName').value = user.fullName || '';
+
+  // Avatar
+  const savedAvatar = localStorage.getItem('mbrcst_user_avatar_' + user.username);
+  const bigAvatar = document.getElementById('profileAvatarBig');
+  if (savedAvatar && bigAvatar) bigAvatar.innerHTML = `<img src="${savedAvatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
+
+  // Stats
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const aiUsage = parseInt(localStorage.getItem('mbrcst_ai_usage') || '0');
+  const thisMonth = history.filter(r => new Date(r.date).getMonth() === new Date().getMonth()).length;
+  const allWords = history.reduce((s, r) => s + (r.wordCount || 0), 0);
+
+  document.getElementById('profileReportsCount').textContent = history.length;
+
+  const statsEl = document.getElementById('profileStats');
+  if (statsEl) {
+    statsEl.innerHTML = [
+      {icon:'🤖', val:aiUsage, label:'طلبات AI', color:'#6c63ff'},
+      {icon:'📅', val:thisMonth, label:'تقارير الشهر', color:'#00d4aa'},
+      {icon:'✍️', val:allWords.toLocaleString('ar'), label:'كلمة كتبتها', color:'#f59e0b'},
+    ].map(s => `
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(${s.color==='#6c63ff'?'108,99,255':s.color==='#00d4aa'?'0,212,170':'245,158,11'},0.2);border-radius:12px;padding:1rem;text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:0.3rem">${s.icon}</div>
+        <div style="font-size:1.3rem;font-weight:900;color:${s.color}">${s.val}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted)">${s.label}</div>
+      </div>`).join('');
+  }
+}
+
+function updateAvatar(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const data = e.target.result;
+    localStorage.setItem('mbrcst_user_avatar_' + (currentUser?.username || ''), data);
+    const bigAvatar = document.getElementById('profileAvatarBig');
+    if (bigAvatar) bigAvatar.innerHTML = `<img src="${data}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
+    showToast('✅ تم تحديث الصورة', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveProfile() {
+  const newName = (document.getElementById('editFullName') || {}).value?.trim();
+  const newPass = (document.getElementById('editPassword') || {}).value?.trim();
+  if (!newName) { showToast('أدخل الاسم', 'error'); return; }
+  if (!currentUser) return;
+  const users = getUsers();
+  if (users[currentUser.username]) {
+    users[currentUser.username].fullName = newName;
+    if (newPass && newPass.length >= 6) users[currentUser.username].hash = btoa(newPass);
+    saveUsers(users);
+    currentUser.fullName = newName;
+    const nameEls = document.querySelectorAll('.user-name, #userFullName, #sidebarUserName');
+    nameEls.forEach(el => { if (el) el.textContent = newName; });
+    showToast('✅ تم حفظ التغييرات', 'success');
+    document.getElementById('editPassword').value = '';
+  }
+}
+
+function clearAllData() {
+  if (!confirm('سيتم حذف جميع التقارير والإعدادات. هل أنت متأكد؟')) return;
+  ['mbrcst_history','mbrcst_branding','mbrcst_org_logo','mbrcst_schedules'].forEach(k => localStorage.removeItem(k));
+  showToast('✅ تم مسح البيانات', 'success');
+  closeProfilePanel();
+}
+
+function exportMyData() {
+  const data = {
+    history: JSON.parse(localStorage.getItem('mbrcst_history') || '[]'),
+    branding: JSON.parse(localStorage.getItem('mbrcst_branding') || '{}'),
+    schedules: JSON.parse(localStorage.getItem('mbrcst_schedules') || '[]'),
+    exportDate: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `mbr-reports-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
+  showToast('✅ تم تصدير بياناتك', 'success');
+}
+
+// ============================================================
+// 10. THEME TOGGLE (Dark / Light)
+// ============================================================
+function toggleTheme() {
+  const isDark = document.body.classList.toggle('light-mode');
+  localStorage.setItem('mbrcst_theme', isDark ? 'light' : 'dark');
+  const icon = document.getElementById('themeIcon');
+  if (icon) icon.textContent = isDark ? '☀️' : '🌙';
+  showToast(isDark ? '☀️ الوضع الفاتح' : '🌙 الوضع الداكن', 'success');
+}
+
+// Apply saved theme on load
+(function() {
+  const t = localStorage.getItem('mbrcst_theme');
+  if (t === 'light') { document.body.classList.add('light-mode'); const i=document.getElementById('themeIcon'); if(i) i.textContent='☀️'; }
+})();
+
+// ============================================================
+// 11. KEYBOARD SHORTCUTS
+// ============================================================
+function showShortcuts() {
+  const p = document.getElementById('shortcutsPanel');
+  if (p) { p.style.display = 'flex'; p.classList.add('open'); }
+}
+function closeShortcuts() {
+  const p = document.getElementById('shortcutsPanel');
+  if (p) { p.style.display = 'none'; p.classList.remove('open'); }
+}
+
+document.addEventListener('keydown', e => {
+  const ctrl = e.ctrlKey || e.metaKey;
+  if (e.key === 'Escape') {
+    // Close any open overlay
+    ['voicePanel','profileOverlay','pdfBrandingPanel','schedulePanel','reportsHistoryOverlay','compareOverlay','templatesOverlay'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.style.display !== 'none') { el.style.display = 'none'; }
+    });
+    closeShortcuts();
+    closeShare?.();
+    return;
+  }
+  if (e.key === '?' && !ctrl && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+    showShortcuts(); return;
+  }
+  if (!ctrl) return;
+  switch(e.key.toLowerCase()) {
+    case 'n': e.preventDefault(); showSection('create'); break;
+    case 'g': e.preventDefault(); document.getElementById('generateReportBtn')?.click(); break;
+    case 's': e.preventDefault(); saveReportToHistory(
+      (document.getElementById('reportTitle')||{}).value,
+      getCurrentReportText(),
+      (document.getElementById('reportTypeSelect')||{}).value
+    ); showToast('✅ تم الحفظ', 'success'); break;
+    case 'p': e.preventDefault(); showPdfPanel(); break;
+    case 'e': e.preventDefault(); exportPowerPoint(); break;
+    case 'k': e.preventDefault(); showReportsHistory(); setTimeout(()=>document.getElementById('historySearch')?.focus(),300); break;
+    case 'm': e.preventDefault(); showVoicePanel(); break;
+    case 'd': e.preventDefault(); showDashboard(); break;
+    case 't': e.preventDefault(); toggleTheme(); break;
+  }
+});

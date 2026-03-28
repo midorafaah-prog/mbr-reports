@@ -186,6 +186,18 @@
         <button class="nav-btn nav-btn-ai" id="navAi" onclick="showSection('ai')">
           <span>🤖</span> AI Tools
         </button>
+        <button class="nav-btn nav-btn-voice" id="navVoice" onclick="showVoicePanel()" title="إدخال صوتي">
+          <span>🎙️</span> مساعد صوتي
+        </button>
+        <button class="nav-btn nav-btn-profile" id="navProfile" onclick="showProfilePanel()" title="ملفي">
+          <span id="navAvatarIcon">👤</span> ملفي
+        </button>
+        <button class="nav-btn nav-btn-theme" id="navTheme" onclick="toggleTheme()" title="تغيير المظهر">
+          <span id="themeIcon">🌙</span>
+        </button>
+        <button class="nav-btn nav-btn-shortcuts" id="navShortcuts" onclick="showShortcuts()" title="اختصارات">
+          <span>⌨️</span>
+        </button>
         <button class="nav-btn nav-btn-history" id="navHistory2" onclick="showReportsHistory()"><span>📚</span> مكتبة</button>
         <button class="nav-btn nav-btn-compare" id="navCompare" onclick="showComparePanel()"><span>📊</span> مقارنة</button>
         <button class="nav-btn nav-btn-powerpoint" id="navPPT" onclick="exportPowerPoint()"><span>🎯</span> PowerPoint</button>
@@ -1455,6 +1467,124 @@
       <div style="padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:0.5rem">
         <button onclick="loadHistReport()" class="ai-tool-btn" style="flex:1;padding:0.6rem">📋 تحميل للمحرر</button>
         <button onclick="exportHistPDF()" class="ai-tool-btn" style="flex:1;padding:0.6rem;background:linear-gradient(135deg,#ef4444,#b91c1c)">📄 PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= VOICE PANEL ========= -->
+  <div id="voicePanel" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:700px;margin:0 auto;text-align:center">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;text-align:right">
+        <h2 style="color:#fff;font-size:1.5rem;font-weight:900;margin:0">🎙️ المساعد الصوتي</h2>
+        <button onclick="stopVoice();closeVoicePanel()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.4rem 1rem;cursor:pointer;font-family:var(--font)">✕</button>
+      </div>
+
+      <!-- Visualizer -->
+      <div id="voiceVisualizer" style="display:flex;align-items:flex-end;justify-content:center;gap:3px;height:80px;margin-bottom:1.5rem">
+        <div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div>
+        <div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div>
+        <div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div>
+        <div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div>
+      </div>
+
+      <!-- Status -->
+      <div id="voiceStatus" style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.5rem">اضغط الميكروفون للبدء</div>
+
+      <!-- Live transcript -->
+      <div id="voiceTranscript" style="min-height:120px;background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:14px;padding:1.2rem;font-size:0.88rem;color:var(--text-secondary);line-height:1.8;text-align:right;direction:rtl;white-space:pre-wrap;margin-bottom:1.5rem">سيظهر كلامك هنا...</div>
+
+      <!-- Controls -->
+      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem">
+        <button id="voiceMicBtn" onclick="toggleVoice()" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#6c63ff,#00d4aa);border:none;font-size:2rem;cursor:pointer;box-shadow:0 4px 20px rgba(108,99,255,0.4);transition:all 0.2s">🎙️</button>
+      </div>
+
+      <!-- Mode -->
+      <div style="display:flex;gap:0.5rem;justify-content:center;margin-bottom:1.5rem">
+        <button onclick="setVoiceMode('dictate')" id="vModeDictate" class="voice-mode-btn active">✍️ إملاء نص</button>
+        <button onclick="setVoiceMode('report')" id="vModeReport" class="voice-mode-btn">📊 ولّد تقرير من كلامي</button>
+        <button onclick="setVoiceMode('command')" id="vModeCommand" class="voice-mode-btn">⚡ أوامر ذكية</button>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap">
+        <button onclick="applyVoiceText()" class="ai-tool-btn" style="padding:0.6rem 1.4rem">📋 نقل للمحرر</button>
+        <button onclick="voiceToAIReport()" class="ai-tool-btn" style="padding:0.6rem 1.4rem;background:linear-gradient(135deg,#6c63ff,#00d4aa)">🤖 ولّد تقرير AI</button>
+        <button onclick="clearVoice()" style="padding:0.6rem 1rem;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:10px;color:#ef4444;cursor:pointer;font-family:var(--font);font-weight:700">🗑️ مسح</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= PROFILE OVERLAY ========= -->
+  <div id="profileOverlay" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:750px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem">
+        <h2 style="color:#fff;font-size:1.5rem;font-weight:900;margin:0">👤 ملف المستخدم</h2>
+        <button onclick="closeProfilePanel()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.4rem 1rem;cursor:pointer;font-family:var(--font)">✕</button>
+      </div>
+
+      <!-- Avatar + Name -->
+      <div style="display:flex;gap:1.5rem;align-items:center;background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem">
+        <div style="position:relative;cursor:pointer" onclick="document.getElementById('avatarFileInput').click()">
+          <div id="profileAvatarBig" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#6c63ff,#00d4aa);display:flex;align-items:center;justify-content:center;font-size:2rem;border:3px solid rgba(108,99,255,0.4)">👤</div>
+          <div style="position:absolute;bottom:0;right:0;background:var(--accent);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.7rem">✏️</div>
+        </div>
+        <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="updateAvatar(this)">
+        <div style="flex:1">
+          <div id="profileName" style="font-size:1.2rem;font-weight:900;color:#fff"></div>
+          <div id="profileEmail" style="font-size:0.82rem;color:var(--text-muted);margin-top:0.2rem"></div>
+          <div id="profileRole" style="display:inline-block;margin-top:0.5rem;font-size:0.7rem;font-weight:700;background:rgba(108,99,255,0.15);color:var(--accent);border-radius:4px;padding:2px 8px"></div>
+        </div>
+        <div style="text-align:center;padding:0.8rem 1.5rem;background:rgba(255,255,255,0.04);border-radius:12px">
+          <div id="profileReportsCount" style="font-size:1.8rem;font-weight:900;color:var(--accent)">0</div>
+          <div style="font-size:0.72rem;color:var(--text-muted)">تقرير</div>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div id="profileStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem"></div>
+
+      <!-- Edit Name -->
+      <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.15);border-radius:16px;padding:1.5rem;margin-bottom:1rem">
+        <div style="font-weight:800;color:#fff;margin-bottom:1rem;font-size:0.92rem">✏️ تعديل البيانات</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div><label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">الاسم الكامل</label>
+            <input type="text" id="editFullName" class="email-input" style="width:100%;box-sizing:border-box"></div>
+          <div><label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">كلمة المرور الجديدة</label>
+            <input type="password" id="editPassword" class="email-input" placeholder="اتركه فارغاً للإبقاء" style="width:100%;box-sizing:border-box"></div>
+        </div>
+        <button onclick="saveProfile()" style="margin-top:1rem;background:linear-gradient(135deg,#6c63ff,#00d4aa);border:none;border-radius:10px;color:white;font-family:var(--font);font-weight:700;padding:0.6rem 1.5rem;cursor:pointer">💾 حفظ التغييرات</button>
+      </div>
+
+      <!-- Danger Zone -->
+      <div style="background:#1a1a2e;border:1px solid rgba(239,68,68,0.2);border-radius:16px;padding:1.2rem">
+        <div style="font-weight:800;color:#ef4444;margin-bottom:0.8rem;font-size:0.88rem">⚠️ منطقة الخطر</div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button onclick="clearAllData()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:#ef4444;padding:0.5rem 1rem;cursor:pointer;font-family:var(--font);font-size:0.82rem">🗑️ مسح كل البيانات</button>
+          <button onclick="exportMyData()" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:var(--text-muted);padding:0.5rem 1rem;cursor:pointer;font-family:var(--font);font-size:0.82rem">📦 تصدير بياناتي</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= SHORTCUTS PANEL ========= -->
+  <div id="shortcutsPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:#12121e;border:1px solid rgba(108,99,255,0.3);border-radius:20px;padding:2rem;max-width:500px;width:95%;max-height:80vh;overflow:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+        <h3 style="color:#fff;font-size:1.1rem;font-weight:900;margin:0">⌨️ اختصارات لوحة المفاتيح</h3>
+        <button onclick="closeShortcuts()" style="background:none;border:none;color:#888;cursor:pointer;font-size:1.1rem">✕</button>
+      </div>
+      <div style="display:grid;gap:0.6rem">
+        <div class="shortcut-row"><kbd>Ctrl + N</kbd><span>تقرير جديد</span></div>
+        <div class="shortcut-row"><kbd>Ctrl + G</kbd><span>توليد بـ AI</span></div>
+        <div class="shortcut-row"><kbd>Ctrl + S</kbd><span>حفظ التقرير</span></div>
+        <div class="shortcut-row"><kbd>Ctrl + P</kbd><span>تصدير PDF</span></div>
+        <div class="shortcut-row"><kbd>Ctrl + E</kbd><span>تصدير PowerPoint</span></div>
+        <div class="shortcut-row"><kbd>Ctrl + K</kbd><span>بحث في المكتبة</span></div>
+        <div class="shortcut-row"><kbd>Ctrl + M</kbd><span>فتح المساعد الصوتي</span></div>
+        <div class="shortcut-row"><kbd>Ctrl + D</kbd><span>فتح Dashboard</span></div>
+        <div class="shortcut-row"><kbd>Ctrl + T</kbd><span>تغيير المظهر</span></div>
+        <div class="shortcut-row"><kbd>Escape</kbd><span>إغلاق النافذة</span></div>
+        <div class="shortcut-row"><kbd>?</kbd><span>عرض الاختصارات</span></div>
       </div>
     </div>
   </div>
