@@ -1908,6 +1908,9 @@ function showAuthError(msg) {
 }
 
 function switchAuthTab(tab) {
+  // Show forgot password only on login tab
+  const forgotRow = document.getElementById('forgotLinkRow');
+  if (forgotRow) forgotRow.style.display = (tab === 'login') ? 'block' : 'none';
   const isLogin = tab === 'login';
   document.getElementById('tabLogin')?.classList.toggle('active', isLogin);
   document.getElementById('tabRegister')?.classList.toggle('active', !isLogin);
