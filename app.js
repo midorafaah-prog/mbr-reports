@@ -4165,3 +4165,259 @@ document.addEventListener('keydown', e => {
     case 't': e.preventDefault(); toggleTheme(); break;
   }
 });
+
+// ============================================================
+// 12. NOTIFICATION CENTER
+// ============================================================
+const NOTIFS_KEY = 'mbrcst_notifications';
+
+function addNotification(title, body, type='info') {
+  const notifs = JSON.parse(localStorage.getItem(NOTIFS_KEY) || '[]');
+  notifs.unshift({ id: Date.now(), title, body, type, read: false, time: new Date().toISOString() });
+  if (notifs.length > 50) notifs.pop();
+  localStorage.setItem(NOTIFS_KEY, JSON.stringify(notifs));
+  updateNotifBadge();
+}
+
+function updateNotifBadge() {
+  const notifs = JSON.parse(localStorage.getItem(NOTIFS_KEY) || '[]');
+  const unread = notifs.filter(n => !n.read).length;
+  const badge = document.getElementById('notifBadge');
+  if (badge) {
+    badge.textContent = unread > 9 ? '9+' : unread;
+    badge.style.display = unread > 0 ? 'flex' : 'none';
+  }
+}
+
+function toggleNotifCenter() {
+  const c = document.getElementById('notifCenter');
+  if (!c) return;
+  const isOpen = c.style.display !== 'none';
+  c.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) { renderNotifications(); markAllRead(); }
+}
+
+function closeNotifCenter() {
+  const c = document.getElementById('notifCenter');
+  if (c) c.style.display = 'none';
+}
+
+function renderNotifications() {
+  const list = document.getElementById('notifList');
+  if (!list) return;
+  const notifs = JSON.parse(localStorage.getItem(NOTIFS_KEY) || '[]');
+  const icons = { info:'ℹ️', success:'✅', warning:'⚠️', ai:'🤖', report:'📊', schedule:'⏰' };
+  if (!notifs.length) {
+    list.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:0.82rem">📭 لا توجد إشعارات</div>';
+    return;
+  }
+  list.innerHTML = notifs.slice(0,20).map(n => {
+    const t = new Date(n.time).toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'});
+    const d = new Date(n.time).toLocaleDateString('ar-SA', {month:'short', day:'numeric'});
+    return `<div style="padding:0.8rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.04);background:${n.read?'transparent':'rgba(108,99,255,0.05)'}">
+      <div style="display:flex;gap:0.5rem;align-items:flex-start">
+        <span style="font-size:1rem">${icons[n.type]||'🔔'}</span>
+        <div style="flex:1">
+          <div style="font-size:0.82rem;font-weight:700;color:#fff;margin-bottom:0.2rem">${n.title}</div>
+          <div style="font-size:0.76rem;color:var(--text-muted)">${n.body}</div>
+          <div style="font-size:0.68rem;color:#666;margin-top:0.3rem">${d} ${t}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function markAllRead() {
+  const notifs = JSON.parse(localStorage.getItem(NOTIFS_KEY) || '[]').map(n => ({...n, read:true}));
+  localStorage.setItem(NOTIFS_KEY, JSON.stringify(notifs));
+  updateNotifBadge();
+}
+
+// Override showToast to also add notifications for important events
+const _origShowToast = typeof showToast === 'function' ? showToast : null;
+window.addNotifFromToast = function(msg, type) {
+  if (msg.startsWith('✅') || msg.startsWith('❌') || msg.startsWith('🔔')) {
+    const typeMap = {'✅':'success','❌':'warning','🔔':'schedule'};
+    const icon = msg.slice(0,2);
+    addNotification(msg.replace(/^[✅❌🔔⏳]\s*/,'').split('.')[0], msg, typeMap[icon] || 'info');
+  }
+};
+
+// Seed initial notifications
+(function seedNotifs() {
+  const key = 'mbrcst_notifs_seeded';
+  if (localStorage.getItem(key)) { updateNotifBadge(); return; }
+  addNotification('مرحباً بك في MBR Reports!', 'المنصة جاهزة بكل ميزاتها. ابدأ بإنشاء تقريرك الأول.', 'success');
+  addNotification('تلميح: استخدم الميكروفون 🎙️', 'يمكنك التحدث لإنشاء التقرير مباشرة', 'info');
+  addNotification('اختصارات لوحة المفاتيح', 'اضغط ? لعرض جميع الاختصارات المتاحة', 'info');
+  localStorage.setItem(key, '1');
+})();
+
+// ============================================================
+// 13. AI REPORT IMPROVEMENT
+// ============================================================
+async function improveCurrentReport(mode) {
+  const content = getCurrentReportText();
+  if (!content || content === 'لا يوجد محتوى تقرير حالياً') {
+    showToast('❌ أنشئ تقريراً أولاً ثم حسّنه', 'error'); return;
+  }
+  const resultEl = document.getElementById('improveResult');
+  if (resultEl) { resultEl.style.display = 'block'; resultEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>AI يعمل على تحسين تقريرك...</span></div>'; }
+  const prompts = {
+    style: `حسّن أسلوب هذا التقرير مع الحفاظ على نفس المحتوى:\n\n${content}\n\nالتحسينات المطلوبة:\n١. قوّي الجمل وأزل التكرار\n٢. استخدم مفردات أكثر احترافية\n٣. حسّن الانتقالات بين الفقرات\n٤. تأكد من الدقة اللغوية`,
+    expand: `وسّع هذا التقرير وأضف تفاصيل أكثر:\n\n${content}\n\nالمطلوب:\n١. أضف بيانات وأرقام داعمة\n٢. وسّع كل نقطة رئيسية\n٣. أضف أمثلة عملية\n٤. عمّق التحليل والتوصيات`,
+    executive: `حوّل هذا التقرير إلى ملخص تنفيذي احترافي:\n\n${content}\n\nالملخص يجب أن يحتوي:\n١. النقاط الرئيسية (٣-٥ نقاط)\n٢. الأرقام الأهم\n٣. القرارات المطلوبة\n٤. الخطوات التالية\nالمدة: ٣٠ ثانية قراءة`
+  };
+  const systems = {
+    style: 'أنت محرر لغوي محترف متخصص في تحسين نصوص التقارير الرسمية.',
+    expand: 'أنت كاتب تقارير خبير متخصص في إثراء المحتوى وإضافة العمق التحليلي.',
+    executive: 'أنت مستشار تنفيذي متخصص في تلخيص التقارير للقيادة العليا.'
+  };
+  const result = await callAI(prompts[mode], systems[mode], { maxTokens: 2500 });
+  if (result && resultEl) {
+    resultEl.innerHTML = `<div class="ai-result-content" style="white-space:pre-wrap">${result}</div>
+      <button onclick="applyImprovedReport(this)" data-content="${encodeURIComponent(result)}" class="ai-tool-btn" style="margin-top:0.5rem;padding:0.5rem 1rem;font-size:0.8rem">✅ تطبيق هذا التقرير</button>`;
+    addNotification('تم تحسين التقرير ✨', `تم ${mode==='style'?'تحسين الأسلوب':mode==='expand'?'توسيع المحتوى':'إنشاء ملخص تنفيذي'} بنجاح`, 'ai');
+    showToast('✅ تم تحسين التقرير!', 'success');
+  }
+}
+
+function applyImprovedReport(btn) {
+  const content = decodeURIComponent(btn.dataset.content);
+  const outputEl = document.getElementById('reportOutput') || document.querySelector('.report-output-content');
+  if (outputEl) outputEl.textContent = content;
+  saveReportToHistory((document.getElementById('reportTitle')||{}).value || 'تقرير محسّن', content, 'general');
+  showSection('create'); showToast('✅ تم تطبيق التقرير المحسّن', 'success');
+}
+
+// ============================================================
+// 14. REAL-TIME WRITING STATS
+// ============================================================
+function updateWritingStats(text) {
+  if (!text || text.length < 5) return;
+  const bar = document.getElementById('writingStatsBar');
+  if (!bar) return;
+  bar.style.display = 'flex';
+  const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  const chars = text.length;
+  const readMin = Math.max(1, Math.ceil(words / 200));
+  let quality = 'ضعيف';
+  let qualityColor = '#ef4444';
+  if (words >= 500) { quality = 'ممتاز ⭐⭐⭐⭐⭐'; qualityColor = '#10b981'; }
+  else if (words >= 300) { quality = 'جيد جداً ⭐⭐⭐⭐'; qualityColor = '#00d4aa'; }
+  else if (words >= 150) { quality = 'جيد ⭐⭐⭐'; qualityColor = '#f59e0b'; }
+  else if (words >= 50)  { quality = 'مقبول ⭐⭐'; qualityColor = '#f59e0b'; }
+  const wEl = document.getElementById('statWords');
+  const cEl = document.getElementById('statChars');
+  const rEl = document.getElementById('statReadTime');
+  const qEl = document.getElementById('statQuality');
+  if (wEl) wEl.textContent = `📝 ${words.toLocaleString('ar')} كلمة`;
+  if (cEl) cEl.textContent = `🔤 ${chars.toLocaleString('ar')} حرف`;
+  if (rEl) rEl.textContent = `⏱️ ${readMin} دقيقة قراءة`;
+  if (qEl) { qEl.textContent = `الجودة: ${quality}`; qEl.style.color = qualityColor; }
+}
+
+// Hook into any textarea with live stats
+document.addEventListener('input', e => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+    const allText = Array.from(document.querySelectorAll('textarea')).map(t => t.value).join(' ');
+    if (allText.length > 20) updateWritingStats(allText);
+  }
+});
+
+// Also update after AI result
+const origAiShowResult = typeof aiShowResult === 'function' ? aiShowResult : null;
+function aiShowResultWithStats(elId, text) {
+  if (origAiShowResult) origAiShowResult(elId, text);
+  if (text) {
+    updateWritingStats(text);
+    addNotification('تقرير جاهز 📊', `تم إنشاء تقرير (${text.split(/\s+/).length} كلمة) بنجاح`, 'report');
+  }
+}
+
+// ============================================================
+// 15. GLOBAL SEARCH
+// ============================================================
+function openGlobalSearch() {
+  const overlay = document.getElementById('globalSearchOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  setTimeout(() => document.getElementById('globalSearchInput')?.focus(), 100);
+}
+
+function closeGlobalSearch() {
+  const overlay = document.getElementById('globalSearchOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function runGlobalSearch(q) {
+  const results = document.getElementById('globalSearchResults');
+  if (!results) return;
+  if (!q || q.length < 2) {
+    results.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:0.82rem">ابدأ الكتابة للبحث...</div>';
+    return;
+  }
+  const q_lower = q.toLowerCase();
+  const allResults = [];
+
+  // Search in report history
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  history.filter(r => r.title.includes(q) || r.content.includes(q)).slice(0,5).forEach(r => {
+    const idx = r.content.indexOf(q);
+    const snippet = idx >= 0 ? '...' + r.content.substring(Math.max(0,idx-30), idx+80) + '...' : r.content.substring(0,100);
+    allResults.push({ type:'report', icon:'📊', title:r.title, sub:snippet, action:`viewHistReport(${r.id})` });
+  });
+
+  // Search in templates
+  TEMPLATES.filter(t => t.title.includes(q) || t.desc.includes(q)).slice(0,3).forEach(t => {
+    allResults.push({ type:'template', icon:'📋', title:t.title, sub:t.desc, action:`applyTemplate('${t.id}')` });
+  });
+
+  // Quick actions
+  const actions = [
+    {k:'تقرير', icon:'✍️', title:'إنشاء تقرير جديد', sub:'الانتقال لصفحة إنشاء التقرير', action:"showSection('create')"},
+    {k:'dashboard لوحة', icon:'📊', title:'فتح Dashboard', sub:'عرض الإحصائيات والرسوم البيانية', action:'showDashboard()'},
+    {k:'pdf تصدير', icon:'📄', title:'تصدير PDF', sub:'تصدير التقرير الحالي كـ PDF', action:'showPdfPanel()'},
+    {k:'voice صوت مساعد', icon:'🎙️', title:'المساعد الصوتي', sub:'إدخال التقرير بالصوت', action:'showVoicePanel()'},
+    {k:'template قالب', icon:'📋', title:'مكتبة القوالب', sub:'20+ قالب جاهز', action:'showTemplates()'},
+    {k:'ai tools أدوات', icon:'🤖', title:'أدوات الذكاء الاصطناعي', sub:'14 أداة AI متخصصة', action:"showSection('ai-tools')"},
+  ].filter(a => a.k.split(' ').some(k => q_lower.includes(k) || k.includes(q_lower)));
+  actions.forEach(a => allResults.push({type:'action', icon:a.icon, title:a.title, sub:a.sub, action:a.action}));
+
+  if (!allResults.length) {
+    results.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text-muted)">لا نتائج لـ "${q}"</div>`; return;
+  }
+
+  const typeLabels = {report:'التقارير المحفوظة', template:'القوالب', action:'إجراءات سريعة'};
+  const groups = {};
+  allResults.forEach(r => { if (!groups[r.type]) groups[r.type]=[]; groups[r.type].push(r); });
+
+  results.innerHTML = Object.entries(groups).map(([type, items]) => `
+    <div style="padding:0.4rem 1rem;font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-top:0.3rem">${typeLabels[type]||type}</div>
+    ${items.map(r => `
+      <div onclick="${r.action};closeGlobalSearch()" style="display:flex;gap:0.7rem;align-items:flex-start;padding:0.7rem 1rem;cursor:pointer;transition:background 0.1s;border-radius:8px;margin:0 0.4rem"
+        onmouseover="this.style.background='rgba(108,99,255,0.08)'" onmouseout="this.style.background='transparent'">
+        <span style="font-size:1.1rem;padding-top:0.1rem">${r.icon}</span>
+        <div>
+          <div style="font-size:0.84rem;font-weight:700;color:#fff">${r.title}</div>
+          <div style="font-size:0.73rem;color:var(--text-muted);margin-top:0.15rem;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden">${r.sub}</div>
+        </div>
+      </div>`).join('')}
+  `).join('');
+}
+
+// Ctrl+Shift+F to open global search
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'f') {
+    e.preventDefault(); openGlobalSearch();
+  }
+});
+
+// Close global search on Escape (supplement existing handler)
+document.getElementById('globalSearchInput')?.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeGlobalSearch();
+});
+
+// Init badge on load
+document.addEventListener('DOMContentLoaded', updateNotifBadge);
+updateNotifBadge();
