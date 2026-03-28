@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=1774709551" />
   <!-- SheetJS for Excel parsing -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <!-- html2pdf for PDF export -->
@@ -268,27 +268,19 @@
         <span style="display:none" id="navMarketplace"></span>
 
       </nav>
-      <div class="header-actions">
-        <!-- User Badge + Logout -->
-        <div class="user-badge" id="userBadge" style="display:none">
-          <span class="user-avatar" id="userAvatar">👤</span>
-          <span id="adminCrown" style="display:none;font-size:0.7rem;background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:900">ADMIN</span>
-          <span class="user-name-badge" id="userNameBadge">المستخدم</span>
-          <button class="logout-btn" onclick="doLogout()" title="تسجيل الخروج">خروج ↩</button>
-        </div>
-        <!-- Theme Toggle -->
-        <div class="theme-toggle-wrap">
-          <button class="theme-btn active" id="themeDark" onclick="setTheme('dark')" title="ثيم داكن">🌙</button>
-          <button class="theme-btn" id="themeLight" onclick="setTheme('light')" title="ثيم فاتح">☀️</button>
-          <button class="theme-btn" id="themeCorp" onclick="setTheme('corporate')" title="ثيم مؤسسي">🏢</button>
-        </div>
-        <div class="ai-status" id="aiStatusBadge">
-          <span class="ai-dot"></span>
-          <span id="aiStatusText">AI جاهز</span>
-        </div>
-      </div>
     </div>
   </header>
+
+  <!-- JS compatibility stubs (hidden) -->
+  <div aria-hidden="true" style="display:none!important">
+    <span id="userBadge"></span>
+    <span id="userAvatar"></span>
+    <span id="userNameBadge"></span>
+    <span id="adminCrown"></span>
+    <span id="themeDark"></span>
+    <span id="themeLight"></span>
+    <span id="themeCorp"></span>
+  </div>
 
   <!-- ====== HERO ====== -->
   <section class="hero-section">
@@ -1266,7 +1258,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=1774709302"></script>
+  <script src="app.js?v=1774709567"></script>
 
   <!-- ===== DASHBOARD OVERLAY ===== -->
   <div id="dashboardOverlay" class="ai-fullpage-overlay" style="display:none">
