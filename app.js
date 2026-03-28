@@ -889,9 +889,28 @@ function setTheme(theme) {
   if (theme === 'light') document.body.classList.add('theme-light');
   if (theme === 'corporate') document.body.classList.add('theme-corporate');
   localStorage.setItem('mbrcst_theme', theme);
+  // Sync old theme buttons (hidden, but kept for JS compat)
   document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
   const map = { dark: 'themeDark', light: 'themeLight', corporate: 'themeCorp' };
   document.getElementById(map[theme])?.classList.add('active');
+  // Update nav-utils theme icon
+  const themeIcon = document.getElementById('themeIcon');
+  const icons = { dark: '🌙', light: '☀️', corporate: '🏢' };
+  if (themeIcon) themeIcon.textContent = icons[theme] || '🌙';
+  // ALWAYS keep hero dark regardless of theme
+  const hero = document.querySelector('.hero-section');
+  if (hero) {
+    hero.style.background = '';  // Let CSS handle it via override
+  }
+}
+
+function toggleTheme() {
+  const current = localStorage.getItem('mbrcst_theme') || 'dark';
+  const cycle = { dark: 'light', light: 'corporate', corporate: 'dark' };
+  setTheme(cycle[current] || 'dark');
+  if (currentUser) {
+    localStorage.setItem('mbrcst_' + currentUser.username + '_theme', localStorage.getItem('mbrcst_theme'));
+  }
 }
 
 // ===========================

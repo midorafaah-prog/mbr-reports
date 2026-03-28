@@ -248,6 +248,10 @@
           <button class="nav-icon-btn" onclick="toggleTheme()" title="المظهر" id="navTheme"><span id="themeIcon">🌙</span></button>
           <button class="nav-icon-btn" onclick="toggleLanguage()" title="اللغة" id="navLang"><span id="langIcon">🌐</span><span id="langLabel" style="font-size:0.65rem;margin-right:2px">AR</span></button>
           <button class="nav-icon-btn" onclick="showProfilePanel()" title="ملفي" id="navProfile"><span id="navAvatarIcon">👤</span></button>
+          <div class="ai-status" id="aiStatusBadge" style="flex-shrink:0">
+            <span class="ai-dot"></span>
+            <span id="aiStatusText" style="font-size:0.68rem">AI</span>
+          </div>
         </div>
 
         <!-- hidden stubs for old IDs still referenced in JS -->
@@ -1262,7 +1266,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=1774708773"></script>
+  <script src="app.js?v=1774709302"></script>
 
   <!-- ===== DASHBOARD OVERLAY ===== -->
   <div id="dashboardOverlay" class="ai-fullpage-overlay" style="display:none">

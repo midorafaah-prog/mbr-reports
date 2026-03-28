@@ -2561,3 +2561,142 @@ body.light-mode .nav-icon-btn { color: rgba(0,0,0,0.55); background: rgba(0,0,0,
   transform: scale(1.03);
 }
 
+
+/* ====================================================
+   COMPREHENSIVE THEME + HEADER FIX v2
+   ==================================================== */
+
+/* === 1. HEADER — Single Clean Row Fix === */
+.site-header {
+  overflow: visible !important;
+  height: 60px !important;
+}
+.header-inner {
+  height: 60px !important;
+  padding: 0 1rem !important;
+  gap: 0.6rem !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  overflow: visible !important;
+}
+
+/* Logo compact */
+.logo-wrap { gap: 0.3rem; flex-shrink: 0; }
+.logo-text { font-size: 1rem !important; }
+.logo-icon { width: 32px !important; height: 32px !important; font-size: 1rem !important; }
+.logo-badge { display: none !important; }
+
+/* Nav takes remaining space */
+.header-nav {
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.3rem !important;
+  overflow: visible !important;
+  flex-wrap: nowrap !important;
+  min-width: 0 !important;
+}
+
+/* Primary tabs — compact */
+.nav-primary {
+  display: flex !important;
+  gap: 2px !important;
+  flex-shrink: 0;
+}
+.nav-tab {
+  padding: 0.35rem 0.7rem !important;
+  font-size: 0.78rem !important;
+}
+.tab-label { font-size: 0.75rem !important; }
+
+/* Dropdown compact */
+.nav-dropdown-btn {
+  padding: 0.35rem 0.7rem !important;
+  font-size: 0.78rem !important;
+}
+
+/* Utils — fixed to right end of nav */
+.nav-utils {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.15rem !important;
+  flex-shrink: 0 !important;
+  margin-right: auto !important;
+  margin-left: 0 !important;
+}
+.nav-icon-btn {
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 0.88rem !important;
+}
+
+/* Hide old floating header-actions */
+.header-actions {
+  display: none !important;
+}
+
+/* === 2. HERO — Always dark, never white === */  
+.hero-section {
+  background: var(--bg-base, #07070f) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+body.theme-light .hero-section {
+  background: linear-gradient(135deg, #0f0f1e 0%, #12121e 100%) !important;
+}
+body.theme-light .hero-title { color: #f0f0f8 !important; }
+body.theme-light .hero-sub { color: #8888aa !important; }
+body.theme-light .hero-badge { 
+  background: rgba(108,99,255,0.2) !important; 
+  color: #a89cff !important; 
+  border-color: rgba(108,99,255,0.3) !important; 
+}
+
+/* === 3. GLOBAL DARK THEME — Override light-mode for main content === */
+body {
+  background: #07070f !important;
+  color: #f0f0f8 !important;
+}
+body.theme-light {
+  background: #07070f !important;
+  color: #f0f0f8 !important;
+}
+body.theme-light .main-wrap { background: #07070f !important; }
+body.theme-light .section-content { background: #07070f !important; }
+
+/* === 4. ELIMINATE FLOATING KEY WARNING === */
+.key-warning-bar, [class*="key-warn"], .api-warn-bar {
+  display: none !important;
+}
+
+/* === 5. WELCOME DASHBOARD — Better visual === */
+#welcomeDashboard {
+  background: linear-gradient(to bottom, #0a0a18, #07070f);
+  padding: 1.2rem 2rem 0 !important;
+}
+.dash-stat-card {
+  background: rgba(255,255,255,0.03) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  transition: all 0.2s ease !important;
+}
+.dash-stat-card:hover {
+  background: rgba(108,99,255,0.08) !important;
+  border-color: rgba(108,99,255,0.25) !important;
+  box-shadow: 0 4px 20px rgba(108,99,255,0.15) !important;
+  transform: translateY(-3px) !important;
+}
+
+/* === 6. AI STATUS — Move inside nav-utils === */
+#aiStatusBadge {
+  font-size: 0.68rem !important;
+  padding: 0.22rem 0.55rem !important;
+  display: flex !important;
+}
+
+/* === 7. OpenAI key prompt — subtle, not floating === */
+#apiKeyWarn, .openai-warn, [id*="keyAlert"] {
+  position: static !important;
+  margin: 0.5rem 2rem !important;
+  font-size: 0.75rem !important;
+}
+
