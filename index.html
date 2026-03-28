@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=1774716619" />
+  <link rel="stylesheet" href="style.css?v=1774717861" />
   <!-- SheetJS for Excel parsing -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <!-- html2pdf for PDF export -->
@@ -1016,6 +1016,67 @@
           </div>
         </div>
 
+
+      <!-- ===== GROUP: المرافق والأمن والسلامة ===== -->
+      <div class="ai-group">
+        <div class="ai-group-title" style="background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.06));border-color:rgba(245,158,11,0.2)">🏢 تقارير المرافق والأمن والسلامة</div>
+        <div class="ai-tools-grid">
+
+          <div class="ai-tool-card" id="toolMaintenanceReport" style="border:1px solid rgba(245,158,11,0.25);background:rgba(245,158,11,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">🔧</div>
+            <h4>🔧 تقرير الصيانة</h4>
+            <p>أدخل أعمال الصيانة المنجزة والمعلقة وسيكتب AI تقريراً شاملاً احترافياً</p>
+            <textarea id="maintReportInput" class="ai-tool-input" rows="4" placeholder="• أُنجز: صيانة تكييف مبنى A&#10;• أُنجز: إصلاح إضاءة الممر&#10;• معلّق: استبدال مضخة المياه&#10;• معلّق: صيانة مولد الطوارئ"></textarea>
+            <select id="maintReportPeriod" class="ai-mini-select">
+              <option value="أسبوعي">تقرير أسبوعي</option>
+              <option value="شهري">تقرير شهري</option>
+              <option value="ربعي">تقرير ربعي</option>
+            </select>
+            <button class="ai-tool-btn" onclick="aiMaintenanceReport()" style="background:linear-gradient(135deg,#f59e0b,#d97706)">🔧 توليد تقرير الصيانة</button>
+            <div class="ai-tool-result" id="maintReportResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolSecurityReport" style="border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">🛡️</div>
+            <h4>🛡️ تقرير الأمن والحوادث</h4>
+            <p>أدخل ملاحظات الأمن والبلاغات ويولّد AI تقريراً رسمياً جاهزاً للإدارة</p>
+            <textarea id="securityReportInput" class="ai-tool-input" rows="4" placeholder="• جولات أمنية: 14 جولة&#10;• بلاغات: 2 (تمت معالجتهما)&#10;• حادثة: دخول غير مصرح في البوابة 3&#10;• كاميرات تعمل: 48/50"></textarea>
+            <div class="ai-tool-options">
+              <label><input type="checkbox" id="secIncludeStats" checked> إحصائيات تفصيلية</label>
+              <label><input type="checkbox" id="secIncludeRec" checked> توصيات الأمن</label>
+            </div>
+            <button class="ai-tool-btn" onclick="aiSecurityReport()" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">🛡️ توليد تقرير الأمن</button>
+            <div class="ai-tool-result" id="securityReportResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolSafetyReport" style="border:1px solid rgba(0,212,170,0.25);background:rgba(0,212,170,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#00d4aa,#059669)">⛑️</div>
+            <h4>⛑️ تقرير السلامة المهنية</h4>
+            <p>بيانات السلامة والتدريب والحوادث → تقرير مؤسسي احترافي</p>
+            <textarea id="safetyReportInput" class="ai-tool-input" rows="4" placeholder="• أيام بدون حوادث: 47 يوم&#10;• تدريبات سلامة: 3 (28 موظف)&#10;• فحص معدات إطفاء: 12 جهاز&#10;• ملاحظات: ..."></textarea>
+            <div class="ai-tone-grid">
+              <button class="ai-tone-chip active" onclick="selectSafetyType(this,'أسبوعي')">📅 أسبوعي</button>
+              <button class="ai-tone-chip" onclick="selectSafetyType(this,'شهري')">📆 شهري</button>
+              <button class="ai-tone-chip" onclick="selectSafetyType(this,'ربعي')">🗓️ ربعي</button>
+            </div>
+            <input type="hidden" id="safetyPeriodType" value="أسبوعي">
+            <button class="ai-tool-btn" onclick="aiSafetyReport()" style="background:linear-gradient(135deg,#00d4aa,#059669)">⛑️ توليد تقرير السلامة</button>
+            <div class="ai-tool-result" id="safetyReportResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolInspectionReport" style="border:1px solid rgba(168,85,247,0.25);background:rgba(168,85,247,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#a855f7,#7c3aed)">🔍</div>
+            <h4>🔍 تقرير الجولة التفتيشية</h4>
+            <p>حوّل ملاحظات الجولة إلى تقرير تفتيش رسمي بمعايير السلامة</p>
+            <textarea id="inspectionInput" class="ai-tool-input" rows="4" placeholder="الموقع: المبنى الرئيسي&#10;✓ أجهزة الإطفاء: سليمة&#10;✓ مخارج الطوارئ: واضحة&#10;✗ إضاءة ممر B: تحتاج تغيير&#10;✓ كاميرات: 12/12"></textarea>
+            <input id="inspectionLocation" class="ai-tool-input" placeholder="اسم الموقع / المبنى" style="margin-top:0.4rem">
+            <button class="ai-tool-btn" onclick="aiInspectionReport()" style="background:linear-gradient(135deg,#a855f7,#7c3aed)">🔍 توليد تقرير التفتيش</button>
+            <div class="ai-tool-result" id="inspectionReportResult" style="display:none"></div>
+          </div>
+
+        </div>
+      </div>
+
       </div>
     </section>
 
@@ -1258,7 +1319,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=1774716619"></script>
+  <script src="app.js?v=1774717861"></script>
 
   <!-- ===== DASHBOARD OVERLAY ===== -->
   <div id="dashboardOverlay" class="ai-fullpage-overlay" style="display:none">
@@ -2284,7 +2345,6 @@
 <script src="features-voice-notif.js?v=20260328"></script>
 <script src="features-infographic.js?v=20260328"></script>
 <script src="features-team.js?v=20260328"></script>
-<script src="features-facilities.js?v=20260328"></script>
 <script>
 // Wire new features into existing nav dropdowns
 document.addEventListener('DOMContentLoaded', function() {
@@ -2322,7 +2382,6 @@ document.addEventListener('DOMContentLoaded', function() {
       bar.innerHTML = `
         <button onclick="showQuick60Report()" style="background:linear-gradient(135deg,#6c63ff,#5a52f0);border:none;color:white;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">⚡ تقرير 60 ثانية</button>
         <button onclick="showTemplatesPanel()" style="background:rgba(108,99,255,0.15);border:1px solid rgba(108,99,255,0.35);color:#c4bfff;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">📋 قوالب الأقسام</button>
-        <button onclick="showFacilitiesPanel()" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);color:#fbbf24;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">🏢 المرافق والأمن</button>
         <button onclick="showTeamBoard()" style="background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.25);color:#00d4aa;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">👥 لوحة الفريق</button>
         <button onclick="showGamPanel()" id="gamPointsBadge" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);color:#f59e0b;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">⭐ 0 نقطة</button>
       `;

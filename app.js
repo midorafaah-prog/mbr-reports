@@ -6252,3 +6252,123 @@ function _doShowSection(section) {
   var dash = document.getElementById('welcomeDashboard');
   if (dash) dash.style.display = (section === 'create') ? 'block' : 'none';
 }
+
+// ================================================================
+// AI TOOLS — FACILITIES, SAFETY & SECURITY REPORTING
+// ================================================================
+
+async function aiMaintenanceReport() {
+  const data = document.getElementById('maintReportInput')?.value?.trim();
+  const period = document.getElementById('maintReportPeriod')?.value || 'أسبوعي';
+  const resultEl = document.getElementById('maintReportResult');
+  if (!data) { showToast('أدخل بيانات أعمال الصيانة', 'error'); return; }
+  const btn = document.querySelector('button[onclick="aiMaintenanceReport()"]');
+  if (btn) { btn.textContent = '⏳ جاري التوليد...'; btn.disabled = true; }
+  const apiKey = localStorage.getItem('mbrcst_openai_key');
+  if (!apiKey) { showToast('أضف OpenAI API Key في الإعدادات', 'error'); if(btn){btn.textContent='🔧 توليد تقرير الصيانة';btn.disabled=false;} return; }
+  try {
+    const today = new Date().toLocaleDateString('ar-SA');
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST', headers: {'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body: JSON.stringify({ model:'gpt-4o-mini', messages:[{role:'user',content:`أنت مدير مرافق محترف. اكتب تقرير صيانة ${period} احترافياً باللغة العربية الرسمية للإدارة العليا بناءً على:\n\n${data}\n\nاجعل التقرير يشمل: ملخص تنفيذي، أعمال الصيانة المنجزة، الأعمال المعلقة مع الأسباب، التوصيات والإجراءات المقترحة. التاريخ: ${today}.`}], max_tokens:700 })
+    });
+    const d = await res.json();
+    const txt = d.choices?.[0]?.message?.content || 'حدث خطأ';
+    if (resultEl) { resultEl.textContent = txt; resultEl.style.display='block'; addCopyBtn(resultEl, txt); }
+    if(typeof awardPoints==='function') awardPoints('ai_used',2);
+    showToast('✅ تقرير الصيانة جاهز','success');
+  } catch(e){ showToast('خطأ في الاتصال','error'); }
+  if(btn){btn.textContent='🔧 توليد تقرير الصيانة';btn.disabled=false;}
+}
+
+async function aiSecurityReport() {
+  const data = document.getElementById('securityReportInput')?.value?.trim();
+  const withStats = document.getElementById('secIncludeStats')?.checked;
+  const withRec = document.getElementById('secIncludeRec')?.checked;
+  const resultEl = document.getElementById('securityReportResult');
+  if (!data) { showToast('أدخل بيانات الأمن والحوادث', 'error'); return; }
+  const btn = document.querySelector('button[onclick="aiSecurityReport()"]');
+  if(btn){btn.textContent='⏳ جاري التوليد...';btn.disabled=true;}
+  const apiKey = localStorage.getItem('mbrcst_openai_key');
+  if(!apiKey){showToast('أضف OpenAI API Key في الإعدادات','error');if(btn){btn.textContent='🛡️ توليد تقرير الأمن';btn.disabled=false;}return;}
+  try {
+    const today = new Date().toLocaleDateString('ar-SA');
+    const extras = [withStats?'اشمل إحصائيات تفصيلية':'', withRec?'اشمل توصيات الأمن':''].filter(Boolean).join(' و');
+    const res = await fetch('https://api.openai.com/v1/chat/completions',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body:JSON.stringify({model:'gpt-4o-mini',messages:[{role:'user',content:`أنت مدير أمن ومراقبة محترف. اكتب تقرير أمني رسمي باللغة العربية للإدارة العليا بناءً على:\n\n${data}\n\n${extras}\nاجعل التقرير يشمل: ملخص القسم الأمني، الأنشطة والجولات، الحوادث وكيفية التعامل معها، الوضع الأمني العام. التاريخ: ${today}.`}],max_tokens:700})
+    });
+    const d = await res.json();
+    const txt = d.choices?.[0]?.message?.content||'حدث خطأ';
+    if(resultEl){resultEl.textContent=txt;resultEl.style.display='block';addCopyBtn(resultEl,txt);}
+    if(typeof awardPoints==='function') awardPoints('ai_used',2);
+    showToast('✅ تقرير الأمن جاهز','success');
+  } catch(e){showToast('خطأ في الاتصال','error');}
+  if(btn){btn.textContent='🛡️ توليد تقرير الأمن';btn.disabled=false;}
+}
+
+async function aiSafetyReport() {
+  const data = document.getElementById('safetyReportInput')?.value?.trim();
+  const period = document.getElementById('safetyPeriodType')?.value||'أسبوعي';
+  const resultEl = document.getElementById('safetyReportResult');
+  if(!data){showToast('أدخل بيانات السلامة المهنية','error');return;}
+  const btn = document.querySelector('button[onclick="aiSafetyReport()"]');
+  if(btn){btn.textContent='⏳ جاري التوليد...';btn.disabled=true;}
+  const apiKey = localStorage.getItem('mbrcst_openai_key');
+  if(!apiKey){showToast('أضف OpenAI API Key في الإعدادات','error');if(btn){btn.textContent='⛑️ توليد تقرير السلامة';btn.disabled=false;}return;}
+  try {
+    const today = new Date().toLocaleDateString('ar-SA');
+    const res = await fetch('https://api.openai.com/v1/chat/completions',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body:JSON.stringify({model:'gpt-4o-mini',messages:[{role:'user',content:`أنت مختص سلامة مهنية معتمد. اكتب تقرير السلامة المهنية ${period} باللغة العربية الرسمية بناءً على:\n\n${data}\n\nاجعل التقرير يشمل: مؤشرات السلامة، التدريبات والتوعية، الحوادث والإجراءات، توصيات السلامة للفترة القادمة. أسلوب مؤسسي رسمي. التاريخ: ${today}.`}],max_tokens:700})
+    });
+    const d = await res.json();
+    const txt = d.choices?.[0]?.message?.content||'حدث خطأ';
+    if(resultEl){resultEl.textContent=txt;resultEl.style.display='block';addCopyBtn(resultEl,txt);}
+    if(typeof awardPoints==='function') awardPoints('ai_used',2);
+    showToast('✅ تقرير السلامة جاهز','success');
+  } catch(e){showToast('خطأ في الاتصال','error');}
+  if(btn){btn.textContent='⛑️ توليد تقرير السلامة';btn.disabled=false;}
+}
+
+async function aiInspectionReport() {
+  const data = document.getElementById('inspectionInput')?.value?.trim();
+  const location = document.getElementById('inspectionLocation')?.value?.trim()||'الموقع';
+  const resultEl = document.getElementById('inspectionReportResult');
+  if(!data){showToast('أدخل ملاحظات الجولة التفتيشية','error');return;}
+  const btn = document.querySelector('button[onclick="aiInspectionReport()"]');
+  if(btn){btn.textContent='⏳ جاري التوليد...';btn.disabled=true;}
+  const apiKey = localStorage.getItem('mbrcst_openai_key');
+  if(!apiKey){showToast('أضف OpenAI API Key في الإعدادات','error');if(btn){btn.textContent='🔍 توليد تقرير التفتيش';btn.disabled=false;}return;}
+  try {
+    const today = new Date().toLocaleDateString('ar-SA');
+    const res = await fetch('https://api.openai.com/v1/chat/completions',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body:JSON.stringify({model:'gpt-4o-mini',messages:[{role:'user',content:`أنت مفتش سلامة وأمن محترف. اكتب تقرير جولة تفتيشية رسمي باللغة العربية للموقع: ${location}، بتاريخ ${today}، بناءً على الملاحظات التالية:\n\n${data}\n\nاجعل التقرير يشمل: معلومات الجولة، البنود المُفتَّشة والنتائج، البنود التي تحتاج معالجة مع الأولوية، التوصيات والجدول الزمني المقترح للإصلاح. أسلوب رسمي مؤسسي.`}],max_tokens:700})
+    });
+    const d = await res.json();
+    const txt = d.choices?.[0]?.message?.content||'حدث خطأ';
+    if(resultEl){resultEl.textContent=txt;resultEl.style.display='block';addCopyBtn(resultEl,txt);}
+    if(typeof awardPoints==='function') awardPoints('ai_used',2);
+    showToast('✅ تقرير التفتيش جاهز','success');
+  } catch(e){showToast('خطأ في الاتصال','error');}
+  if(btn){btn.textContent='🔍 توليد تقرير التفتيش';btn.disabled=false;}
+}
+
+function selectSafetyType(el, val) {
+  document.querySelectorAll('.ai-tone-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  const hiddenEl = document.getElementById('safetyPeriodType');
+  if(hiddenEl) hiddenEl.value = val;
+}
+
+function addCopyBtn(parentEl, text) {
+  const existing = parentEl.querySelector('.copy-result-btn');
+  if(existing) existing.remove();
+  const btn = document.createElement('button');
+  btn.className = 'copy-result-btn';
+  btn.style.cssText = 'margin-top:0.6rem;background:rgba(108,99,255,0.15);border:1px solid rgba(108,99,255,0.3);color:#a89cff;padding:0.3rem 0.8rem;border-radius:7px;cursor:pointer;font-size:0.75rem;display:block';
+  btn.textContent = '📋 نسخ النتيجة';
+  btn.onclick = () => navigator.clipboard.writeText(text).then(()=>showToast('✅ تم النسخ','success'));
+  parentEl.appendChild(btn);
+}
