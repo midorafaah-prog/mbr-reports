@@ -194,6 +194,15 @@
         <button class="nav-btn nav-btn-lang" id="navLang" onclick="toggleLanguage()" title="تبديل اللغة">
           <span id="langIcon">🌐</span> <span id="langLabel">EN</span>
         </button>
+        <button class="nav-btn nav-btn-analytics" id="navAnalytics" onclick="showAnalytics()" title="تحليلاتي">
+          <span>📊</span> Analytics
+        </button>
+        <button class="nav-btn nav-btn-writer" id="navWriter" onclick="toggleAIWritingSidebar()" title="مساعد الكتابة">
+          <span>✍️</span> مساعد
+        </button>
+        <button class="nav-btn nav-btn-cover" id="navCover" onclick="showCoverPage()" title="غلاف التقرير">
+          <span>🎨</span> غلاف
+        </button>
         <button class="nav-btn nav-btn-charts" id="navCharts" onclick="showChartsPanel()" title="مولّد الرسوم">
           <span>📈</span> <span data-i18n="charts">رسوم بيانية</span>
         </button>
@@ -1897,6 +1906,109 @@
       </div>
 
       <div id="emailSendStatus" style="display:none;margin-top:1rem"></div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS OVERLAY -->
+  <div id="analyticsOverlay" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:1000px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+        <div>
+          <h2 style="color:#fff;font-size:1.5rem;font-weight:900;margin:0">📊 تحليلاتي</h2>
+          <p style="color:var(--text-muted);font-size:0.82rem;margin:0.3rem 0 0">إحصائياتك الحقيقية من تقاريرك المحفوظة</p>
+        </div>
+        <button onclick="closeAnalytics()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.4rem 1rem;cursor:pointer;font-family:var(--font)">✕</button>
+      </div>
+      <!-- KPI Cards -->
+      <div id="analyticsKPIs" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem"></div>
+      <!-- Charts Row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem">
+        <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:14px;padding:1.2rem">
+          <div style="font-weight:800;color:#fff;margin-bottom:0.8rem;font-size:0.88rem">📅 التقارير حسب الشهر</div>
+          <canvas id="analyticsMonthlyChart" height="200"></canvas>
+        </div>
+        <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:14px;padding:1.2rem">
+          <div style="font-weight:800;color:#fff;margin-bottom:0.8rem;font-size:0.88rem">📂 التقارير حسب النوع</div>
+          <canvas id="analyticsTypeChart" height="200"></canvas>
+        </div>
+      </div>
+      <!-- Activity Timeline -->
+      <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:14px;padding:1.2rem">
+        <div style="font-weight:800;color:#fff;margin-bottom:1rem;font-size:0.88rem">🕐 آخر النشاطات</div>
+        <div id="analyticsTimeline"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI WRITING SIDEBAR -->
+  <div id="aiWritingSidebar" style="display:none;position:fixed;left:0;top:60px;bottom:0;width:300px;background:#12121e;border-right:1px solid rgba(108,99,255,0.25);z-index:5000;overflow-y:auto;direction:rtl;font-family:var(--font)">
+    <div style="padding:1rem;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:900;color:#fff;font-size:0.9rem">✍️ مساعد الكتابة</span>
+        <button onclick="closeAIWritingSidebar()" style="background:none;border:none;color:#888;cursor:pointer;font-size:1rem">✕</button>
+      </div>
+    </div>
+    <!-- Writing Score -->
+    <div style="padding:0.8rem 1rem;border-bottom:1px solid rgba(255,255,255,0.04)">
+      <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.3rem">نقاط الجودة</div>
+      <div style="display:flex;align-items:center;gap:0.5rem">
+        <div style="flex:1;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden">
+          <div id="writingScoreBar" style="height:100%;background:linear-gradient(90deg,#6c63ff,#00d4aa);width:0%;transition:width 0.5s;border-radius:4px"></div>
+        </div>
+        <span id="writingScoreNum" style="font-size:0.85rem;font-weight:900;color:var(--accent)">0%</span>
+      </div>
+    </div>
+    <!-- Quick Actions -->
+    <div style="padding:0.8rem 1rem;border-bottom:1px solid rgba(255,255,255,0.04)">
+      <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.5rem">إجراءات سريعة</div>
+      <div style="display:flex;flex-direction:column;gap:0.4rem">
+        <button onclick="sidebarAI('rephrase')" class="sidebar-ai-btn">🔄 أعد الصياغة</button>
+        <button onclick="sidebarAI('simplify')" class="sidebar-ai-btn">✂️ بسّط الأسلوب</button>
+        <button onclick="sidebarAI('formalize')" class="sidebar-ai-btn">🎩 اجعله رسمياً</button>
+        <button onclick="sidebarAI('bullets')" class="sidebar-ai-btn">• حوّل لنقاط</button>
+        <button onclick="sidebarAI('shorter')" class="sidebar-ai-btn">🔍 اختصره</button>
+        <button onclick="sidebarAI('longer')" class="sidebar-ai-btn">📝 وسّعه</button>
+        <button onclick="sidebarAI('fixArabic')" class="sidebar-ai-btn">🔤 صحّح اللغة</button>
+        <button onclick="sidebarAI('conclusion')" class="sidebar-ai-btn">�� أضف خاتمة</button>
+      </div>
+    </div>
+    <!-- AI Result in Sidebar -->
+    <div style="padding:0.8rem 1rem">
+      <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.5rem">نتيجة AI</div>
+      <div id="sidebarAIResult" style="font-size:0.76rem;color:var(--text-secondary);line-height:1.7;min-height:100px;background:rgba(255,255,255,0.04);border-radius:8px;padding:0.7rem">اضغط أي زر للبدء...</div>
+      <button id="sidebarApplyBtn" onclick="applySidebarResult()" style="display:none;width:100%;margin-top:0.5rem;class-ai-tool-btn background:linear-gradient(135deg,#6c63ff,#00d4aa);border:none;border-radius:8px;color:white;font-family:var(--font);font-weight:700;padding:0.5rem;cursor:pointer;font-size:0.8rem">✅ تطبيق</button>
+    </div>
+  </div>
+
+  <!-- COVER PAGE MODAL -->
+  <div id="coverPageModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;align-items:center;justify-content:center">
+    <div style="background:#12121e;border:1px solid rgba(108,99,255,0.3);border-radius:20px;width:700px;max-width:95vw;max-height:90vh;overflow:auto;padding:2rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+        <h3 style="color:#fff;font-size:1.1rem;font-weight:900;margin:0">🎨 غلاف التقرير</h3>
+        <button onclick="closeCoverModal()" style="background:none;border:none;color:#888;cursor:pointer;font-size:1.1rem">✕</button>
+      </div>
+      <!-- Style selector -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.7rem;margin-bottom:1.5rem">
+        <div class="cover-style-card selected" onclick="selectCoverStyle(this,'modern')">
+          <div style="height:80px;background:linear-gradient(135deg,#6c63ff,#00d4aa);border-radius:8px;margin-bottom:0.4rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem">📊</div>
+          <div style="font-size:0.75rem;text-align:center;color:#fff;font-weight:700">عصري</div>
+        </div>
+        <div class="cover-style-card" onclick="selectCoverStyle(this,'classic')">
+          <div style="height:80px;background:linear-gradient(135deg,#1a1a2e,#2d2d50);border:2px solid #6c63ff;border-radius:8px;margin-bottom:0.4rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem">📋</div>
+          <div style="font-size:0.75rem;text-align:center;color:#fff;font-weight:700">كلاسيكي</div>
+        </div>
+        <div class="cover-style-card" onclick="selectCoverStyle(this,'bold')">
+          <div style="height:80px;background:linear-gradient(135deg,#000,#1a1a2e);border-radius:8px;margin-bottom:0.4rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem">🏆</div>
+          <div style="font-size:0.75rem;text-align:center;color:#fff;font-weight:700">مميز</div>
+        </div>
+      </div>
+      <!-- Preview -->
+      <div id="coverPreview" style="border-radius:12px;overflow:hidden;margin-bottom:1.2rem;min-height:200px"></div>
+      <!-- Buttons -->
+      <div style="display:flex;gap:0.7rem">
+        <button onclick="exportCoverPDF()" class="ai-tool-btn" style="flex:1;padding:0.7rem">📄 تصدير PDF مع الغلاف</button>
+        <button onclick="printCover()" class="ai-tool-btn" style="flex:1;padding:0.7rem;background:linear-gradient(135deg,#475569,#334155)">🖨️ طباعة</button>
+      </div>
     </div>
   </div>
 </body>

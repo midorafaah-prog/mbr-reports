@@ -5014,3 +5014,337 @@ applyLanguage();
 (function waitForChart() {
   if (!window.Chart) { setTimeout(waitForChart, 500); return; }
 })();
+
+// ============================================================
+// 23. REPORT TAGS/LABELS
+// ============================================================
+const TAGS = [
+  {id:'urgent', label:'عاجل', color:'#ef4444'},
+  {id:'approved', label:'موافَق عليه', color:'#10b981'},
+  {id:'draft', label:'مسودة', color:'#f59e0b'},
+  {id:'review', label:'قيد المراجعة', color:'#0ea5e9'},
+  {id:'archived', label:'مؤرشف', color:'#6b7280'},
+  {id:'important', label:'مهم', color:'#8b5cf6'},
+];
+
+function addTagToReport(reportId, tagId) {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const idx = history.findIndex(r => r.id === reportId);
+  if (idx < 0) return;
+  if (!history[idx].tags) history[idx].tags = [];
+  if (!history[idx].tags.includes(tagId)) history[idx].tags.push(tagId);
+  localStorage.setItem('mbrcst_history', JSON.stringify(history));
+}
+
+function removeTagFromReport(reportId, tagId) {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const idx = history.findIndex(r => r.id === reportId);
+  if (idx < 0) return;
+  history[idx].tags = (history[idx].tags || []).filter(t => t !== tagId);
+  localStorage.setItem('mbrcst_history', JSON.stringify(history));
+}
+
+function renderTagBadges(tags) {
+  if (!tags || !tags.length) return '';
+  return tags.map(tId => {
+    const tag = TAGS.find(t => t.id === tId);
+    if (!tag) return '';
+    return `<span style="font-size:0.6rem;font-weight:700;background:${tag.color}22;color:${tag.color};border-radius:4px;padding:1px 6px;border:1px solid ${tag.color}44">${tag.label}</span>`;
+  }).join('');
+}
+
+// ============================================================
+// 24. REAL ANALYTICS DASHBOARD
+// ============================================================
+let analyticsCharts = {};
+
+function showAnalytics() {
+  const overlay = document.getElementById('analyticsOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navAnalytics')?.classList.add('active');
+  setTimeout(renderAnalytics, 100);
+}
+
+function closeAnalytics() {
+  document.getElementById('analyticsOverlay').style.display = 'none';
+  document.getElementById('navAnalytics')?.classList.remove('active');
+}
+
+function renderAnalytics() {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const aiUsage = parseInt(localStorage.getItem('mbrcst_ai_usage') || '0');
+  const schedules = JSON.parse(localStorage.getItem('mbrcst_schedules') || '[]');
+  const thisMonth = history.filter(r => new Date(r.date).getMonth() === new Date().getMonth()).length;
+  const totalWords = history.reduce((s, r) => s + (r.wordCount || 0), 0);
+  const avgWords = history.length ? Math.round(totalWords / history.length) : 0;
+
+  // KPI Cards
+  const kpiEl = document.getElementById('analyticsKPIs');
+  if (kpiEl) {
+    kpiEl.innerHTML = [
+      {icon:'📑', val:history.length, label:'إجمالي التقارير', color:'#6c63ff', sub:'+'+thisMonth+' هذا الشهر'},
+      {icon:'🤖', val:aiUsage, label:'طلبات AI', color:'#00d4aa', sub:'إجمالي الطلبات'},
+      {icon:'✍️', val:totalWords.toLocaleString('ar'), label:'كلمة كُتبت', color:'#f59e0b', sub:'متوسط '+avgWords+' كلمة/تقرير'},
+      {icon:'⏰', val:schedules.length, label:'جداول نشطة', color:'#ef4444', sub:schedules.filter(s=>s.active).length+' فعال'},
+    ].map(k => `
+      <div style="background:#1a1a2e;border:1px solid rgba(${k.color==='#6c63ff'?'108,99,255':k.color==='#00d4aa'?'0,212,170':k.color==='#f59e0b'?'245,158,11':'239,68,68'},0.2);border-radius:14px;padding:1.2rem">
+        <div style="font-size:1.5rem;margin-bottom:0.4rem">${k.icon}</div>
+        <div style="font-size:1.5rem;font-weight:900;color:${k.color}">${k.val}</div>
+        <div style="font-size:0.75rem;color:#fff;font-weight:700;margin-top:0.2rem">${k.label}</div>
+        <div style="font-size:0.68rem;color:var(--text-muted);margin-top:0.1rem">${k.sub}</div>
+      </div>`).join('');
+  }
+
+  // Monthly chart — last 6 months
+  const months = [];
+  const monthCounts = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    const m = d.getMonth();
+    const y = d.getFullYear();
+    months.push(d.toLocaleDateString('ar-SA', {month:'short', year:'2-digit'}));
+    monthCounts.push(history.filter(r => {
+      const rd = new Date(r.date);
+      return rd.getMonth() === m && rd.getFullYear() === y;
+    }).length);
+  }
+
+  const monthCanvas = document.getElementById('analyticsMonthlyChart');
+  if (monthCanvas && window.Chart) {
+    if (analyticsCharts.monthly) analyticsCharts.monthly.destroy();
+    analyticsCharts.monthly = new Chart(monthCanvas, {
+      type: 'bar',
+      data: {
+        labels: months,
+        datasets: [{ label:'التقارير', data: monthCounts, backgroundColor:'rgba(108,99,255,0.7)', borderColor:'#6c63ff', borderWidth:1, borderRadius:6 }]
+      },
+      options: { responsive:true, plugins:{ legend:{display:false} }, scales:{ x:{ticks:{color:'#aaa',font:{family:'Arial'}}}, y:{ticks:{color:'#aaa',stepSize:1,font:{family:'Arial'}},beginAtZero:true} } }
+    });
+  }
+
+  // Type distribution pie chart
+  const typeDist = {};
+  history.forEach(r => { typeDist[r.type||'general'] = (typeDist[r.type||'general']||0) + 1; });
+  const typeNames = {monthly:'شهري', weekly:'أسبوعي', quarterly:'ربعي', annual:'سنوي', general:'عام', project:'مشروع'};
+  const typeCanvas = document.getElementById('analyticsTypeChart');
+  if (typeCanvas && window.Chart && Object.keys(typeDist).length) {
+    if (analyticsCharts.type) analyticsCharts.type.destroy();
+    const COLORS = ['#6c63ff','#00d4aa','#f59e0b','#ef4444','#10b981','#0ea5e9'];
+    analyticsCharts.type = new Chart(typeCanvas, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(typeDist).map(k => typeNames[k]||k),
+        datasets: [{ data: Object.values(typeDist), backgroundColor: COLORS.slice(0, Object.keys(typeDist).length), borderWidth: 2, borderColor:'#1a1a2e' }]
+      },
+      options: { responsive:true, cutout:'65%', plugins:{ legend:{position:'bottom', labels:{color:'#aaa', font:{family:'Arial'}, padding:10}} } }
+    });
+  } else if (typeCanvas) {
+    typeCanvas.parentElement.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-muted)">لا توجد بيانات بعد</div>';
+  }
+
+  // Timeline
+  const tlEl = document.getElementById('analyticsTimeline');
+  if (tlEl) {
+    const recent = history.slice(0, 8);
+    if (!recent.length) { tlEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:1rem">لا توجد نشاطات بعد</div>'; return; }
+    tlEl.innerHTML = recent.map(r => {
+      const d = new Date(r.date);
+      return `<div style="display:flex;gap:0.8rem;align-items:center;padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0"></div>
+        <div style="flex:1;font-size:0.78rem;color:#fff;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</div>
+        <div style="font-size:0.68rem;color:var(--text-muted);flex-shrink:0">${d.toLocaleDateString('ar-SA',{month:'short',day:'numeric'})} ${d.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</div>
+        <div style="font-size:0.68rem;color:var(--text-muted);flex-shrink:0">${r.wordCount||0} كلمة</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ============================================================
+// 25. AI WRITING SIDEBAR
+// ============================================================
+let sidebarResultText = '';
+
+function toggleAIWritingSidebar() {
+  const sb = document.getElementById('aiWritingSidebar');
+  if (!sb) return;
+  const isOpen = sb.style.display !== 'none';
+  sb.style.display = isOpen ? 'none' : 'block';
+  document.getElementById('navWriter')?.classList.toggle('active', !isOpen);
+  // Push main content
+  const main = document.querySelector('.main-content') || document.querySelector('main') || document.getElementById('mainContent');
+  if (main) main.style.marginRight = isOpen ? '' : '310px';
+  if (!isOpen) updateSidebarScore();
+}
+
+function closeAIWritingSidebar() {
+  document.getElementById('aiWritingSidebar').style.display = 'none';
+  document.getElementById('navWriter')?.classList.remove('active');
+  const main = document.querySelector('.main-content') || document.querySelector('main');
+  if (main) main.style.marginRight = '';
+}
+
+function updateSidebarScore() {
+  const content = getCurrentReportText();
+  if (!content || content.length < 10) return;
+  const words = content.split(/\s+/).filter(w => w.length > 0).length;
+  const hasIntro = content.includes('مقدمة') || content.includes('المقدمة');
+  const hasConclusion = content.includes('خاتمة') || content.includes('الخلاصة');
+  const hasNumbers = /\d+/.test(content);
+  const hasStructure = content.includes('\n') && content.split('\n').length > 5;
+  let score = 0;
+  if (words > 50) score += 20;
+  if (words > 200) score += 20;
+  if (words > 500) score += 20;
+  if (hasIntro) score += 10;
+  if (hasConclusion) score += 10;
+  if (hasNumbers) score += 10;
+  if (hasStructure) score += 10;
+  score = Math.min(100, score);
+  const bar = document.getElementById('writingScoreBar');
+  const num = document.getElementById('writingScoreNum');
+  if (bar) bar.style.width = score + '%';
+  if (num) num.textContent = score + '%';
+  if (bar) {
+    if (score >= 80) bar.style.background = 'linear-gradient(90deg,#10b981,#00d4aa)';
+    else if (score >= 50) bar.style.background = 'linear-gradient(90deg,#f59e0b,#10b981)';
+    else bar.style.background = 'linear-gradient(90deg,#ef4444,#f59e0b)';
+  }
+}
+
+async function sidebarAI(mode) {
+  const text = getCurrentReportText();
+  if (!text || text.length < 20) { showToast('أنشئ تقريراً أولاً', 'error'); return; }
+  const el = document.getElementById('sidebarAIResult');
+  const applyBtn = document.getElementById('sidebarApplyBtn');
+  if (el) { el.innerHTML = '<div class="ai-loading" style="justify-content:flex-start"><div class="spinner"></div></div>'; }
+
+  const prompts = {
+    rephrase: `أعد صياغة هذه النص بأسلوب أفضل مع الحفاظ على المعنى:\n\n${text.substring(0,1500)}`,
+    simplify: `بسّط هذا النص ليكون مفهوماً لعموم الناس:\n\n${text.substring(0,1500)}`,
+    formalize: `اجعل هذا النص أكثر رسمية واحترافية:\n\n${text.substring(0,1500)}`,
+    bullets: `حوّل هذا النص إلى نقاط مرتبة ومنظمة:\n\n${text.substring(0,1500)}`,
+    shorter: `اختصر هذا النص للنصف مع الحفاظ على أهم النقاط:\n\n${text.substring(0,1500)}`,
+    longer: `وسّع هذا النص واجعله أكثر تفصيلاً:\n\n${text.substring(0,800)}`,
+    fixArabic: `صحّح الأخطاء اللغوية والإملائية في هذا النص:\n\n${text.substring(0,1500)}`,
+    conclusion: `اكتب خاتمة احترافية لهذا التقرير:\n\n${text.substring(0,1500)}`,
+  };
+  const result = await callAI(prompts[mode], 'أنت مساعد كتابة احترافي متخصص في تحرير النصوص العربية.');
+  sidebarResultText = result || '';
+  if (el) el.textContent = sidebarResultText.substring(0, 600) + (sidebarResultText.length > 600 ? '...' : '');
+  if (applyBtn) applyBtn.style.display = 'block';
+}
+
+function applySidebarResult() {
+  if (!sidebarResultText) return;
+  const ta = document.querySelector('textarea') || document.getElementById('reportNotes');
+  if (ta) { ta.value = sidebarResultText; updateWritingStats(sidebarResultText); updateSidebarScore(); }
+  saveReportToHistory((document.getElementById('reportTitle')||{}).value||'تقرير معدّل', sidebarResultText, 'general');
+  showToast('✅ تم تطبيق التعديل', 'success');
+}
+
+// ============================================================
+// 26. COVER PAGE GENERATOR
+// ============================================================
+let currentCoverStyle = 'modern';
+
+function showCoverPage() {
+  const modal = document.getElementById('coverPageModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.getElementById('navCover')?.classList.add('active');
+  updateCoverPreview();
+}
+function closeCoverModal() {
+  document.getElementById('coverPageModal').style.display = 'none';
+  document.getElementById('navCover')?.classList.remove('active');
+}
+function selectCoverStyle(btn, style) {
+  currentCoverStyle = style;
+  document.querySelectorAll('.cover-style-card').forEach(c => c.classList.remove('selected'));
+  btn.classList.add('selected');
+  updateCoverPreview();
+}
+
+function updateCoverPreview() {
+  const b = JSON.parse(localStorage.getItem('mbrcst_branding') || '{}');
+  const title = (document.getElementById('reportTitle')||{}).value || 'التقرير السنوي 2025';
+  const orgName = b.name || 'اسم المؤسسة';
+  const orgDept = b.dept || 'الإدارة العامة';
+  const color = b.color || '#6c63ff';
+  const now = new Date().toLocaleDateString('ar-SA', {year:'numeric', month:'long'});
+  const logoHtml = orgLogoDataUrl ? `<img src="${orgLogoDataUrl}" style="max-height:80px;max-width:160px;object-fit:contain;margin-bottom:0.5rem">` : `<div style="font-size:2.5rem">🏢</div>`;
+  const prev = document.getElementById('coverPreview');
+  if (!prev) return;
+
+  const covers = {
+    modern: `<div style="background:linear-gradient(135deg,${color},${color}88);padding:3rem;color:white;text-align:center;min-height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.8rem;">
+      ${logoHtml}
+      <div style="font-size:0.9rem;opacity:0.8;font-weight:600;letter-spacing:0.05em">${orgName}</div>
+      <div style="width:60px;height:3px;background:rgba(255,255,255,0.6);border-radius:2px"></div>
+      <div style="font-size:1.6rem;font-weight:900;line-height:1.3">${title}</div>
+      <div style="font-size:0.8rem;opacity:0.7;margin-top:0.5rem">${orgDept} | ${now}</div>
+      <div style="font-size:0.72rem;opacity:0.6;margin-top:0.3rem">أُعدَّ بواسطة MBR Reports</div>
+    </div>`,
+
+    classic: `<div style="background:#fff;padding:3rem;text-align:center;min-height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid ${color};gap:0.8rem">
+      ${logoHtml.replace('style="', 'style="filter:none;')}
+      <div style="font-size:0.85rem;font-weight:900;color:${color};letter-spacing:0.1em;text-transform:uppercase">${orgName}</div>
+      <div style="width:100%;height:2px;background:${color};margin:0.5rem 0"></div>
+      <div style="font-size:1.8rem;font-weight:900;color:#1a1a2e;line-height:1.3">${title}</div>
+      <div style="width:60%;height:1px;background:#ddd;margin:0.5rem 0"></div>
+      <div style="font-size:0.8rem;color:#666">${orgDept}</div>
+      <div style="font-size:0.78rem;color:#888">${now}</div>
+    </div>`,
+
+    bold: `<div style="background:#000;padding:3rem;color:white;min-height:280px;display:flex;flex-direction:column;justify-content:flex-end;gap:0.5rem;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;right:0;width:200px;height:200px;background:${color};border-radius:0 0 0 100%;opacity:0.8"></div>
+      <div style="position:absolute;bottom:0;left:0;width:120px;height:120px;background:${color}44;border-radius:0 100% 0 0"></div>
+      ${logoHtml.replace('style="', 'style="position:absolute;top:1.5rem;left:1.5rem;')}
+      <div style="font-size:2rem;font-weight:900;line-height:1.2;position:relative">${title}</div>
+      <div style="width:60px;height:4px;background:${color};border-radius:2px"></div>
+      <div style="font-size:0.82rem;opacity:0.7;position:relative">${orgName} | ${orgDept}</div>
+      <div style="font-size:0.72rem;opacity:0.5;position:relative">${now}</div>
+    </div>`
+  };
+  prev.innerHTML = covers[currentCoverStyle] || covers.modern;
+}
+
+async function exportCoverPDF() {
+  updateCoverPreview();
+  const prev = document.getElementById('coverPreview');
+  if (!prev) return;
+  showToast('⏳ جاري إنشاء PDF...', 'success');
+  try {
+    if (window.html2canvas && window.jspdf) {
+      const canvas = await html2canvas(prev, {scale:2, backgroundColor:'#fff', useCORS:true, logging:false});
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p','mm','a4');
+      const w = pdf.internal.pageSize.getWidth();
+      const h = (canvas.height * w) / canvas.width;
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, h);
+      // Add report content on next page
+      const content = getCurrentReportText();
+      if (content && content.length > 20) {
+        pdf.addPage();
+        const lines = pdf.splitTextToSize(content, 180);
+        pdf.setFontSize(11); pdf.setFont('helvetica');
+        pdf.text(lines, 15, 20);
+      }
+      const b = JSON.parse(localStorage.getItem('mbrcst_branding')||'{}');
+      const title = (document.getElementById('reportTitle')||{}).value || 'التقرير';
+      pdf.save(`${b.name||'MBR'}_${title}.pdf`);
+      showToast('✅ تم تصدير PDF مع الغلاف!', 'success');
+    } else { printCover(); }
+  } catch(e) { printCover(); }
+}
+
+function printCover() {
+  const prev = document.getElementById('coverPreview');
+  if (!prev) return;
+  const win = window.open('', '_blank');
+  win.document.write(`<html><head><meta charset="utf-8"><style>body{margin:0;padding:0}</style></head><body>${prev.innerHTML}<script>window.onload=()=>window.print()<\/script></body></html>`);
+  win.document.close();
+}
