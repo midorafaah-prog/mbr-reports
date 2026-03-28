@@ -882,14 +882,15 @@ function escapeHtml(str) {
 }
 
 // ===========================
-// THEME SWITCHING
+// THEME SWITCHING (unified — uses 'light-mode' class only)
 // ===========================
 function setTheme(theme) {
-  document.body.classList.remove('theme-light', 'theme-corporate');
-  if (theme === 'light') document.body.classList.add('theme-light');
-  if (theme === 'corporate') document.body.classList.add('theme-corporate');
+  // Unify: use only 'light-mode' class
+  document.body.classList.remove('theme-light', 'theme-corporate', 'light-mode');
+  if (theme === 'light')     document.body.classList.add('light-mode');
+  if (theme === 'corporate') document.body.classList.add('light-mode', 'theme-corporate');
   localStorage.setItem('mbrcst_theme', theme);
-  // Sync old theme buttons (hidden, but kept for JS compat)
+  // Sync theme buttons
   document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
   const map = { dark: 'themeDark', light: 'themeLight', corporate: 'themeCorp' };
   document.getElementById(map[theme])?.classList.add('active');
@@ -897,21 +898,24 @@ function setTheme(theme) {
   const themeIcon = document.getElementById('themeIcon');
   const icons = { dark: '🌙', light: '☀️', corporate: '🏢' };
   if (themeIcon) themeIcon.textContent = icons[theme] || '🌙';
-  // ALWAYS keep hero dark regardless of theme
-  const hero = document.querySelector('.hero-section');
-  if (hero) {
-    hero.style.background = '';  // Let CSS handle it via override
-  }
 }
 
 function toggleTheme() {
   const current = localStorage.getItem('mbrcst_theme') || 'dark';
-  const cycle = { dark: 'light', light: 'corporate', corporate: 'dark' };
-  setTheme(cycle[current] || 'dark');
-  if (currentUser) {
-    localStorage.setItem('mbrcst_' + currentUser.username + '_theme', localStorage.getItem('mbrcst_theme'));
+  const next = current === 'dark' ? 'light' : 'dark';
+  setTheme(next);
+  showToast(next === 'light' ? '☀️ الوضع الفاتح' : '🌙 الوضع الداكن', 'success');
+  if (typeof currentUser !== 'undefined' && currentUser?.username) {
+    localStorage.setItem('mbrcst_' + currentUser.username + '_theme', next);
   }
 }
+
+// Restore saved theme on load
+(function _restoreTheme() {
+  const t = localStorage.getItem('mbrcst_theme') || 'dark';
+  if (t !== 'dark') setTheme(t);
+})();
+
 
 // ===========================
 // REPORT NUMBER
@@ -4155,22 +4159,8 @@ function exportMyData() {
   showToast('✅ تم تصدير بياناتك', 'success');
 }
 
-// ============================================================
-// 10. THEME TOGGLE (Dark / Light)
-// ============================================================
-function toggleTheme() {
-  const isDark = document.body.classList.toggle('light-mode');
-  localStorage.setItem('mbrcst_theme', isDark ? 'light' : 'dark');
-  const icon = document.getElementById('themeIcon');
-  if (icon) icon.textContent = isDark ? '☀️' : '🌙';
-  showToast(isDark ? '☀️ الوضع الفاتح' : '🌙 الوضع الداكن', 'success');
-}
+// (toggleTheme is unified above — this block removed to avoid duplicate)
 
-// Apply saved theme on load
-(function() {
-  const t = localStorage.getItem('mbrcst_theme');
-  if (t === 'light') { document.body.classList.add('light-mode'); const i=document.getElementById('themeIcon'); if(i) i.textContent='☀️'; }
-})();
 
 // ============================================================
 // 11. KEYBOARD SHORTCUTS
