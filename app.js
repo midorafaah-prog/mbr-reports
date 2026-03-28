@@ -3256,3 +3256,276 @@ function applyTemplate(id) {
   showToast(`✅ تم تطبيق قالب: ${tpl.title}`, 'success');
 }
 
+
+// ============================================================
+// 1. GOOGLE SHEETS INTEGRATION
+// ============================================================
+let sheetsData = null;
+
+async function fetchGoogleSheet() {
+  const url = (document.getElementById('sheetsUrl') || {}).value || '';
+  if (!url.trim()) { showToast('الصق رابط Google Sheet أولاً', 'error'); return; }
+  const match = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (!match) { showToast('الرابط غير صحيح — تأكد أنه رابط Google Sheets', 'error'); return; }
+  const sheetId = match[1];
+  showToast('⏳ جاري جلب البيانات...', 'success');
+  const tryFetch = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error(); return r.text(); };
+  try {
+    const csv = await tryFetch(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`)
+      .catch(() => tryFetch(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`));
+    sheetsData = csv.trim().split('\n').map(line => {
+      const cols = []; let cur = '', inQ = false;
+      for (const c of line) {
+        if (c === '"') inQ = !inQ;
+        else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+        else cur += c;
+      }
+      cols.push(cur.trim()); return cols;
+    });
+    const prev = document.getElementById('sheetsPreview');
+    if (prev) {
+      prev.style.display = 'block';
+      prev.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:0.7rem">' +
+        sheetsData.slice(0, 8).map((r, i) =>
+          `<tr style="background:${i===0?'rgba(15,157,88,0.2)':'transparent'}">${r.map(c=>`<td style="padding:3px 6px;border:1px solid rgba(255,255,255,0.06)">${c}</td>`).join('')}</tr>`
+        ).join('') + `</table><div style="color:var(--text-muted);font-size:0.68rem;margin-top:0.3rem">عرض 8 صفوف من ${sheetsData.length}</div>`;
+    }
+    showToast(`✅ تم جلب ${sheetsData.length} صف من Google Sheets`, 'success');
+  } catch { showToast('❌ تأكد أن الـ Sheet عام: Share → Anyone with link → Viewer', 'error'); }
+}
+
+async function aiSheetsToReport() {
+  if (!sheetsData || !sheetsData.length) { showToast('اجلب بيانات الـ Sheet أولاً', 'error'); return; }
+  const resultEl = document.getElementById('sheetsResult');
+  if (resultEl) { resultEl.style.display = 'block'; resultEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>يحلل AI البيانات...</span></div>'; }
+  const headers = sheetsData[0] || [];
+  const rows = sheetsData.slice(1, 25).map(r => r.join(' | ')).join('\n');
+  const result = await callAI(
+    `لديك بيانات من Google Sheets:\nالأعمدة: ${headers.join(' | ')}\nالبيانات:\n${rows}\n\nاكتب تقريراً تحليلياً احترافياً بالعربية:\n١. ملخص تنفيذي\n٢. أبرز الأرقام والاتجاهات\n٣. المقارنات والنسب\n٤. التوصيات (٣-٥)\n٥. الخلاصة`,
+    'أنت محلل بيانات ومحرر تقارير احترافي.', { maxTokens: 2000 }
+  );
+  if (result && resultEl) {
+    resultEl.innerHTML = `<div class="ai-result-content" style="white-space:pre-wrap">${result}</div>`;
+    showToast('✅ تم إنشاء التقرير من Google Sheets!', 'success');
+  }
+}
+
+// ============================================================
+// 2. PROFESSIONAL PDF EXPORT
+// ============================================================
+let orgLogoDataUrl = localStorage.getItem('mbrcst_org_logo') || null;
+
+function showPdfPanel() {
+  document.getElementById('pdfBrandingPanel').style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navPdf') && document.getElementById('navPdf').classList.add('active');
+  loadPdfBranding(); updatePdfPreview();
+}
+function closePdfPanel() {
+  document.getElementById('pdfBrandingPanel').style.display = 'none';
+  document.getElementById('navPdf') && document.getElementById('navPdf').classList.remove('active');
+}
+
+function loadOrgLogo(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    orgLogoDataUrl = e.target.result;
+    localStorage.setItem('mbrcst_org_logo', orgLogoDataUrl);
+    const st = document.getElementById('logoStatus');
+    if (st) st.textContent = '✅ ' + file.name;
+    updatePdfPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function savePdfBranding() {
+  const b = {
+    name: (document.getElementById('orgName')||{}).value||'',
+    dept: (document.getElementById('orgDept')||{}).value||'',
+    color: (document.getElementById('brandColor')||{}).value||'#6c63ff'
+  };
+  localStorage.setItem('mbrcst_branding', JSON.stringify(b));
+  showToast('✅ تم حفظ هوية المؤسسة', 'success');
+  updatePdfPreview();
+}
+
+function loadPdfBranding() {
+  const b = JSON.parse(localStorage.getItem('mbrcst_branding')||'{}');
+  if (b.name && document.getElementById('orgName')) document.getElementById('orgName').value = b.name;
+  if (b.dept && document.getElementById('orgDept')) document.getElementById('orgDept').value = b.dept;
+  if (b.color && document.getElementById('brandColor')) document.getElementById('brandColor').value = b.color;
+  if (orgLogoDataUrl) { const st=document.getElementById('logoStatus'); if(st) st.textContent='✅ الشعار محمّل'; }
+}
+
+function updatePdfPreview() {
+  const b = JSON.parse(localStorage.getItem('mbrcst_branding')||'{}');
+  const color = b.color || '#6c63ff';
+  const orgName = b.name || (document.getElementById('orgName')||{}).value || 'المؤسسة';
+  const orgDept = b.dept || (document.getElementById('orgDept')||{}).value || '';
+  const title = (document.getElementById('reportTitle')||{}).value || 'التقرير الدوري';
+  const content = getCurrentReportText();
+  const now = new Date().toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'});
+  const logoHtml = orgLogoDataUrl
+    ? `<img src="${orgLogoDataUrl}" style="max-height:60px;max-width:120px;object-fit:contain" alt="logo">`
+    : `<div style="width:56px;height:56px;background:${color}22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.4rem">🏢</div>`;
+  const box = document.getElementById('pdfPreviewBox');
+  if (!box) return;
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid ${color};padding-bottom:1rem;margin-bottom:1.5rem">
+      ${logoHtml}
+      <div style="text-align:right">
+        <div style="font-size:1rem;font-weight:900;color:${color}">${orgName}</div>
+        ${orgDept?`<div style="font-size:0.76rem;color:#666">${orgDept}</div>`:''}
+      </div>
+    </div>
+    <div style="font-size:1.2rem;font-weight:900;text-align:center;color:${color};margin-bottom:1rem">${title}</div>
+    <div style="display:flex;gap:1.5rem;background:#f8f8ff;padding:0.6rem 1rem;border-radius:8px;font-size:0.76rem;color:#555;margin-bottom:1rem;flex-wrap:wrap">
+      <span>📅 ${now}</span>
+      <span>👤 ${(currentUser||{}).fullName||'المستخدم'}</span>
+      <span>🏢 MBR Reports</span>
+    </div>
+    <div style="font-size:0.83rem;line-height:2;color:#222;white-space:pre-wrap">${content !== 'لا يوجد محتوى تقرير حالياً' ? content.substring(0,1500) : '<div style="color:#999;text-align:center;padding:2rem">أنشئ تقريراً أولاً</div>'}</div>
+    <div style="margin-top:2rem;border-top:1px solid #ddd;padding-top:0.6rem;text-align:center;color:#999;font-size:0.7rem">تم إنشاؤه بواسطة MBR Reports | ${window.location.hostname}</div>`;
+}
+
+async function exportProfessionalPDF() {
+  updatePdfPreview();
+  showToast('⏳ جاري إنشاء PDF...', 'success');
+  const b = JSON.parse(localStorage.getItem('mbrcst_branding')||'{}');
+  const title = (document.getElementById('reportTitle')||{}).value || 'التقرير';
+  const box = document.getElementById('pdfPreviewBox');
+  if (window.html2canvas && window.jspdf) {
+    try {
+      const canvas = await html2canvas(box, {scale:2, useCORS:true, backgroundColor:'#fff', logging:false});
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p','mm','a4');
+      const w = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      const imgH = (canvas.height * w) / canvas.width;
+      const img = canvas.toDataURL('image/png');
+      let y = 0;
+      while (y < imgH) { if (y>0) pdf.addPage(); pdf.addImage(img,'PNG',0,-y,w,imgH); y+=ph; }
+      pdf.save(`${b.name||'MBR'}_${title}_${new Date().toISOString().slice(0,10)}.pdf`);
+      showToast('✅ تم تصدير PDF!', 'success'); return;
+    } catch(e) { console.warn('html2canvas failed, using text fallback'); }
+  }
+  // Text fallback using basic print
+  const win = window.open('', '_blank');
+  win.document.write(`<html><head><meta charset="utf-8"><style>body{font-family:Arial;direction:rtl;padding:40px}</style></head><body>${box.innerHTML}</body></html>`);
+  win.document.close(); win.print(); win.close();
+  showToast('✅ تم فتح نافذة الطباعة', 'success');
+}
+
+function exportWordDoc() {
+  const content = getCurrentReportText();
+  const title = (document.getElementById('reportTitle')||{}).value || 'التقرير';
+  const b = JSON.parse(localStorage.getItem('mbrcst_branding')||'{}');
+  const now = new Date().toLocaleDateString('ar-SA');
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>${title}</title>
+<style>body{font-family:Arial;direction:rtl;padding:3cm;font-size:12pt}h1,h2{color:${b.color||'#6c63ff'}}.header{border-bottom:3px solid ${b.color||'#6c63ff'};margin-bottom:20pt;padding-bottom:10pt}.footer{border-top:1pt solid #ccc;margin-top:40pt;padding-top:8pt;color:#888;font-size:9pt;text-align:center}</style>
+</head><body>
+<div class="header"><h2>${b.name||'المؤسسة'}</h2><p>${b.dept||''}</p></div>
+<h1>${title}</h1><p style="color:#666">التاريخ: ${now} | أعده: ${(currentUser||{}).fullName||''}</p><hr>
+<div style="line-height:2;white-space:pre-wrap">${content}</div>
+<div class="footer">MBR Reports | ${window.location.hostname}</div>
+</body></html>`;
+  const blob = new Blob(['\ufeff' + html], {type:'application/msword'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `${title}.doc`; a.click();
+  showToast('✅ تم تصدير Word!', 'success');
+}
+
+// ============================================================
+// 3. SCHEDULED REPORTS
+// ============================================================
+const DAY_NAMES = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const TYPE_NAMES = {daily:'يومي', weekly:'أسبوعي', monthly:'شهري'};
+
+function showSchedulePanel() {
+  document.getElementById('schedulePanel').style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navSchedule') && document.getElementById('navSchedule').classList.add('active');
+  renderActiveSchedules();
+}
+function closeSchedulePanel() {
+  document.getElementById('schedulePanel').style.display = 'none';
+  document.getElementById('navSchedule') && document.getElementById('navSchedule').classList.remove('active');
+}
+
+function addSchedule() {
+  const type = (document.getElementById('schedType')||{}).value || 'weekly';
+  const day  = parseInt((document.getElementById('schedDay')||{}).value || '0');
+  const time = (document.getElementById('schedTime')||{}).value || '08:00';
+  const email= ((document.getElementById('schedEmail')||{}).value || '').trim();
+  if (!time) { showToast('حدد الوقت', 'error'); return; }
+  const schedules = JSON.parse(localStorage.getItem('mbrcst_schedules')||'[]');
+  schedules.push({ id: Date.now(), type, day, time, email, dayName: DAY_NAMES[day], typeName: TYPE_NAMES[type], active: true, created: new Date().toISOString() });
+  localStorage.setItem('mbrcst_schedules', JSON.stringify(schedules));
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+  renderActiveSchedules();
+  showToast(`✅ جُدول تقرير ${TYPE_NAMES[type]} — ${DAY_NAMES[day]} ${time}`, 'success');
+  startScheduleChecker();
+}
+
+function renderActiveSchedules() {
+  const list = JSON.parse(localStorage.getItem('mbrcst_schedules')||'[]');
+  const el = document.getElementById('activeSchedules');
+  if (!el) return;
+  el.innerHTML = list.length
+    ? list.map(s => `
+        <div class="sched-card">
+          <span style="font-size:1.3rem">${s.type==='daily'?'📅':s.type==='weekly'?'📆':'🗓️'}</span>
+          <div style="flex:1">
+            <div style="font-size:0.85rem;font-weight:700;color:#fff">تقرير ${s.typeName} — ${s.dayName} ${s.time}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">${s.email?'📧 '+s.email:'🔔 إشعار فقط'}</div>
+          </div>
+          <span style="font-size:0.68rem;font-weight:700;background:rgba(0,212,170,0.15);color:#00d4aa;border-radius:4px;padding:2px 6px">نشط</span>
+          <button onclick="deleteSchedule(${s.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;opacity:0.7" title="حذف">🗑️</button>
+        </div>`).join('')
+    : '<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:1.5rem">لا توجد جداول نشطة بعد</div>';
+}
+
+function deleteSchedule(id) {
+  const list = JSON.parse(localStorage.getItem('mbrcst_schedules')||'[]').filter(s => s.id !== id);
+  localStorage.setItem('mbrcst_schedules', JSON.stringify(list));
+  renderActiveSchedules();
+  showToast('تم حذف الجدول', 'success');
+}
+
+let schedChecker = null;
+function startScheduleChecker() {
+  if (schedChecker) return;
+  schedChecker = setInterval(() => {
+    const list = JSON.parse(localStorage.getItem('mbrcst_schedules')||'[]');
+    if (!list.length) return;
+    const now = new Date();
+    const nowDay = now.getDay();
+    const nowTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    list.forEach(s => {
+      const matchDay = s.type === 'daily' || s.day === nowDay;
+      const alreadyRan = localStorage.getItem(`mbrcst_sched_${s.id}`) === new Date().toDateString();
+      if (matchDay && s.time === nowTime && !alreadyRan) {
+        localStorage.setItem(`mbrcst_sched_${s.id}`, new Date().toDateString());
+        if (Notification.permission === 'granted') {
+          new Notification('MBR Reports — تقرير مجدول 🔔', {
+            body: `حان وقت تقريرك ${s.typeName} — ${s.dayName} ${s.time}`,
+            icon: '/favicon.ico'
+          });
+        }
+        showToast(`🔔 حان وقت تقريرك ${s.typeName}!`, 'success');
+        if (s.email) {
+          window.open(`mailto:${s.email}?subject=${encodeURIComponent('تذكير: تقريرك '+s.typeName)}&body=${encodeURIComponent('حان وقت إنشاء تقريرك.\n\nافتح: '+window.location.origin)}`);
+        }
+      }
+    });
+  }, 60000);
+}
+
+// Auto-start checker if there are schedules
+(function() {
+  const list = JSON.parse(localStorage.getItem('mbrcst_schedules')||'[]');
+  if (list.length) startScheduleChecker();
+})();

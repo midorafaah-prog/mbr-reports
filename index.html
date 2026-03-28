@@ -72,6 +72,8 @@
       }
     })();
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -183,6 +185,12 @@
         </button>
         <button class="nav-btn nav-btn-ai" id="navAi" onclick="showSection('ai')">
           <span>🤖</span> AI Tools
+        </button>
+        <button class="nav-btn nav-btn-pdf" id="navPdf" onclick="showPdfPanel()">
+          <span>📄</span> PDF
+        </button>
+        <button class="nav-btn nav-btn-schedule" id="navSchedule" onclick="showSchedulePanel()">
+          <span>⏰</span> جدولة
         </button>
         <button class="nav-btn nav-btn-templates" id="navTemplates" onclick="showTemplates()">
           <span>📋</span> القوالب
@@ -718,6 +726,21 @@
             </div>
 
 
+
+            <!-- Google Sheets -->
+            <div class="ai-tool-card" id="toolGoogleSheets">
+              <div class="ai-tool-icon" style="background:linear-gradient(135deg,#0f9d58,#34a853)">📊</div>
+              <h4>Google Sheets → تقرير</h4>
+              <p>الصق رابط Google Sheet وسيجلب البيانات تلقائياً ويولّد تقريراً</p>
+              <div style="display:flex;gap:0.3rem;margin-top:0.3rem">
+                <input type="text" id="sheetsUrl" placeholder="https://docs.google.com/spreadsheets/d/..." 
+                  style="flex:1;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.7rem;color:var(--text-primary);font-size:0.75rem;direction:ltr">
+                <button onclick="fetchGoogleSheet()" style="background:rgba(15,157,88,0.2);border:1px solid rgba(15,157,88,0.4);border-radius:8px;padding:0.5rem 0.7rem;color:#0f9d58;cursor:pointer;font-size:0.8rem;white-space:nowrap">جلب ⬇</button>
+              </div>
+              <div id="sheetsPreview" style="display:none;max-height:120px;overflow:auto;margin-top:0.5rem;font-size:0.7rem;background:rgba(255,255,255,0.04);border-radius:8px;padding:0.5rem"></div>
+              <button class="ai-tool-btn" style="background:linear-gradient(135deg,#0f9d58,#34a853)" onclick="aiSheetsToReport()">📊 ولّد التقرير من Sheets</button>
+              <div class="ai-tool-result" id="sheetsResult" style="display:none"></div>
+            </div>
             <!-- Excel AI -->
             <div class="ai-tool-card" id="toolExcelAi">
               <div class="ai-tool-icon" style="background:linear-gradient(135deg,#10b981,#0ea5e9)">📊</div>
@@ -1200,6 +1223,112 @@
     </div>
   </div>
 
+
+
+  <!-- PDF BRANDING PANEL -->
+  <div id="pdfBrandingPanel" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:700px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem">
+        <h2 style="color:#fff;font-size:1.5rem;font-weight:900">📄 تصدير PDF احترافي</h2>
+        <button onclick="closePdfPanel()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.4rem 1rem;cursor:pointer;font-family:var(--font)">✕ إغلاق</button>
+      </div>
+
+      <!-- Branding Settings -->
+      <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem">
+        <div style="font-weight:800;color:#fff;margin-bottom:1rem;font-size:0.95rem">🏢 هوية مؤسستك</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div>
+            <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">اسم المؤسسة</label>
+            <input type="text" id="orgName" placeholder="وزارة / شركة / جهة..." class="email-input" style="width:100%;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">اسم القسم / الإدارة</label>
+            <input type="text" id="orgDept" placeholder="الإدارة العامة" class="email-input" style="width:100%;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">اللون الرئيسي</label>
+            <input type="color" id="brandColor" value="#6c63ff" style="width:100%;height:38px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer">
+          </div>
+          <div>
+            <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">شعار المؤسسة (logo)</label>
+            <input type="file" id="orgLogoInput" accept="image/*" onchange="loadOrgLogo(this)" style="display:none">
+            <button onclick="document.getElementById('orgLogoInput').click()" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:0.55rem;color:var(--text-muted);cursor:pointer;font-size:0.78rem;font-family:var(--font)">
+              <span id="logoStatus">📎 اختر صورة الشعار</span>
+            </button>
+          </div>
+        </div>
+        <button onclick="savePdfBranding()" style="margin-top:1rem;background:rgba(108,99,255,0.15);border:1px solid rgba(108,99,255,0.3);border-radius:8px;color:var(--accent);padding:0.5rem 1.2rem;cursor:pointer;font-family:var(--font);font-weight:700;font-size:0.82rem">💾 حفظ الهوية</button>
+      </div>
+
+      <!-- PDF Preview -->
+      <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem">
+        <div style="font-weight:800;color:#fff;margin-bottom:1rem;font-size:0.95rem">👁️ معاينة التقرير</div>
+        <div id="pdfPreviewBox" style="background:#fff;border-radius:8px;padding:2rem;color:#000;min-height:300px;font-family:Arial,sans-serif;direction:rtl;line-height:1.8;font-size:0.85rem"></div>
+      </div>
+
+      <!-- Export Buttons -->
+      <div style="display:flex;gap:1rem;flex-wrap:wrap">
+        <button onclick="exportProfessionalPDF()" class="ai-tool-btn" style="flex:1;min-width:200px;font-size:0.95rem;padding:0.9rem">
+          📄 تصدير PDF الآن
+        </button>
+        <button onclick="exportWordDoc()" class="ai-tool-btn" style="flex:1;min-width:200px;background:linear-gradient(135deg,#0078d4,#004e8c);font-size:0.95rem;padding:0.9rem">
+          📝 تصدير Word
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SCHEDULE PANEL -->
+  <div id="schedulePanel" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:700px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem">
+        <h2 style="color:#fff;font-size:1.5rem;font-weight:900">⏰ التقارير المجدولة</h2>
+        <button onclick="closeSchedulePanel()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.4rem 1rem;cursor:pointer;font-family:var(--font)">✕ إغلاق</button>
+      </div>
+
+      <!-- Add Schedule -->
+      <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem">
+        <div style="font-weight:800;color:#fff;margin-bottom:1.2rem">➕ إضافة جدول تقرير</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <div>
+            <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">نوع التقرير</label>
+            <select id="schedType" class="email-input" style="width:100%;box-sizing:border-box">
+              <option value="weekly">أسبوعي</option>
+              <option value="monthly">شهري</option>
+              <option value="daily">يومي</option>
+            </select>
+          </div>
+          <div>
+            <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">اليوم</label>
+            <select id="schedDay" class="email-input" style="width:100%;box-sizing:border-box">
+              <option value="0">الأحد</option>
+              <option value="1">الاثنين</option>
+              <option value="2">الثلاثاء</option>
+              <option value="3">الأربعاء</option>
+              <option value="4">الخميس</option>
+            </select>
+          </div>
+          <div>
+            <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">الوقت</label>
+            <input type="time" id="schedTime" value="08:00" class="email-input" style="width:100%;box-sizing:border-box;direction:ltr">
+          </div>
+          <div>
+            <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">إرسال إلى</label>
+            <input type="email" id="schedEmail" placeholder="بريدك الإلكتروني" class="email-input" style="width:100%;box-sizing:border-box">
+          </div>
+        </div>
+        <button onclick="addSchedule()" class="ai-tool-btn" style="width:auto;padding:0.6rem 1.5rem">⏰ إضافة الجدول</button>
+      </div>
+
+      <!-- Active Schedules -->
+      <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:16px;padding:1.5rem">
+        <div style="font-weight:800;color:#fff;margin-bottom:1rem">📋 الجداول النشطة</div>
+        <div id="activeSchedules"></div>
+      </div>
+
+    </div>
+  </div>
 
   <!-- SHARE MODAL -->
   <div id="shareModal" class="share-modal-overlay" style="display:none" onclick="if(event.target===this)closeShare()">
