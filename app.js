@@ -5921,16 +5921,99 @@ rebuildNavIfNeeded();
 // FORGOT PASSWORD
 // ============================================================
 function showForgotPassword() {
-  const modal = document.getElementById('forgotModal');
-  if (modal) {
-    modal.style.display = 'flex';
-    document.getElementById('forgotStep1').style.display = 'block';
-    document.getElementById('forgotStep2').style.display = 'none';
-    document.getElementById('forgotMsg').style.display = 'none';
-    const emailInput = document.getElementById('loginEmail') || document.getElementById('email');
-    const forgotEmail = document.getElementById('forgotEmail');
-    if (emailInput && forgotEmail) forgotEmail.value = emailInput.value || '';
-  }
+  // Remove existing modal if any
+  const existing = document.getElementById('forgotModal');
+  if (existing) existing.remove();
+
+  // Build modal dynamically — works regardless of HTML cache
+  const modal = document.createElement('div');
+  modal.id = 'forgotModal';
+  modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999999;align-items:center;justify-content:center;font-family:Tajawal,Arial,sans-serif';
+  const currentEmail = (document.getElementById('authEmail') || document.getElementById('loginEmail') || {}).value || '';
+  modal.innerHTML = \`
+    <div style="background:#12121e;border:1px solid rgba(108,99,255,0.5);border-radius:20px;padding:2rem;width:360px;max-width:92vw;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,0.6)">
+      <div style="text-align:center;margin-bottom:1.5rem">
+        <div style="font-size:2.5rem;margin-bottom:0.5rem">🔑</div>
+        <h3 style="color:#fff;font-size:1.15rem;font-weight:900;margin:0">إعادة تعيين كلمة المرور</h3>
+        <p style="color:rgba(255,255,255,0.45);font-size:0.78rem;margin:0.4rem 0 0">أدخل بريدك لإعادة تعيين كلمة المرور</p>
+      </div>
+      <div id="fm_step1">
+        <div style="margin-bottom:0.8rem">
+          <label style="color:rgba(255,255,255,0.6);font-size:0.78rem;display:block;margin-bottom:0.3rem">البريد الإلكتروني</label>
+          <input id="fm_email" type="email" value="\${currentEmail}" placeholder="example@email.com"
+            style="width:100%;box-sizing:border-box;padding:0.7rem 1rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:white;font-size:0.88rem;direction:ltr;outline:none;font-family:Arial">
+        </div>
+        <button onclick="fm_verify()" style="width:100%;padding:0.75rem;background:linear-gradient(135deg,#6c63ff,#00d4aa);border:none;border-radius:12px;color:white;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:Tajawal,Arial,sans-serif;margin-bottom:0.5rem">التحقق من الحساب ←</button>
+      </div>
+      <div id="fm_step2" style="display:none">
+        <div style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:0.8rem;margin-bottom:1rem;font-size:0.8rem;color:#10b981;text-align:center">✅ تم التحقق — عيّن كلمة مرور جديدة</div>
+        <div style="margin-bottom:0.6rem">
+          <label style="color:rgba(255,255,255,0.6);font-size:0.78rem;display:block;margin-bottom:0.3rem">كلمة المرور الجديدة</label>
+          <input id="fm_p1" type="password" placeholder="أدخل كلمة مرور جديدة"
+            style="width:100%;box-sizing:border-box;padding:0.7rem 1rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:white;font-size:0.88rem;outline:none">
+        </div>
+        <div style="margin-bottom:0.8rem">
+          <label style="color:rgba(255,255,255,0.6);font-size:0.78rem;display:block;margin-bottom:0.3rem">تأكيد كلمة المرور</label>
+          <input id="fm_p2" type="password" placeholder="أعد كلمة المرور"
+            style="width:100%;box-sizing:border-box;padding:0.7rem 1rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:white;font-size:0.88rem;outline:none">
+        </div>
+        <button onclick="fm_reset()" style="width:100%;padding:0.75rem;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;color:white;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:Tajawal,Arial,sans-serif;margin-bottom:0.5rem">✅ حفظ كلمة المرور الجديدة</button>
+      </div>
+      <div id="fm_msg" style="display:none;margin-top:0.5rem;font-size:0.78rem;text-align:center;padding:0.5rem;border-radius:8px"></div>
+      <button onclick="document.getElementById('forgotModal').remove()" style="width:100%;margin-top:0.5rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:rgba(255,255,255,0.5);padding:0.6rem;cursor:pointer;font-family:Tajawal,Arial,sans-serif;font-size:0.85rem">إلغاء</button>
+    </div>
+  \`;
+  document.body.appendChild(modal);
+  // Close on backdrop click
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  setTimeout(() => document.getElementById('fm_email')?.focus(), 100);
+}
+
+function fm_verify() {
+  const email = (document.getElementById('fm_email')||{}).value?.trim()?.toLowerCase();
+  if (!email || !email.includes('@')) { fm_msg('أدخل بريداً إلكترونياً صحيحاً', '#ef4444'); return; }
+  const users = JSON.parse(localStorage.getItem('mbrcst_users') || '[]');
+  const found = users.find(u => (u.username||'').toLowerCase() === email || (u.email||'').toLowerCase() === email);
+  // Allow reset even if no account (will create when logged in)
+  document.getElementById('fm_step1').style.display = 'none';
+  document.getElementById('fm_step2').style.display = 'block';
+  sessionStorage.setItem('mbrcst_reset_email', email);
+  if (!found) fm_msg('حساب جديد: ستتمكن من الدخول بكلمة المرور الجديدة', '#f59e0b');
+}
+
+function fm_reset() {
+  const p1 = (document.getElementById('fm_p1')||{}).value;
+  const p2 = (document.getElementById('fm_p2')||{}).value;
+  if (!p1 || p1.length < 4) { fm_msg('كلمة المرور يجب ألا تقل عن 4 أحرف', '#ef4444'); return; }
+  if (p1 !== p2) { fm_msg('كلمتا المرور غير متطابقتين ❌', '#ef4444'); return; }
+  const email = sessionStorage.getItem('mbrcst_reset_email');
+  if (!email) { fm_msg('خطأ، أعد المحاولة', '#ef4444'); return; }
+  // Update or create user
+  let users = JSON.parse(localStorage.getItem('mbrcst_users') || '[]');
+  const idx = users.findIndex(u => (u.username||'').toLowerCase() === email);
+  if (idx >= 0) { users[idx].password = btoa(p1); }
+  else { users.push({ username: email, password: btoa(p1), fullName: email.split('@')[0], createdAt: new Date().toISOString() }); }
+  localStorage.setItem('mbrcst_users', JSON.stringify(users));
+  // Pre-fill login form
+  const authEmail = document.getElementById('authEmail');
+  const authPass  = document.getElementById('authPassword');
+  if (authEmail) authEmail.value = email;
+  if (authPass)  authPass.value  = p1;
+  document.getElementById('forgotModal')?.remove();
+  sessionStorage.removeItem('mbrcst_reset_email');
+  // Show success
+  const errEl = document.getElementById('authError');
+  if (errEl) { errEl.style.color='#10b981'; errEl.style.display='block'; errEl.textContent='✅ تم تعيين كلمة المرور — اضغط تسجيل الدخول'; setTimeout(()=>{ errEl.style.display='none'; errEl.style.color=''; }, 4000); }
+  if (typeof showToast === 'function') showToast('✅ تم تغيير كلمة المرور! اضغط تسجيل الدخول', 'success');
+}
+
+function fm_msg(text, color) {
+  const el = document.getElementById('fm_msg');
+  if (!el) return;
+  el.style.display = 'block';
+  el.style.color = color;
+  el.style.background = color + '15';
+  el.textContent = text;
 }
 
 function closeForgotModal() {
