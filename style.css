@@ -2981,3 +2981,264 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 1px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(108,99,255,0.07) !important;
 }
 
+
+/* ================================================================
+   📱 MOBILE & TABLET — iPhone & iPad Optimizations
+   ================================================================ */
+
+/* ===== SHARED MOBILE BASE (max 768px = iPhone all sizes) ===== */
+@media (max-width: 768px) {
+
+  /* -- Header -- */
+  .site-header { height: 52px !important; }
+  .header-inner {
+    height: 52px !important;
+    padding: 0 0.75rem !important;
+    grid-template-columns: auto 1fr auto !important;
+    gap: 0 !important;
+  }
+  .logo-text { font-size: 0.88rem !important; }
+  .logo-icon { width: 26px !important; height: 26px !important; font-size: 0.78rem !important; }
+
+  /* Hide dropdown labels show icon only */
+  .nav-dropdown-btn span:not(.dd-arrow) { display: none; }
+  .nav-dropdown-btn { padding: 0.3rem 0.5rem !important; font-size: 0.8rem !important; min-width: 34px; justify-content: center; }
+  .nav-icon-btn { width: 28px !important; height: 28px !important; font-size: 0.78rem !important; }
+  #aiStatusBadge { display: none !important; }
+
+  /* -- Bottom tab bar (main navigation) -- */
+  .nav-primary {
+    position: fixed !important;
+    bottom: 0 !important; left: 0 !important; right: 0 !important;
+    background: rgba(8,8,18,0.97) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-top: 1px solid rgba(108,99,255,0.15) !important;
+    display: flex !important;
+    justify-content: space-around !important;
+    padding: 0.4rem 0 env(safe-area-inset-bottom, 0.4rem) !important;
+    z-index: 9000 !important;
+    gap: 0 !important;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.4) !important;
+  }
+  .nav-tab {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 3px !important;
+    padding: 0.35rem 0.2rem !important;
+    font-size: 0.6rem !important;
+    border-radius: 10px !important;
+    border: none !important;
+    background: none !important;
+    min-width: 0 !important;
+  }
+  .nav-tab span:first-child { font-size: 1.35rem; line-height: 1; }
+  .tab-label { display: block !important; font-size: 0.6rem !important; font-weight: 600 !important; }
+  .nav-tab.active {
+    color: #a89cff !important;
+    background: rgba(108,99,255,0.12) !important;
+    border: none !important;
+  }
+
+  /* -- Main content — account for bottom nav bar -- */
+  .main-wrap { 
+    padding: 0 0.75rem 5.5rem !important;
+    margin-top: 0 !important;
+  }
+  .section-content { padding-top: 0.5rem !important; }
+
+  /* -- Hero section -- */
+  .hero-section { padding: 1.5rem 1rem 1.2rem !important; }
+  .hero-title { font-size: 1.5rem !important; margin-bottom: 0.5rem !important; }
+  .hero-sub { font-size: 0.82rem !important; }
+  .hero-badge { font-size: 0.7rem !important; padding: 0.28rem 0.7rem !important; }
+  .hero-btns { flex-direction: column !important; gap: 0.5rem !important; }
+  .hero-btns button { width: 100% !important; }
+
+  /* -- Dashboard stats -- */
+  #welcomeDashboard { padding: 0.75rem 0.75rem 0 !important; }
+  .dash-stats-row { grid-template-columns: 1fr 1fr !important; gap: 0.6rem !important; }
+  .dash-stat-card { padding: 0.9rem 0.7rem !important; }
+  .dash-stat-icon { font-size: 1.3rem !important; }
+  .dash-stat-value { font-size: 1.4rem !important; }
+  .dash-stat-label { font-size: 0.65rem !important; }
+  .dash-quick-actions { flex-wrap: wrap !important; gap: 0.4rem !important; }
+  .dash-quick-btn { font-size: 0.68rem !important; padding: 0.32rem 0.65rem !important; }
+
+  /* -- Form fields -- */
+  .report-form { gap: 0.75rem !important; }
+  .form-group label { font-size: 0.78rem !important; }
+  input, textarea, select { font-size: 16px !important; } /* Prevent iOS zoom on focus */
+  .form-row { grid-template-columns: 1fr !important; }
+
+  /* -- Buttons -- */
+  .generate-btn { 
+    font-size: 0.88rem !important; 
+    padding: 0.75rem 1rem !important;
+    border-radius: 12px !important;
+  }
+
+  /* -- AI Tools section -- */
+  .ai-fullpage-overlay { padding-top: 52px !important; }
+  .ai-toolbox-wrap { padding: 0.75rem !important; }
+  .ai-section-header { padding: 0.75rem !important; }
+  .ai-section-title { font-size: 0.95rem !important; }
+  .ai-group { margin-bottom: 1.25rem !important; }
+  .ai-group-title { font-size: 0.82rem !important; padding: 0.55rem 0.85rem !important; }
+  .ai-tools-grid { grid-template-columns: 1fr !important; gap: 0.75rem !important; }
+  .ai-tool-card { padding: 1rem !important; }
+  .ai-tool-card h4 { font-size: 0.88rem !important; }
+  .ai-tool-card p { font-size: 0.75rem !important; }
+  .ai-tool-icon { width: 40px !important; height: 40px !important; font-size: 1.1rem !important; }
+  .ai-tool-input { font-size: 16px !important; }
+  .ai-tool-btn { font-size: 0.82rem !important; padding: 0.6rem 1rem !important; }
+  .ai-tool-result { max-height: 320px !important; font-size: 0.8rem !important; }
+  .ai-tone-grid { gap: 0.3rem !important; flex-wrap: wrap !important; }
+  .ai-tone-chip { font-size: 0.72rem !important; padding: 0.28rem 0.6rem !important; }
+  .ai-mini-select { font-size: 16px !important; }
+
+  /* -- Quick 60 panel -- */
+  .quick60-panel { padding: 1rem !important; }
+  .q60-step { padding: 0.75rem !important; }
+
+  /* -- History cards -- */
+  .hist-card { padding: 0.9rem !important; }
+  .hist-card-title { font-size: 0.88rem !important; }
+  .hist-card-actions { flex-wrap: wrap !important; gap: 0.3rem !important; }
+  .hist-btn { font-size: 0.68rem !important; padding: 0.25rem 0.5rem !important; }
+
+  /* -- Compare section -- */
+  .compare-grid { grid-template-columns: 1fr !important; }
+
+  /* -- Settings -- */
+  .settings-card { padding: 1rem !important; }
+
+  /* -- Modals -- */
+  .modal-box, .share-modal { 
+    width: 95vw !important; 
+    max-width: 95vw !important;
+    border-radius: 16px !important;
+    margin: 0 auto !important;
+  }
+
+  /* -- Templates -- */
+  .tpl-grid { grid-template-columns: 1fr !important; gap: 0.75rem !important; }
+  .tpl-filter-row { gap: 0.35rem !important; }
+  .tpl-cat-btn { font-size: 0.72rem !important; padding: 0.28rem 0.65rem !important; }
+
+  /* -- Team board -- */
+  .team-grid { grid-template-columns: 1fr !important; }
+
+  /* -- PW banner -- */
+  .pwa-banner { 
+    bottom: 5.5rem !important; 
+    right: 0.75rem !important; left: 0.75rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* -- Nav dropdowns — full width on mobile -- */
+  .nav-dropdown-menu {
+    position: fixed !important;
+    left: 0.5rem !important; right: 0.5rem !important;
+    width: auto !important;
+    top: 56px !important;
+    max-height: 70vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* -- Scrollbar hidden on mobile -- */
+  ::-webkit-scrollbar { display: none; }
+  * { scrollbar-width: none; }
+}
+
+/* ===== iPad Mini & iPad (768px — 1024px) ===== */
+@media (min-width: 769px) and (max-width: 1024px) {
+
+  /* Header */
+  .site-header { height: 54px !important; }
+  .header-inner { height: 54px !important; padding: 0 1rem !important; }
+  .logo-text { font-size: 0.92rem !important; }
+  #aiStatusBadge { display: none !important; }
+
+  /* Nav stays top but compact */
+  .nav-tab { padding: 0.32rem 0.55rem !important; font-size: 0.75rem !important; }
+  .nav-dropdown-btn { padding: 0.32rem 0.55rem !important; font-size: 0.75rem !important; }
+  .tab-label { font-size: 0.7rem !important; }
+
+  /* Main content */
+  .main-wrap { padding: 0 1.2rem 3rem !important; }
+
+  /* Hero */
+  .hero-section { padding: 2rem 1.5rem 1.5rem !important; }
+  .hero-title { font-size: 2rem !important; }
+
+  /* Dashboard */
+  .dash-stats-row { grid-template-columns: repeat(2, 1fr) !important; gap: 0.8rem !important; }
+
+  /* AI Tools */
+  .ai-tools-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 1rem !important; }
+  .ai-tool-card { padding: 1.1rem !important; }
+
+  /* Templates */
+  .tpl-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Form */
+  .form-row { grid-template-columns: 1fr !important; }
+  input, textarea, select { font-size: 16px !important; }
+}
+
+/* ===== iPad Pro 11" & 12.9" (1024px — 1366px) ===== */
+@media (min-width: 1025px) and (max-width: 1366px) {
+
+  .main-wrap { padding: 0 1.5rem 3rem !important; }
+  .ai-tools-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .dash-stats-row { grid-template-columns: repeat(4, 1fr) !important; }
+}
+
+/* ===== iPhone SE / Small phones (max 375px) ===== */
+@media (max-width: 375px) {
+  .hero-title { font-size: 1.3rem !important; }
+  .dash-stats-row { grid-template-columns: 1fr 1fr !important; gap: 0.5rem !important; }
+  .dash-stat-value { font-size: 1.2rem !important; }
+  .ai-tool-card { padding: 0.85rem !important; }
+  .nav-tab span:first-child { font-size: 1.2rem; }
+  .tab-label { font-size: 0.55rem !important; }
+}
+
+/* ===== iOS Safe Area Support (notch / Dynamic Island) ===== */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .site-header {
+    padding-top: env(safe-area-inset-top) !important;
+    height: calc(52px + env(safe-area-inset-top)) !important;
+  }
+  @media (max-width: 768px) {
+    .nav-primary {
+      padding-bottom: calc(0.4rem + env(safe-area-inset-bottom)) !important;
+    }
+    .main-wrap {
+      padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)) !important;
+    }
+  }
+}
+
+/* ===== Touch Improvements — remove hover flicker on touch ===== */
+@media (hover: none) {
+  .ai-tool-card:hover { transform: none !important; }
+  .dash-stat-card:hover { transform: none !important; }
+  .hist-card:hover { transform: none !important; }
+  .tpl-card:hover { transform: none !important; }
+  .dash-quick-btn:hover { transform: none !important; }
+
+  /* Bigger tap targets */
+  .hist-btn, .tpl-cat-btn, .ai-tone-chip {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .nav-icon-btn { 
+    min-width: 36px !important; 
+    min-height: 36px !important;
+  }
+}
