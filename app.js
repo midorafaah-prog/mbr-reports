@@ -6713,3 +6713,285 @@ window.aiDeptCompare = async function() {
   catch(e){showToast('خطأ في الاتصال','error');}
   _aiBtnReset(btn);
 };
+
+// ================================================================
+// NEW AI TOOLS — INNOVATIVE + HUMAN/ORG + ADVANCED (16 tools)
+// ================================================================
+
+// Helper: quick stream wrapper
+async function _stream(fnName, prompt, resultId, errorMsg) {
+  const apiKey = localStorage.getItem('mbrcst_openai_key');
+  if (!apiKey) { showToast('أضف OpenAI API Key في الإعدادات', 'error'); return; }
+  const btn = _aiBtn(fnName, 'يكتب...');
+  try { await _callAIStream(prompt, 900, resultId, apiKey); }
+  catch(e) { showToast(errorMsg || 'خطأ في الاتصال', 'error'); }
+  _aiBtnReset(btn);
+}
+
+// 📸 Vision Report
+async function aiVisionReport() {
+  const file = document.getElementById('visionUpload')?.files?.[0];
+  const type = document.getElementById('visionReportType')?.value || 'تقرير عام';
+  const apiKey = localStorage.getItem('mbrcst_openai_key');
+  if (!file) { showToast('اختر صورة أولاً', 'error'); return; }
+  if (!apiKey) { showToast('أضف OpenAI API Key في الإعدادات', 'error'); return; }
+  const btn = _aiBtn('aiVisionReport', 'يحلل الصورة...');
+  const el = document.getElementById('visionReportResult');
+  if (el) { el.innerHTML = '<span style="color:#67e8f9;font-size:0.78rem">📸 يحلل الصورة...</span>'; el.style.display='block'; }
+  try {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const base64 = e.target.result.split(',')[1];
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST', headers: {'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [{role:'user',content:[
+            {type:'text',text:`أنت كاتب تقارير مؤسسي. انظر للصورة وأكتب ${type} احترافياً باللغة العربية الرسمية يصف ما تراه من مشكلات أو ملاحظات، ويشمل: الوصف التفصيلي، التقييم، التوصيات والإجراءات المطلوبة.`},
+            {type:'image_url',image_url:{url:`data:image/jpeg;base64,${base64}`}}
+          ]}],
+          max_tokens: 700
+        })
+      });
+      const d = await res.json();
+      const txt = d.choices?.[0]?.message?.content || 'تعذّر تحليل الصورة';
+      if (el) { el.innerHTML=''; const div=document.createElement('div'); div.style.cssText='white-space:pre-wrap;line-height:1.8;direction:rtl'; div.textContent=txt; el.appendChild(div); _showResultActions(el,txt,'visionReportResult'); }
+      if (typeof awardPoints==='function') awardPoints('ai_used',3);
+      showToast('✅ تقرير الصورة جاهز','success');
+      _aiBtnReset(btn);
+    };
+    reader.readAsDataURL(file);
+  } catch(e) { showToast('خطأ في تحليل الصورة','error'); _aiBtnReset(btn); }
+}
+
+function previewVision(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const preview = document.getElementById('visionPreview');
+  const img = document.getElementById('visionImg');
+  const name = document.getElementById('visionFileName');
+  if (preview && img) {
+    img.src = URL.createObjectURL(file);
+    if (name) name.textContent = file.name;
+    preview.style.display = 'block';
+  }
+}
+
+// ⏱️ EOD Report
+async function aiEODReport() {
+  const data = document.getElementById('eodInput')?.value?.trim();
+  const name = document.getElementById('eodName')?.value?.trim() || 'الموظف';
+  if (!data) { showToast('أدخل إنجازات اليوم', 'error'); return; }
+  const today = new Date().toLocaleDateString('ar-SA', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  await _stream('aiEODReport',
+    `أنت كاتب تقارير. اكتب تقرير إنجازات يومي احترافياً بأسلوب مؤسسي رسمي لـ${name} بتاريخ ${today}:\n\n${data}\n\nيشمل: تحية مهنية، ملخص اليوم، الإنجازات والمهام المكتملة، ما هو مُجدول ليوم غد، أي عقبات أو ملاحظات.`,
+    'eodResult', 'خطأ في التوليد');
+}
+
+// 🔗 Merge Reports
+async function aiMergeReports() {
+  const r1 = document.getElementById('mergeReport1')?.value?.trim();
+  const r2 = document.getElementById('mergeReport2')?.value?.trim();
+  if (!r1 || !r2) { showToast('أدخل التقريرين كاملين', 'error'); return; }
+  await _stream('aiMergeReports',
+    `ادمج التقريرين التاليين في تقرير موحد متسق الأسلوب ومنظم البنية باللغة العربية الرسمية:\n\nالتقرير الأول:\n${r1}\n\nالتقرير الثاني:\n${r2}\n\nالمطلوب: دمج المعلومات بدون تكرار، توحيد الأسلوب، وتقديم تقرير نهائي متكامل يشمل ملخصاً تنفيذياً وتوصيات موحدة.`,
+    'mergeResult', 'خطأ في الدمج');
+}
+
+// 📞 Call Minutes
+async function aiCallMinutes() {
+  const data = document.getElementById('callInput')?.value?.trim();
+  const p = document.getElementById('callParticipants')?.value?.trim() || '';
+  const d = document.getElementById('callDate')?.value || new Date().toLocaleDateString('ar-SA');
+  if (!data) { showToast('أدخل نقاط المكالمة', 'error'); return; }
+  await _stream('aiCallMinutes',
+    `اكتب محضر اجتماع/مكالمة رسمياً باللغة العربية:\nالتاريخ: ${d} | المشاركون: ${p||'—'}\n\nالنقاط المُناقشة:\n${data}\n\nيشمل: بيانات الاجتماع، جدول الأعمال، ما تمت مناقشته، القرارات المتخذة، الإجراءات المطلوبة مع المسؤول والموعد، تاريخ الاجتماع القادم.`,
+    'callMinutesResult', 'خطأ في التوليد');
+}
+
+// 🎯 OKR Report
+async function aiOKRReport() {
+  const data = document.getElementById('okrInput')?.value?.trim();
+  const q = document.getElementById('okrQuarter')?.value || 'Q1';
+  if (!data) { showToast('أدخل بيانات OKR', 'error'); return; }
+  const yr = new Date().getFullYear();
+  await _stream('aiOKRReport',
+    `اكتب تقرير OKR (Objectives & Key Results) للربع ${q} من عام ${yr} بالعربية الرسمية:\n\n${data}\n\nيشمل: ملخص تنفيذي، تحليل مستوى الإنجاز لكل KR، نقاط القوة، فجوات التطبيق، التوصيات للربع القادم.`,
+    'okrResult', 'خطأ في التوليد');
+}
+
+// 🔄 Update Report
+async function aiUpdateReport() {
+  const data = document.getElementById('oldReportInput')?.value?.trim();
+  if (!data) { showToast('الصق التقرير القديم', 'error'); return; }
+  const opts = [
+    document.getElementById('updateStructure')?.checked ? 'تحسين البنية والترتيب' : '',
+    document.getElementById('updateTone')?.checked ? 'تطوير الأسلوب ليكون أكثر احترافية' : '',
+    document.getElementById('updateRecs')?.checked ? 'إضافة توصيات مقترحة' : ''
+  ].filter(Boolean).join(' و');
+  await _stream('aiUpdateReport',
+    `طوّر وحسّن التقرير التالي مع ${opts}، مع الحفاظ على المحتوى الأصلي وإضافة قيمة مؤسسية:\n\n${data}\n\nأعد كتابته بشكل كامل بمستوى مهني أعلى.`,
+    'updateReportResult', 'خطأ في التحديث');
+}
+
+// 📱 Satisfaction Report
+async function aiSatisfactionReport() {
+  const data = document.getElementById('satisfactionInput')?.value?.trim();
+  if (!data) { showToast('أدخل نتائج الاستبيان', 'error'); return; }
+  await _stream('aiSatisfactionReport',
+    `أنت متخصص موارد بشرية. اكتب تقرير رضا موظفين احترافياً بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nيشمل: ملخص النتائج، تحليل نقاط القوة والضعف، المقارنة بالمعيار، توصيات لتحسين الرضا الوظيفي.`,
+    'satisfactionResult', 'خطأ في التوليد');
+}
+
+// 💡 Suggestions Report
+async function aiSuggestionsReport() {
+  const data = document.getElementById('suggestionsInput')?.value?.trim();
+  if (!data) { showToast('أدخل المقترحات', 'error'); return; }
+  await _stream('aiSuggestionsReport',
+    `اكتب تقرير مقترحات وابتكار موظفين احترافياً بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${data}\n\nيشمل: ملخص المقترحات، تصنيفها حسب الأولوية والجدوى، التوصية بالمقترحات الأكثر قابلية للتطبيق، خطة التنفيذ المقترحة.`,
+    'suggestionsResult', 'خطأ في التوليد');
+}
+
+// 🏆 Awards Report
+async function aiAwardsReport() {
+  const data = document.getElementById('awardsInput')?.value?.trim();
+  if (!data) { showToast('أدخل الإنجازات والمكرّمين', 'error'); return; }
+  await _stream('aiAwardsReport',
+    `اكتب تقرير تكريم وإنجازات مؤسسي رسمي بتاريخ ${new Date().toLocaleDateString('ar-SA')} بأسلوب احتفالي رسمي:\n\n${data}\n\nيشمل: تقديم رسمي، الإنجازات المحققة، تكريم الموظفين المتميزين مع ذكر إسهاماتهم، كلمة ختامية تحفيزية.`,
+    'awardsResult', 'خطأ في التوليد');
+}
+
+// 📝 Field Visit Report
+async function aiFieldVisitReport() {
+  const data = document.getElementById('fieldVisitInput')?.value?.trim();
+  const loc = document.getElementById('fieldVisitLocation')?.value?.trim() || 'الموقع';
+  if (!data) { showToast('أدخل ملاحظات الزيارة', 'error'); return; }
+  await _stream('aiFieldVisitReport',
+    `اكتب تقرير زيارة ميدانية رسمي لـ${loc} بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${data}\n\nيشمل: معلومات الزيارة، الهدف، الملاحظات الميدانية المفصلة، النقاط الإيجابية، النقاط التي تحتاج متابعة، التوصيات والجدول الزمني.`,
+    'fieldVisitResult', 'خطأ في التوليد');
+}
+
+// 📩 Newsletter
+async function aiNewsletter() {
+  const data = document.getElementById('newsletterInput')?.value?.trim();
+  const mn = document.getElementById('newsletterMonth')?.value?.trim() || 'القسم';
+  if (!data) { showToast('أدخل محتوى النشرة', 'error'); return; }
+  await _stream('aiNewsletter',
+    `اكتب نشرة داخلية شهرية منسّقة وجذابة لـ${mn} بأسلوب مهني ودافئ بناءً على:\n\n${data}\n\nتشمل: تحية الشهر، أبرز الإنجازات، أخبار الفريق، التذكيرات المهمة، كلمة تحفيزية ختامية. استخدم رموزاً مناسبة (emoji) لتجميل النشرة.`,
+    'newsletterResult', 'خطأ في التوليد');
+}
+
+// 📋 Checklist Generator
+async function aiChecklist() {
+  const data = document.getElementById('checklistInput')?.value?.trim();
+  const type = document.getElementById('checklistType')?.value || 'قائمة مراجعة';
+  if (!data) { showToast('أدخل موضوع القائمة', 'error'); return; }
+  await _stream('aiChecklist',
+    `أنشئ ${type} شاملة ومنظمة باللغة العربية لـ: ${data}\n\nاجعلها: مرقمة ومنظمة في فئات منطقية، شاملة لكل التفاصيل المهمة، عملية وقابلة للتطبيق، مع تمييز العناصر الحرجة.`,
+    'checklistResult', 'خطأ في التوليد');
+}
+
+// 🌍 Translate
+async function aiTranslateReport() {
+  const data = document.getElementById('translateInput')?.value?.trim();
+  const dir = document.getElementById('translateDir')?.value || 'ar-en';
+  if (!data) { showToast('أدخل النص المراد ترجمته', 'error'); return; }
+  const dirText = dir==='ar-en' ? 'من العربية للإنجليزية' : 'من الإنجليزية للعربية';
+  const targetLang = dir==='ar-en' ? 'English' : 'العربية الرسمية';
+  await _stream('aiTranslateReport',
+    `ترجم التقرير التالي ترجمة مؤسسية احترافية ${dirText}، مع الحفاظ على الأسلوب الرسمي والمصطلحات المؤسسية:\n\n${data}\n\nاكتب الترجمة فقط بـ${targetLang} دون أي شرح إضافي.`,
+    'translateResult', 'خطأ في الترجمة');
+}
+
+// ✅ Report Audit
+async function aiReportAudit() {
+  const data = document.getElementById('auditInput')?.value?.trim();
+  if (!data) { showToast('الصق التقرير للمراجعة', 'error'); return; }
+  const checks = [
+    document.getElementById('auditLang')?.checked ? 'الأخطاء اللغوية والإملائية' : '',
+    document.getElementById('auditStructure')?.checked ? 'البنية والتنظيم' : '',
+    document.getElementById('auditTone')?.checked ? 'الأسلوب المهني' : '',
+    document.getElementById('auditCompleteness')?.checked ? 'الاكتمال والشمولية' : ''
+  ].filter(Boolean).join(' والـ');
+  await _stream('aiReportAudit',
+    `راجع وقيّم التقرير التالي من حيث ${checks}. أعطِ تقييماً شاملاً يشمل:\n1. نقاط القوة\n2. الأخطاء أو الثغرات المكتشفة\n3. اقتراحات تحسين محددة\n4. نسخة محسّنة من الأجزاء التي تحتاج تطوير\n\nالتقرير:\n${data}`,
+    'auditResult', 'خطأ في المراجعة');
+}
+
+// 📊 Dashboard Generator
+async function aiDashboardGen() {
+  const data = document.getElementById('dashboardInput')?.value?.trim();
+  const title = document.getElementById('dashboardTitle')?.value?.trim() || 'لوحة المؤشرات';
+  if (!data) { showToast('أدخل البيانات والمؤشرات', 'error'); return; }
+  await _stream('aiDashboardGen',
+    `أنشئ لوحة مؤشرات نصية منسّقة وجميلة بالعربية تُعرض بوضوح للإدارة بعنوان "${title}" بناءً على:\n\n${data}\n\nاجعلها: منظمة في أقسام واضحة، تظهر المؤشرات مع قيمها والتغيير عن الفترة السابقة إن أمكن، مع رموز بصرية (↑↓→ ✅❌⚠️) لتوضيح الاتجاهات، وتوصية واحدة عملية في النهاية.`,
+    'dashboardResult', 'خطأ في التوليد');
+}
+
+// 🎙️ Voice to Report
+let v2rRecording = false;
+let v2rRecognition = null;
+let v2rInterval = null;
+let v2rSeconds = 0;
+
+function toggleV2RRecord() {
+  if (!v2rRecording) {
+    startV2RRecord();
+  } else {
+    stopV2RRecord();
+  }
+}
+function startV2RRecord() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('المتصفح لا يدعم التسجيل الصوتي، يمكنك الكتابة يدوياً', 'error'); return; }
+  v2rRecognition = new SR();
+  v2rRecognition.lang = 'ar-SA'; v2rRecognition.continuous = true; v2rRecognition.interimResults = true;
+  const btn = document.getElementById('v2rRecordBtn');
+  const status = document.getElementById('v2rStatus');
+  const ta = document.getElementById('v2rTranscript');
+  if (btn) { btn.textContent = '⏹️ إيقاف التسجيل'; btn.style.background = 'linear-gradient(135deg,#ef4444,#b91c1c)'; }
+  if (status) status.textContent = '🔴 يسجّل...';
+  v2rRecognition.onresult = e => {
+    let t = '';
+    for (let i=0; i<e.results.length; i++) t += e.results[i][0].transcript;
+    if (ta) ta.value = t;
+  };
+  v2rRecognition.start(); v2rRecording = true;
+  v2rSeconds = 0;
+  v2rInterval = setInterval(() => {
+    v2rSeconds++;
+    const m = String(Math.floor(v2rSeconds/60)).padStart(2,'0');
+    const s = String(v2rSeconds%60).padStart(2,'0');
+    const timer = document.getElementById('v2rTimer');
+    if (timer) timer.textContent = m+':'+s;
+  }, 1000);
+}
+function stopV2RRecord() {
+  if (v2rRecognition) v2rRecognition.stop();
+  clearInterval(v2rInterval);
+  v2rRecording = false;
+  const btn = document.getElementById('v2rRecordBtn');
+  const status = document.getElementById('v2rStatus');
+  if (btn) { btn.textContent = '🎙️ ابدأ تسجيلاً جديداً'; btn.style.background = 'linear-gradient(135deg,#8b5cf6,#7c3aed)'; }
+  if (status) status.textContent = '✅ انتهى التسجيل — اضغط تحويل';
+}
+async function aiVoiceToReport() {
+  const data = document.getElementById('v2rTranscript')?.value?.trim();
+  const type = document.getElementById('v2rReportType')?.value || 'تقرير عام';
+  if (!data) { showToast('سجّل أو اكتب ملاحظاتك أولاً', 'error'); return; }
+  await _stream('aiVoiceToReport',
+    `حوّل النص الصوتي التالي إلى ${type} احترافي منظم باللغة العربية الرسمية:\n\n"${data}"\n\nنظّمه في: عنوان مناسب، ملخص، بنود مرتبة، توصيات — مع تصحيح أي أخطاء إملائية أو لغوية في النص الأصلي.`,
+    'v2rResult', 'خطأ في التحويل');
+}
+
+// Helper selectors
+function selOKRQ(el, val) {
+  el.closest('.ai-tone-grid').querySelectorAll('.ai-tone-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('okrQuarter').value = val;
+}
+function selTransDir(el, val) {
+  el.closest('.ai-tone-grid').querySelectorAll('.ai-tone-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('translateDir').value = val;
+}

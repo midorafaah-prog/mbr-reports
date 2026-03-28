@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=1774719180" />
+  <link rel="stylesheet" href="style.css?v=1774721766" />
   <!-- SheetJS for Excel parsing -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <!-- html2pdf for PDF export -->
@@ -1297,6 +1297,240 @@
         </div>
       </div>
 
+
+      <!-- ===== GROUP: أدوات ذكاء مبتكرة ===== -->
+      <div class="ai-group">
+        <div class="ai-group-title" style="background:linear-gradient(135deg,rgba(6,182,212,0.12),rgba(99,102,241,0.08));border-color:rgba(6,182,212,0.2)">✨ أدوات ذكاء مبتكرة</div>
+        <div class="ai-tools-grid">
+
+          <div class="ai-tool-card" id="toolVisionReport" style="border:1px solid rgba(6,182,212,0.25);background:rgba(6,182,212,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#06b6d4,#0891b2)">📸</div>
+            <h4>📸 تقرير من صورة</h4>
+            <p>ارفع صورة عطل أو مشكلة وسيكتب AI تقريراً صيانة/سلامة كاملاً</p>
+            <div style="border:2px dashed rgba(6,182,212,0.3);border-radius:10px;padding:0.8rem;text-align:center;cursor:pointer;background:rgba(6,182,212,0.03)" onclick="document.getElementById('visionUpload').click()">
+              <div style="font-size:1.5rem">📷</div>
+              <div style="color:#67e8f9;font-size:0.78rem;margin-top:0.3rem">انقر لاختيار صورة</div>
+              <input id="visionUpload" type="file" accept="image/*" style="display:none" onchange="previewVision(this)">
+            </div>
+            <div id="visionPreview" style="display:none;margin-top:0.5rem;text-align:center">
+              <img id="visionImg" style="max-width:100%;border-radius:8px;max-height:120px;object-fit:cover">
+              <div id="visionFileName" style="color:#67e8f9;font-size:0.72rem;margin-top:0.3rem"></div>
+            </div>
+            <select id="visionReportType" class="ai-mini-select" style="margin-top:0.5rem">
+              <option>تقرير صيانة</option>
+              <option>تقرير سلامة</option>
+              <option>تقرير حادثة</option>
+              <option>تقرير تفتيش</option>
+              <option>تقرير عام</option>
+            </select>
+            <button class="ai-tool-btn" onclick="aiVisionReport()" style="background:linear-gradient(135deg,#06b6d4,#0891b2)">📸 توليد تقرير من الصورة</button>
+            <div class="ai-tool-result" id="visionReportResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolEODReport" style="border:1px solid rgba(16,185,129,0.25);background:rgba(16,185,129,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#10b981,#059669)">⏱️</div>
+            <h4>⏱️ تقرير إنجازات اليوم</h4>
+            <p>نهاية الدوام: أدخل ما أنجزته في نقاط → EOD Report رسمي في ثوانٍ</p>
+            <textarea id="eodInput" class="ai-tool-input" rows="4" placeholder="• أنهيت مراجعة عقود الموردين الثلاثة&#10;• اجتمعت مع فريق IT لمناقشة الخادم الجديد&#10;• أرسلت ردوداً على 8 بريد إلكتروني&#10;• تابعت طلب الصيانة رقم 112"></textarea>
+            <input id="eodName" class="ai-tool-input" placeholder="اسمك والقسم" style="margin-top:0.4rem">
+            <button class="ai-tool-btn" onclick="aiEODReport()" style="background:linear-gradient(135deg,#10b981,#059669)">⏱️ توليد تقرير اليوم</button>
+            <div class="ai-tool-result" id="eodResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolMergeReports" style="border:1px solid rgba(168,85,247,0.25);background:rgba(168,85,247,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#a855f7,#7c3aed)">🔗</div>
+            <h4>🔗 دمج تقريرين</h4>
+            <p>الصق تقريرين منفصلين → AI يدمجهما في تقرير موحد متسق</p>
+            <textarea id="mergeReport1" class="ai-tool-input" rows="3" placeholder="التقرير الأول..."></textarea>
+            <textarea id="mergeReport2" class="ai-tool-input" rows="3" placeholder="التقرير الثاني..." style="margin-top:0.4rem"></textarea>
+            <button class="ai-tool-btn" onclick="aiMergeReports()" style="background:linear-gradient(135deg,#a855f7,#7c3aed)">🔗 دمج التقريرين</button>
+            <div class="ai-tool-result" id="mergeResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolCallMinutes" style="border:1px solid rgba(245,158,11,0.25);background:rgba(245,158,11,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">📞</div>
+            <h4>📞 محضر مكالمة / اجتماع سريع</h4>
+            <p>اكتب نقاط المكالمة أو الاجتماع → محضر رسمي جاهز للتوزيع</p>
+            <textarea id="callInput" class="ai-tool-input" rows="4" placeholder="• نوقش تأخر شحنة المعدات&#10;• قرر المدير تمديد العقد شهراً&#10;• طلب IT توفير خادم احتياطي&#10;• موعد المتابعة: الأربعاء القادم"></textarea>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;margin-top:0.4rem">
+              <input id="callParticipants" class="ai-tool-input" placeholder="المشاركون">
+              <input id="callDate" class="ai-tool-input" type="date">
+            </div>
+            <button class="ai-tool-btn" onclick="aiCallMinutes()" style="background:linear-gradient(135deg,#f59e0b,#d97706)">📞 توليد المحضر</button>
+            <div class="ai-tool-result" id="callMinutesResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolOKRReport" style="border:1px solid rgba(99,102,241,0.25);background:rgba(99,102,241,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#6366f1,#4338ca)">🎯</div>
+            <h4>🎯 تقرير OKR الربعي</h4>
+            <p>الأهداف والنتائج الرئيسية → تقرير OKR ربعي احترافي</p>
+            <textarea id="okrInput" class="ai-tool-input" rows="4" placeholder="الهدف (O): تحسين كفاءة العمليات&#10;• KR1: تقليل وقت معالجة الطلبات 30% → حُقق 25%&#10;• KR2: رقمنة 5 عمليات يدوية → حُقق 3/5&#10;• KR3: تدريب 100% من الفريق → حُقق 80%"></textarea>
+            <div class="ai-tone-grid">
+              <button class="ai-tone-chip active" onclick="selOKRQ(this,'Q1')">Q1</button>
+              <button class="ai-tone-chip" onclick="selOKRQ(this,'Q2')">Q2</button>
+              <button class="ai-tone-chip" onclick="selOKRQ(this,'Q3')">Q3</button>
+              <button class="ai-tone-chip" onclick="selOKRQ(this,'Q4')">Q4</button>
+            </div>
+            <input type="hidden" id="okrQuarter" value="Q1">
+            <button class="ai-tool-btn" onclick="aiOKRReport()" style="background:linear-gradient(135deg,#6366f1,#4338ca)">🎯 توليد تقرير OKR</button>
+            <div class="ai-tool-result" id="okrResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolUpdateReport" style="border:1px solid rgba(251,191,36,0.25);background:rgba(251,191,36,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#fbbf24,#f59e0b)">🔄</div>
+            <h4>🔄 تحديث وتطوير تقرير</h4>
+            <p>الصق تقريراً قديماً → AI يحدّثه ويطوّر أسلوبه وبنيته</p>
+            <textarea id="oldReportInput" class="ai-tool-input" rows="4" placeholder="الصق تقريرك القديم هنا..."></textarea>
+            <div class="ai-tool-options">
+              <label><input type="checkbox" id="updateStructure" checked> تحسين البنية</label>
+              <label><input type="checkbox" id="updateTone" checked> تطوير الأسلوب</label>
+              <label><input type="checkbox" id="updateRecs" checked> إضافة توصيات</label>
+            </div>
+            <button class="ai-tool-btn" onclick="aiUpdateReport()" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a1a2e">🔄 تحديث التقرير</button>
+            <div class="ai-tool-result" id="updateReportResult" style="display:none"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ===== GROUP: تقارير بشرية وتنظيمية ===== -->
+      <div class="ai-group">
+        <div class="ai-group-title" style="background:linear-gradient(135deg,rgba(236,72,153,0.1),rgba(168,85,247,0.07));border-color:rgba(236,72,153,0.18)">👥 تقارير بشرية وتنظيمية</div>
+        <div class="ai-tools-grid">
+
+          <div class="ai-tool-card" id="toolSatisfaction" style="border:1px solid rgba(236,72,153,0.25);background:rgba(236,72,153,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#ec4899,#db2777)">📱</div>
+            <h4>📱 تقرير رضا الموظفين</h4>
+            <p>نتائج الاستبيان → تقرير رضا موظفين احترافي للإدارة</p>
+            <textarea id="satisfactionInput" class="ai-tool-input" rows="4" placeholder="• نسبة الرضا العامة: 78%&#10;• أعلى نقاط رضا: بيئة العمل (89%)&#10;• أدنى نقاط: التطوير المهني (62%)&#10;• عدد المشاركين: 156/200&#10;• أبرز الملاحظات: الحاجة لبرامج تدريب أكثر"></textarea>
+            <button class="ai-tool-btn" onclick="aiSatisfactionReport()" style="background:linear-gradient(135deg,#ec4899,#db2777)">📱 توليد تقرير الرضا</button>
+            <div class="ai-tool-result" id="satisfactionResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolSuggestions" style="border:1px solid rgba(16,185,129,0.25);background:rgba(16,185,129,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#10b981,#059669)">💡</div>
+            <h4>💡 تقرير المقترحات والابتكار</h4>
+            <p>مقترحات الموظفين → تقرير تنظيمي منظم للإدارة العليا</p>
+            <textarea id="suggestionsInput" class="ai-tool-input" rows="4" placeholder="• مقترح 1: تطبيق نظام حضور ذكي (صاحب الفكرة: محمد)&#10;• مقترح 2: تقليل اجتماعات الأسبوع لاجتماع واحد&#10;• مقترح 3: إنشاء مكتبة مهنية داخلية&#10;• عدد المقترحات: 12 هذا الشهر"></textarea>
+            <button class="ai-tool-btn" onclick="aiSuggestionsReport()" style="background:linear-gradient(135deg,#10b981,#059669)">💡 توليد تقرير المقترحات</button>
+            <div class="ai-tool-result" id="suggestionsResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolAwards" style="border:1px solid rgba(251,191,36,0.25);background:rgba(251,191,36,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#fbbf24,#f59e0b)">🏆</div>
+            <h4>🏆 تقرير الإنجازات والتكريم</h4>
+            <p>الإنجازات والموظفين المميزين → تقرير تكريم رسمي جاهز</p>
+            <textarea id="awardsInput" class="ai-tool-input" rows="4" placeholder="• موظف الشهر: أحمد العمري (تميّز في خفض تكاليف الصيانة 30%)&#10;• إنجاز الفريق: إنهاء مشروع الرقمنة قبل الموعد بأسبوع&#10;• تقدير خاص: فريق الأمن لتميزه خلال الحفل السنوي"></textarea>
+            <button class="ai-tool-btn" onclick="aiAwardsReport()" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a1a2e">🏆 توليد تقرير التكريم</button>
+            <div class="ai-tool-result" id="awardsResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolFieldVisit" style="border:1px solid rgba(14,165,233,0.25);background:rgba(14,165,233,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)">📝</div>
+            <h4>📝 تقرير الزيارة الميدانية</h4>
+            <p>ملاحظات الزيارة → تقرير ميداني رسمي احترافي</p>
+            <textarea id="fieldVisitInput" class="ai-tool-input" rows="4" placeholder="الموقع: مستودع المنطقة الجنوبية&#10;الغرض: تفتيش دوري&#10;الملاحظات:&#10;• نظافة المكان جيدة&#10;• وجود تسرب مياه بسيط في الركن الشرقي&#10;• التهوية تحتاج صيانة&#10;• الموظفون ملتزمون بمعايير السلامة"></textarea>
+            <input id="fieldVisitLocation" class="ai-tool-input" placeholder="اسم الموقع وتاريخ الزيارة" style="margin-top:0.4rem">
+            <button class="ai-tool-btn" onclick="aiFieldVisitReport()" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)">📝 توليد تقرير الزيارة</button>
+            <div class="ai-tool-result" id="fieldVisitResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolNewsletter" style="border:1px solid rgba(139,92,246,0.25);background:rgba(139,92,246,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">📩</div>
+            <h4>📩 نشرة القسم الداخلية</h4>
+            <p>أبرز إنجازات الشهر → نشرة داخلية جميلة ومنسّقة</p>
+            <textarea id="newsletterInput" class="ai-tool-input" rows="4" placeholder="• إنهاء مشروع الأرشفة الإلكترونية&#10;• انضم للفريق: سارة المالكي (موارد بشرية)&#10;• تكريم: أفضل فريق في الحفل السنوي&#10;• تذكير: موعد التقارير الشهرية الأحد القادم&#10;• ورشة: Excel المتقدم يوم الثلاثاء"></textarea>
+            <input id="newsletterMonth" class="ai-tool-input" placeholder="اسم القسم والشهر" style="margin-top:0.4rem">
+            <button class="ai-tool-btn" onclick="aiNewsletter()" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">📩 توليد النشرة</button>
+            <div class="ai-tool-result" id="newsletterResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolChecklist" style="border:1px solid rgba(20,184,166,0.25);background:rgba(20,184,166,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#14b8a6,#0d9488)">📋</div>
+            <h4>📋 مولّد قائمة مراجعة ذكية</h4>
+            <p>أدخل الموضوع → AI ينشئ Checklist مخصصاً وشاملاً</p>
+            <textarea id="checklistInput" class="ai-tool-input" rows="3" placeholder="مثال: قائمة مراجعة قبل الحفل السنوي&#10;أو: checklist التحقق من جاهزية المستودع الجديد&#10;أو: قائمة تسليم العمل عند الإجازة"></textarea>
+            <select id="checklistType" class="ai-mini-select">
+              <option>قائمة مراجعة</option>
+              <option>خطوات إجراء</option>
+              <option>نموذج تقييم</option>
+              <option>أجندة يومية</option>
+            </select>
+            <button class="ai-tool-btn" onclick="aiChecklist()" style="background:linear-gradient(135deg,#14b8a6,#0d9488)">📋 توليد القائمة</button>
+            <div class="ai-tool-result" id="checklistResult" style="display:none"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ===== GROUP: أدوات متقدمة ===== -->
+      <div class="ai-group">
+        <div class="ai-group-title" style="background:linear-gradient(135deg,rgba(234,179,8,0.1),rgba(239,68,68,0.07));border-color:rgba(234,179,8,0.18)">🌐 أدوات متقدمة</div>
+        <div class="ai-tools-grid">
+
+          <div class="ai-tool-card" id="toolTranslate" style="border:1px solid rgba(34,197,94,0.25);background:rgba(34,197,94,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#22c55e,#16a34a)">🌍</div>
+            <h4>🌍 ترجمة التقرير</h4>
+            <p>ترجمة فورية عربي↔إنجليزي مع الحفاظ على الأسلوب المؤسسي</p>
+            <textarea id="translateInput" class="ai-tool-input" rows="4" placeholder="الصق التقرير المراد ترجمته..."></textarea>
+            <div class="ai-tone-grid">
+              <button class="ai-tone-chip active" onclick="selTransDir(this,'ar-en')">🇸🇦 → 🇬🇧 عربي لإنجليزي</button>
+              <button class="ai-tone-chip" onclick="selTransDir(this,'en-ar')">🇬🇧 → 🇸🇦 إنجليزي لعربي</button>
+            </div>
+            <input type="hidden" id="translateDir" value="ar-en">
+            <button class="ai-tool-btn" onclick="aiTranslateReport()" style="background:linear-gradient(135deg,#22c55e,#16a34a)">🌍 ترجمة التقرير</button>
+            <div class="ai-tool-result" id="translateResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolReportAudit" style="border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">✅</div>
+            <h4>✅ المدقق المؤسسي</h4>
+            <p>الصق تقريرك → AI يراجع الأخطاء ويقترح تحسينات محددة</p>
+            <textarea id="auditInput" class="ai-tool-input" rows="5" placeholder="الصق تقريرك هنا للمراجعة والتدقيق..."></textarea>
+            <div class="ai-tool-options">
+              <label><input type="checkbox" id="auditLang" checked> أخطاء لغوية</label>
+              <label><input type="checkbox" id="auditStructure" checked> البنية والتنظيم</label>
+              <label><input type="checkbox" id="auditTone" checked> الأسلوب المهني</label>
+              <label><input type="checkbox" id="auditCompleteness" checked> الاكتمال والشمولية</label>
+            </div>
+            <button class="ai-tool-btn" onclick="aiReportAudit()" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">✅ تدقيق التقرير</button>
+            <div class="ai-tool-result" id="auditResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolDashboardGen" style="border:1px solid rgba(234,179,8,0.25);background:rgba(234,179,8,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#eab308,#ca8a04)">📊</div>
+            <h4>📊 مولّد لوحة مؤشرات نصية</h4>
+            <p>أرقامك وبياناتك → لوحة مؤشرات منسّقة جاهزة للمشاركة</p>
+            <textarea id="dashboardInput" class="ai-tool-input" rows="4" placeholder="• الطلبات المنجزة: 234&#10;• نسبة الرضا: 92%&#10;• وقت الاستجابة: 1.8 ساعة (الهدف: 2 ساعة)&#10;• الميزانية المستخدمة: 67%&#10;• المشاريع الجارية: 8"></textarea>
+            <input id="dashboardTitle" class="ai-tool-input" placeholder="عنوان اللوحة (مثال: داشبورد أداء قسم IT)" style="margin-top:0.4rem">
+            <button class="ai-tool-btn" onclick="aiDashboardGen()" style="background:linear-gradient(135deg,#eab308,#ca8a04)">📊 توليد اللوحة</button>
+            <div class="ai-tool-result" id="dashboardResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolVoiceToReport" style="border:1px solid rgba(139,92,246,0.25);background:rgba(139,92,246,0.03)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">🎙️</div>
+            <h4>🎙️ تحويل تسجيل لتقرير</h4>
+            <p>سجّل ملاحظاتك صوتياً → AI يحولها لتقرير منظم احترافي</p>
+            <div style="text-align:center;padding:0.8rem;background:rgba(139,92,246,0.05);border-radius:10px;border:1px solid rgba(139,92,246,0.15)">
+              <button id="v2rRecordBtn" onclick="toggleV2RRecord()" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);border:none;color:white;padding:0.6rem 1.2rem;border-radius:10px;cursor:pointer;font-size:0.88rem;font-weight:700">🎙️ ابدأ التسجيل</button>
+              <div id="v2rStatus" style="color:#a78bfa;font-size:0.75rem;margin-top:0.4rem;height:1.2rem"></div>
+              <div id="v2rTimer" style="color:#c4bfff;font-size:1rem;font-weight:900;margin-top:0.2rem">00:00</div>
+            </div>
+            <textarea id="v2rTranscript" class="ai-tool-input" rows="3" placeholder="سيظهر النص المسجّل هنا تلقائياً، أو يمكنك كتابته مباشرة..." style="margin-top:0.4rem"></textarea>
+            <select id="v2rReportType" class="ai-mini-select">
+              <option>تقرير عام</option>
+              <option>تقرير يومي</option>
+              <option>تقرير صيانة</option>
+              <option>تقرير اجتماع</option>
+              <option>تقرير سلامة</option>
+            </select>
+            <button class="ai-tool-btn" onclick="aiVoiceToReport()" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">🎙️ تحويل لتقرير</button>
+            <div class="ai-tool-result" id="v2rResult" style="display:none"></div>
+          </div>
+
+        </div>
+      </div>
+
       </div>
     </section>
 
@@ -1539,7 +1773,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=1774719180"></script>
+  <script src="app.js?v=1774721766"></script>
 
   <!-- ===== DASHBOARD OVERLAY ===== -->
   <div id="dashboardOverlay" class="ai-fullpage-overlay" style="display:none">
