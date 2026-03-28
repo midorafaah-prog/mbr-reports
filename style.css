@@ -2426,3 +2426,81 @@ body.light-mode .nav-icon-btn { color: rgba(0,0,0,0.55); background: rgba(0,0,0,
   .nav-tab { padding: 0.4rem 0.6rem; }
 }
 
+
+/* ====================================================
+   HEADER CLEANUP — Remove duplicate controls
+   ==================================================== */
+
+/* Hide old theme toggle & user badge from header-actions (now in nav-utils) */
+.header-actions .theme-toggle-wrap { display: none !important; }
+.header-actions .user-badge { display: none !important; }
+
+/* Move AI status badge to right side, compact */
+.header-actions {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.ai-status {
+  font-size: 0.72rem;
+  padding: 0.28rem 0.65rem;
+  white-space: nowrap;
+}
+
+/* Clean single-row header */
+.header-inner {
+  max-width: 1600px;
+  margin: 0 auto;
+  height: 100%;
+  padding: 0 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: nowrap;
+  overflow: visible;
+}
+
+/* Logo compact */
+.logo-badge { display: none; }
+.logo-text { font-size: 1.1rem; }
+.logo-wrap { gap: 0.4rem; }
+
+/* Nav takes all remaining space, distribute properly */  
+.header-nav {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow: visible !important;
+  flex-wrap: nowrap;
+}
+
+/* nav-utils pushes to the right (LTR end) */
+.nav-utils {
+  margin-left: auto;
+}
+
+/* User profile button in nav-utils — show name on wider screens */
+.nav-icon-btn.profile-btn {
+  min-width: 36px;
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 0.72rem;
+}
+
+/* Dropdown menus stay inside viewport */
+.nav-dropdown-menu {
+  right: auto;
+  left: 0; 
+}
+#dropManage .nav-dropdown-menu,
+#dropExport .nav-dropdown-menu {
+  left: auto;
+  right: 0;
+}
+
+/* Hide site-header overflow issues */
+.site-header { overflow: visible !important; }
+

@@ -6141,3 +6141,54 @@ function showSection(section) {
   var btn = document.getElementById(map[section]);
   if (btn) btn.classList.add('active');
 }
+
+// ============================================================
+// SYNC USER PROFILE INTO NAV-UTILS BUTTON
+// ============================================================
+(function patchUserDisplay() {
+  var _origCompleteLogin = typeof completeLogin === 'function' ? completeLogin : null;
+  // Hook into DOMContentLoaded to also update on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    syncProfileButton();
+  });
+
+  function syncProfileButton() {
+    var user = null;
+    try { user = JSON.parse(localStorage.getItem('mbrcst_current_user') || 'null'); } catch(e){}
+    if (!user) try {
+      var users = JSON.parse(localStorage.getItem('mbrcst_users') || '[]');
+      var lastEmail = localStorage.getItem('mbrcst_last_login');
+      if (lastEmail) user = users.find(function(u){ return u.username === lastEmail; });
+    } catch(e){}
+
+    var avatarEl = document.getElementById('navAvatarIcon');
+    var profileBtn = document.getElementById('navProfile');
+    if (!user) {
+      if (avatarEl) avatarEl.textContent = '👤';
+      return;
+    }
+    // Show first letter of name as avatar
+    var name = user.fullName || user.username || user.name || '';
+    var initial = name ? name.charAt(0).toUpperCase() : '👤';
+    if (avatarEl) {
+      if (name) {
+        avatarEl.textContent = '';
+        avatarEl.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#6c63ff,#00d4aa);color:white;font-size:0.72rem;font-weight:900;flex-shrink:0';
+        avatarEl.textContent = initial;
+      }
+    }
+    if (profileBtn) {
+      profileBtn.title = name + ' — اضغط لعرض الملف';
+    }
+    // Also show AI status based on API key
+    var hasKey = !!localStorage.getItem('mbrcst_openai_key');
+    var statusEl = document.getElementById('aiStatusBadge');
+    if (statusEl) {
+      if (!hasKey) {
+        statusEl.className = 'ai-status error';
+        document.getElementById('aiStatusText').textContent = 'أضف OpenAI Key';
+      }
+    }
+  }
+  window.syncProfileButton = syncProfileButton;
+})();
