@@ -3783,7 +3783,7 @@ async function exportPowerPoint() {
 // ============================================================
 // 6. COMPARE REPORTS (AI-powered)
 // ============================================================
-let compareReports = { A: null, B: null };
+let compareReportsData = { A: null, B: null };
 
 function showComparePanel() {
   const overlay = document.getElementById('compareOverlay');
@@ -3820,7 +3820,7 @@ function populateCompareSelects() {
 function loadCompareReport(side, id) {
   const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
   const report = history.find(r => r.id == id);
-  compareReports[side] = report || null;
+  compareReportsData[side] = report || null;
   const preview = document.getElementById(`comparePreview${side}`);
   if (preview) {
     if (report) {
@@ -3833,7 +3833,7 @@ function loadCompareReport(side, id) {
 }
 
 async function runAICompare() {
-  const { A, B } = compareReports;
+  const { A, B } = compareReportsData;
   if (!A || !B) { showToast('اختر تقريرين للمقارنة', 'error'); return; }
   const resultEl = document.getElementById('compareResult');
   if (!resultEl) return;
@@ -5921,52 +5921,79 @@ rebuildNavIfNeeded();
 // FORGOT PASSWORD
 // ============================================================
 function showForgotPassword() {
-  // Remove existing modal if any
-  const existing = document.getElementById('forgotModal');
+  var existing = document.getElementById('forgotModal');
   if (existing) existing.remove();
 
-  // Build modal dynamically — works regardless of HTML cache
-  const modal = document.createElement('div');
-  modal.id = 'forgotModal';
-  modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999999;align-items:center;justify-content:center;font-family:Tajawal,Arial,sans-serif';
-  const currentEmail = (document.getElementById('authEmail') || document.getElementById('loginEmail') || {}).value || '';
-  modal.innerHTML = \`
-    <div style="background:#12121e;border:1px solid rgba(108,99,255,0.5);border-radius:20px;padding:2rem;width:360px;max-width:92vw;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,0.6)">
-      <div style="text-align:center;margin-bottom:1.5rem">
-        <div style="font-size:2.5rem;margin-bottom:0.5rem">🔑</div>
-        <h3 style="color:#fff;font-size:1.15rem;font-weight:900;margin:0">إعادة تعيين كلمة المرور</h3>
-        <p style="color:rgba(255,255,255,0.45);font-size:0.78rem;margin:0.4rem 0 0">أدخل بريدك لإعادة تعيين كلمة المرور</p>
-      </div>
-      <div id="fm_step1">
-        <div style="margin-bottom:0.8rem">
-          <label style="color:rgba(255,255,255,0.6);font-size:0.78rem;display:block;margin-bottom:0.3rem">البريد الإلكتروني</label>
-          <input id="fm_email" type="email" value="\${currentEmail}" placeholder="example@email.com"
-            style="width:100%;box-sizing:border-box;padding:0.7rem 1rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:white;font-size:0.88rem;direction:ltr;outline:none;font-family:Arial">
-        </div>
-        <button onclick="fm_verify()" style="width:100%;padding:0.75rem;background:linear-gradient(135deg,#6c63ff,#00d4aa);border:none;border-radius:12px;color:white;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:Tajawal,Arial,sans-serif;margin-bottom:0.5rem">التحقق من الحساب ←</button>
-      </div>
-      <div id="fm_step2" style="display:none">
-        <div style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:0.8rem;margin-bottom:1rem;font-size:0.8rem;color:#10b981;text-align:center">✅ تم التحقق — عيّن كلمة مرور جديدة</div>
-        <div style="margin-bottom:0.6rem">
-          <label style="color:rgba(255,255,255,0.6);font-size:0.78rem;display:block;margin-bottom:0.3rem">كلمة المرور الجديدة</label>
-          <input id="fm_p1" type="password" placeholder="أدخل كلمة مرور جديدة"
-            style="width:100%;box-sizing:border-box;padding:0.7rem 1rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:white;font-size:0.88rem;outline:none">
-        </div>
-        <div style="margin-bottom:0.8rem">
-          <label style="color:rgba(255,255,255,0.6);font-size:0.78rem;display:block;margin-bottom:0.3rem">تأكيد كلمة المرور</label>
-          <input id="fm_p2" type="password" placeholder="أعد كلمة المرور"
-            style="width:100%;box-sizing:border-box;padding:0.7rem 1rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:white;font-size:0.88rem;outline:none">
-        </div>
-        <button onclick="fm_reset()" style="width:100%;padding:0.75rem;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;color:white;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:Tajawal,Arial,sans-serif;margin-bottom:0.5rem">✅ حفظ كلمة المرور الجديدة</button>
-      </div>
-      <div id="fm_msg" style="display:none;margin-top:0.5rem;font-size:0.78rem;text-align:center;padding:0.5rem;border-radius:8px"></div>
-      <button onclick="document.getElementById('forgotModal').remove()" style="width:100%;margin-top:0.5rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:rgba(255,255,255,0.5);padding:0.6rem;cursor:pointer;font-family:Tajawal,Arial,sans-serif;font-size:0.85rem">إلغاء</button>
-    </div>
-  \`;
-  document.body.appendChild(modal);
-  // Close on backdrop click
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-  setTimeout(() => document.getElementById('fm_email')?.focus(), 100);
+  var overlay = document.createElement('div');
+  overlay.id = 'forgotModal';
+  overlay.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:999999;align-items:center;justify-content:center;font-family:Tajawal,Arial,sans-serif';
+  overlay.addEventListener('click', function(e){ if (e.target===overlay) overlay.remove(); });
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#12121e;border:1px solid rgba(108,99,255,0.5);border-radius:20px;padding:2rem;width:360px;max-width:92vw;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,0.6)';
+
+  var icon = document.createElement('div');
+  icon.style.cssText = 'text-align:center;margin-bottom:1.2rem';
+  icon.innerHTML = '<div style="font-size:2.5rem">&#x1F511;</div><h3 style="color:#fff;font-size:1.1rem;font-weight:900;margin:0.4rem 0 0">' +
+    '\u0625\u0639\u0627\u062f\u0629 \u062a\u0639\u064a\u064a\u0646 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631' +
+    '</h3><p style="color:rgba(255,255,255,0.4);font-size:0.78rem;margin:0.3rem 0 0">' +
+    '\u0623\u062f\u062e\u0644 \u0628\u0631\u064a\u062f\u0643 \u0644\u0625\u0639\u0627\u062f\u0629 \u0627\u0644\u062a\u0639\u064a\u064a\u0646' + '</p>';
+
+  var step1 = document.createElement('div');
+  step1.id = 'fm_step1';
+  var emailLabel = document.createElement('label');
+  emailLabel.style.cssText = 'color:rgba(255,255,255,0.6);font-size:0.78rem;display:block;margin-bottom:0.3rem';
+  emailLabel.textContent = '\u0627\u0644\u0628\u0631\u064a\u062f \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a';
+  var emailInput = document.createElement('input');
+  emailInput.id = 'fm_email'; emailInput.type = 'email'; emailInput.placeholder = 'example@email.com';
+  emailInput.style.cssText = 'width:100%;box-sizing:border-box;padding:0.7rem 1rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:white;font-size:0.88rem;direction:ltr;outline:none;margin-bottom:0.8rem;display:block';
+  var currentEmail = (document.getElementById('authEmail') || {}).value || '';
+  emailInput.value = currentEmail;
+  var verifyBtn = document.createElement('button');
+  verifyBtn.textContent = '\u0627\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 \u0627\u0644\u062d\u0633\u0627\u0628 \u2190';
+  verifyBtn.style.cssText = 'width:100%;padding:0.75rem;background:linear-gradient(135deg,#6c63ff,#00d4aa);border:none;border-radius:12px;color:white;font-weight:700;font-size:0.9rem;cursor:pointer;display:block;margin-bottom:0.5rem';
+  verifyBtn.onclick = fm_verify;
+  step1.appendChild(emailLabel); step1.appendChild(emailInput); step1.appendChild(verifyBtn);
+
+  var step2 = document.createElement('div');
+  step2.id = 'fm_step2'; step2.style.display = 'none';
+  var successMsg = document.createElement('div');
+  successMsg.style.cssText = 'background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:0.6rem;margin-bottom:0.8rem;font-size:0.78rem;color:#10b981;text-align:center';
+  successMsg.textContent = '\u2705 \u062a\u0645 \u0627\u0644\u062a\u062d\u0642\u0642 \u2014 \u0639\u064a\u0651\u0646 \u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631 \u062c\u062f\u064a\u062f\u0629';
+  var p1Label = document.createElement('label');
+  p1Label.style.cssText = 'color:rgba(255,255,255,0.6);font-size:0.78rem;display:block;margin-bottom:0.3rem';
+  p1Label.textContent = '\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0627\u0644\u062c\u062f\u064a\u062f\u0629';
+  var p1Input = document.createElement('input');
+  p1Input.id = 'fm_p1'; p1Input.type = 'password';
+  p1Input.placeholder = '\u0623\u062f\u062e\u0644 \u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631 \u062c\u062f\u064a\u062f\u0629';
+  p1Input.style.cssText = 'width:100%;box-sizing:border-box;padding:0.7rem 1rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:white;font-size:0.88rem;outline:none;margin-bottom:0.6rem;display:block';
+  var p2Label = document.createElement('label');
+  p2Label.style.cssText = 'color:rgba(255,255,255,0.6);font-size:0.78rem;display:block;margin-bottom:0.3rem';
+  p2Label.textContent = '\u062a\u0623\u0643\u064a\u062f \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631';
+  var p2Input = document.createElement('input');
+  p2Input.id = 'fm_p2'; p2Input.type = 'password';
+  p2Input.placeholder = '\u0623\u0639\u062f \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631';
+  p2Input.style.cssText = 'width:100%;box-sizing:border-box;padding:0.7rem 1rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:white;font-size:0.88rem;outline:none;margin-bottom:0.8rem;display:block';
+  var resetBtn = document.createElement('button');
+  resetBtn.textContent = '\u2705 \u062d\u0641\u0638 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0627\u0644\u062c\u062f\u064a\u062f\u0629';
+  resetBtn.style.cssText = 'width:100%;padding:0.75rem;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;color:white;font-weight:700;font-size:0.9rem;cursor:pointer;display:block;margin-bottom:0.5rem';
+  resetBtn.onclick = fm_reset;
+  step2.appendChild(successMsg); step2.appendChild(p1Label); step2.appendChild(p1Input);
+  step2.appendChild(p2Label); step2.appendChild(p2Input); step2.appendChild(resetBtn);
+
+  var msgDiv = document.createElement('div');
+  msgDiv.id = 'fm_msg';
+  msgDiv.style.cssText = 'display:none;margin-top:0.5rem;font-size:0.78rem;text-align:center;padding:0.5rem;border-radius:8px';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.style.cssText = 'width:100%;margin-top:0.5rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:rgba(255,255,255,0.5);padding:0.6rem;cursor:pointer;font-size:0.85rem;display:block';
+  cancelBtn.textContent = '\u0625\u0644\u063a\u0627\u0621';
+  cancelBtn.onclick = function(){ overlay.remove(); };
+
+  box.appendChild(icon); box.appendChild(step1); box.appendChild(step2);
+  box.appendChild(msgDiv); box.appendChild(cancelBtn);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  setTimeout(function(){ var e=document.getElementById('fm_email'); if(e) e.focus(); }, 100);
 }
 
 function fm_verify() {
