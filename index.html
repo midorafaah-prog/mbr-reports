@@ -194,6 +194,12 @@
         <button class="nav-btn nav-btn-lang" id="navLang" onclick="toggleLanguage()" title="تبديل اللغة">
           <span id="langIcon">🌐</span> <span id="langLabel">EN</span>
         </button>
+        <button class="nav-btn nav-btn-reading" id="navReading" onclick="enterReadingMode()" title="وضع القراءة">
+          <span>📖</span> قراءة
+        </button>
+        <button class="nav-btn nav-btn-favorites" id="navFavorites" onclick="showFavorites()" title="المفضلة">
+          <span>⭐</span> المفضلة
+        </button>
         <button class="nav-btn nav-btn-translate" id="navTranslate" onclick="showTranslatePanel()" title="ترجمة التقرير">
           <span>🌍</span> ترجمة
         </button>
@@ -793,6 +799,20 @@
               </div>
               <button class="ai-tool-btn" style="background:linear-gradient(135deg,#10b981,#059669);margin-top:0.3rem" onclick="improveCurrentReport('executive')">📊 ملخص تنفيذي احترافي</button>
               <div class="ai-tool-result" id="improveResult" style="display:none"></div>
+            </div>
+
+            <!-- Meeting Minutes -->
+            <div class="ai-tool-card" id="toolMeetingMinutes" style="border:1px solid rgba(245,158,11,0.25);background:rgba(245,158,11,0.02)">
+              <div class="ai-tool-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">🎙️</div>
+              <h4>محضر اجتماع احترافي</h4>
+              <p>الصق ملاحظات اجتماعك العشوائية وسيحولها AI لمحضر رسمي كامل</p>
+              <textarea id="minutesInput" rows="4" placeholder="مثال: اجتمعنا اليوم... ناقشنا الميزانية... قرّرنا..." class="email-input" style="width:100%;box-sizing:border-box;resize:vertical;font-size:0.78rem;margin:0.4rem 0"></textarea>
+              <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.3rem">
+                <button class="ai-tool-btn" style="flex:1;background:linear-gradient(135deg,#f59e0b,#d97706);font-size:0.78rem" onclick="generateMeetingMinutes('formal')">📋 محضر رسمي</button>
+                <button class="ai-tool-btn" style="flex:1;background:linear-gradient(135deg,#6c63ff,#4f46e5);font-size:0.78rem" onclick="generateMeetingMinutes('action')">✅ بنود الإجراءات</button>
+                <button class="ai-tool-btn" style="flex:1;background:linear-gradient(135deg,#10b981,#059669);font-size:0.78rem" onclick="generateMeetingMinutes('summary')">💬 ملخص سريع</button>
+              </div>
+              <div class="ai-tool-result" id="minutesResult" style="display:none"></div>
             </div>
 <!-- Google Sheets -->
             <div class="ai-tool-card" id="toolGoogleSheets">
@@ -2143,6 +2163,50 @@
           <div id="cloneReportsList" style="display:grid;gap:0.4rem;max-height:350px;overflow-y:auto"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- READING MODE -->
+  <div id="readingModeOverlay" style="display:none;position:fixed;inset:0;z-index:88000;overflow-y:auto">
+    <div style="background:linear-gradient(180deg,#0d0d1a,#0a0818);min-height:100vh;padding:4rem 2rem 6rem">
+      <div style="max-width:750px;margin:0 auto">
+        <!-- Reading header -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3rem;opacity:0.5;transition:opacity 0.3s" id="readingHeader" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'">
+          <div style="display:flex;gap:0.8rem;align-items:center">
+            <span style="color:var(--accent);font-weight:900">MBR Reports</span>
+            <span id="readingWordCount" style="font-size:0.75rem;color:var(--text-muted)"></span>
+            <span id="readingReadTime" style="font-size:0.75rem;color:var(--text-muted)"></span>
+          </div>
+          <div style="display:flex;gap:0.5rem">
+            <button onclick="changeFontSize(-1)" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:6px;color:#888;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.9rem">A-</button>
+            <button onclick="changeFontSize(1)" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:6px;color:#888;padding:0.3rem 0.7rem;cursor:pointer;font-size:1rem;font-weight:700">A+</button>
+            <button onclick="exitReadingMode()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.3rem 0.7rem;cursor:pointer">✕ خروج</button>
+          </div>
+        </div>
+        <!-- Reading progress bar -->
+        <div style="position:fixed;top:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.08);z-index:1">
+          <div id="readingProgress" style="height:100%;background:linear-gradient(90deg,#6c63ff,#00d4aa);width:0%;transition:width 0.1s"></div>
+        </div>
+        <!-- Content -->
+        <div id="readingOrgName" style="font-size:0.82rem;font-weight:700;color:var(--accent);letter-spacing:0.08em;margin-bottom:0.5rem;text-align:center"></div>
+        <h1 id="readingTitle" style="font-size:2.2rem;font-weight:900;color:#fff;margin-bottom:1rem;text-align:center;line-height:1.3"></h1>
+        <div id="readingMeta" style="display:flex;justify-content:center;gap:1.5rem;font-size:0.78rem;color:var(--text-muted);margin-bottom:3rem;flex-wrap:wrap"></div>
+        <div id="readingContent" style="font-size:1.05rem;line-height:2.1;color:rgba(255,255,255,0.82);white-space:pre-wrap;direction:rtl"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAVORITES OVERLAY -->
+  <div id="favoritesOverlay" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:800px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+        <div>
+          <h2 style="color:#fff;font-size:1.5rem;font-weight:900;margin:0">⭐ المفضلة</h2>
+          <p style="color:var(--text-muted);font-size:0.82rem;margin:0.3rem 0 0">تقاريرك المميزة بنجمة</p>
+        </div>
+        <button onclick="closeFavorites()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.4rem 1rem;cursor:pointer;font-family:var(--font)">✕</button>
+      </div>
+      <div id="favoritesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem"></div>
     </div>
   </div>
 </body>

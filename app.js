@@ -5684,3 +5684,232 @@ function editClonedReport(id) {
   if (focusTa) focusTa.value = r.content;
   showToast(`✅ تحرير نسخة من "${r.title}"`, 'success');
 }
+
+// ============================================================
+// 31. FAVORITES / BOOKMARKS
+// ============================================================
+function toggleFavorite(reportId, fromHistory) {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const idx = history.findIndex(r => r.id === reportId);
+  if (idx < 0) return;
+  history[idx].favorite = !history[idx].favorite;
+  localStorage.setItem('mbrcst_history', JSON.stringify(history));
+  if (fromHistory) renderHistory(null);
+  showToast(history[idx].favorite ? '⭐ تمت الإضافة للمفضلة' : 'تم الإزالة من المفضلة', 'success');
+  updateFavoritesBadge();
+}
+
+function updateFavoritesBadge() {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const count = history.filter(r => r.favorite).length;
+  const btn = document.getElementById('navFavorites');
+  if (btn) btn.setAttribute('data-count', count);
+}
+
+function showFavorites() {
+  const overlay = document.getElementById('favoritesOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navFavorites')?.classList.add('active');
+  renderFavoritesGrid();
+}
+
+function closeFavorites() {
+  document.getElementById('favoritesOverlay').style.display = 'none';
+  document.getElementById('navFavorites')?.classList.remove('active');
+}
+
+function renderFavoritesGrid() {
+  const el = document.getElementById('favoritesGrid');
+  if (!el) return;
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const favs = history.filter(r => r.favorite);
+  if (!favs.length) {
+    el.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-muted)">
+      <div style="font-size:2.5rem;margin-bottom:0.5rem">⭐</div>
+      <div>لا توجد تقارير مفضلة بعد</div>
+      <div style="font-size:0.78rem;margin-top:0.5rem">اضغط ⭐ على أي تقرير في المكتبة لإضافته</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = favs.map(r => {
+    const d = new Date(r.date).toLocaleDateString('ar-SA', {month:'short', day:'numeric', year:'numeric'});
+    return `<div style="background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);border-radius:14px;padding:1.2rem;cursor:pointer" onclick="viewHistReport(${r.id})">
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.6rem">
+        <span style="font-size:1.2rem">⭐</span>
+        <span style="font-size:0.68rem;color:var(--text-muted)">${d}</span>
+      </div>
+      <div style="font-size:0.88rem;font-weight:800;color:#fff;margin-bottom:0.4rem">${r.title}</div>
+      <div style="font-size:0.73rem;color:var(--text-muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${r.content.substring(0,120)}...</div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.8rem">
+        <button onclick="event.stopPropagation();enterReadingModeWithReport(${r.id})" style="flex:1;background:rgba(108,99,255,0.15);border:1px solid rgba(108,99,255,0.2);border-radius:8px;color:var(--accent);padding:0.35rem;cursor:pointer;font-size:0.72rem;font-family:var(--font);font-weight:700">📖 قراءة</button>
+        <button onclick="event.stopPropagation();toggleFavorite(${r.id},false);renderFavoritesGrid()" style="flex:1;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;color:#ef4444;padding:0.35rem;cursor:pointer;font-size:0.72rem;font-family:var(--font);font-weight:700">🗑️ إزالة</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Add favorite button to history cards (patch renderHistory after it's defined)
+const _origRenderHistory = renderHistory;
+function renderHistory(filter) {
+  _origRenderHistory(filter);
+  // Add star buttons to all hist-cards
+  setTimeout(() => {
+    const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+    document.querySelectorAll('.hist-card').forEach((card, i) => {
+      const r = history.find(r => card.getAttribute('onclick')?.includes(r.id));
+      if (!r) return;
+      if (card.querySelector('.fav-btn')) return;
+      const favBtn = document.createElement('button');
+      favBtn.className = 'fav-btn';
+      favBtn.innerHTML = r.favorite ? '⭐' : '☆';
+      favBtn.title = r.favorite ? 'إزالة من المفضلة' : 'إضافة للمفضلة';
+      favBtn.style.cssText = 'position:absolute;top:0.6rem;left:0.6rem;background:none;border:none;cursor:pointer;font-size:1rem;opacity:0.7';
+      favBtn.onclick = (e) => { e.stopPropagation(); toggleFavorite(r.id, true); };
+      card.style.position = 'relative';
+      card.appendChild(favBtn);
+    });
+  }, 100);
+}
+
+updateFavoritesBadge();
+
+// ============================================================
+// 32. READING MODE
+// ============================================================
+let readingFontSize = 1.05;
+
+function enterReadingMode() {
+  const content = getCurrentReportText();
+  if (!content || content.length < 20) { showToast('أنشئ تقريراً أولاً', 'error'); return; }
+  openReadingMode(
+    (document.getElementById('reportTitle')||{}).value || 'التقرير',
+    content
+  );
+}
+
+function enterReadingModeWithReport(id) {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const r = history.find(x => x.id === id);
+  if (!r) return;
+  closeFavorites();
+  openReadingMode(r.title, r.content);
+}
+
+function openReadingMode(title, content) {
+  const overlay = document.getElementById('readingModeOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'block';
+  document.getElementById('navReading')?.classList.add('active');
+  // Fill content
+  const b = JSON.parse(localStorage.getItem('mbrcst_branding')||'{}');
+  const now = new Date().toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'});
+  const words = content.split(/\s+/).filter(w=>w.length>0).length;
+  const readMin = Math.max(1, Math.ceil(words/200));
+  document.getElementById('readingTitle').textContent = title;
+  document.getElementById('readingOrgName').textContent = b.name || 'MBR Reports';
+  document.getElementById('readingMeta').innerHTML = `
+    <span>📅 ${now}</span><span>👤 ${(currentUser||{}).fullName||''}</span>
+    <span>📝 ${words.toLocaleString('ar')} كلمة</span><span>⏱️ ${readMin} دقيقة قراءة</span>`;
+  document.getElementById('readingContent').textContent = content;
+  document.getElementById('readingWordCount').textContent = words.toLocaleString('ar') + ' كلمة';
+  document.getElementById('readingReadTime').textContent = readMin + ' دقيقة قراءة';
+  overlay.scrollTop = 0;
+  // Track reading progress
+  overlay.onscroll = () => {
+    const h = overlay.scrollHeight - overlay.clientHeight;
+    const p = h > 0 ? Math.round((overlay.scrollTop / h) * 100) : 0;
+    const bar = document.getElementById('readingProgress');
+    if (bar) bar.style.width = p + '%';
+  };
+}
+
+function exitReadingMode() {
+  document.getElementById('readingModeOverlay').style.display = 'none';
+  document.getElementById('navReading')?.classList.remove('active');
+}
+
+function changeFontSize(delta) {
+  readingFontSize = Math.min(1.5, Math.max(0.8, readingFontSize + delta * 0.05));
+  const content = document.getElementById('readingContent');
+  if (content) content.style.fontSize = readingFontSize + 'rem';
+}
+
+// ============================================================
+// 33. AI MEETING MINUTES GENERATOR
+// ============================================================
+async function generateMeetingMinutes(style) {
+  const notes = (document.getElementById('minutesInput')||{}).value?.trim() || '';
+  if (!notes) { showToast('الصق ملاحظات الاجتماع أولاً', 'error'); return; }
+  const resultEl = document.getElementById('minutesResult');
+  if (resultEl) { resultEl.style.display = 'block'; resultEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>يُعدّ المحضر...</span></div>'; }
+
+  const prompts = {
+    formal: `حوّل ملاحظات الاجتماع التالية إلى محضر اجتماع رسمي باللغة العربية يشمل:\n\nأولاً: بيانات الاجتماع (التاريخ، المكان، الحضور إن وُجدوا)\nثانياً: جدول الأعمال\nثالثاً: ما تم مناقشته (نقطة نقطة)\nرابعاً: القرارات المتخذة\nخامساً: الإجراءات المطلوبة (المسؤول والموعد)\nسادساً: موعد الاجتماع القادم\n\nالملاحظات:\n${notes}`,
+    action: `من ملاحظات الاجتماع التالية، استخرج بنود الإجراءات فقط بتنسيق:\n□ المهمة | المسؤول | الموعد\n\nرتّبها حسب الأولوية:\n${notes}`,
+    summary: `اكتب ملخصاً موجزاً لاجتماع لا يتجاوز 5 جمل، مع ذكر أهم القرارات والخطوات القادمة:\n${notes}`
+  };
+  const systems = {
+    formal: 'أنت كاتب محاضر اجتماعات محترف في المؤسسات الحكومية والشركات الكبرى.',
+    action: 'أنت مساعد تنفيذي متخصص في استخلاص وتنظيم بنود الإجراءات من اجتماعات العمل.',
+    summary: 'أنت ملخص تنفيذي محترف يكتب ملخصات اجتماعات موجزة ودقيقة.'
+  };
+  const result = await callAI(prompts[style], systems[style], { maxTokens: 2000 });
+  if (result && resultEl) {
+    resultEl.innerHTML = `
+      <div style="white-space:pre-wrap;font-size:0.78rem;line-height:1.8;color:var(--text-secondary)">${result}</div>
+      <div style="display:flex;gap:0.4rem;margin-top:0.7rem;flex-wrap:wrap">
+        <button onclick="applyMinutesToEditor(this)" data-text="${encodeURIComponent(result)}" class="ai-tool-btn" style="flex:1;padding:0.4rem;font-size:0.75rem">📋 نقل للمحرر</button>
+        <button onclick="exportMinutesPDF(this)" data-text="${encodeURIComponent(result)}" class="ai-tool-btn" style="flex:1;padding:0.4rem;font-size:0.75rem;background:linear-gradient(135deg,#ef4444,#b91c1c)">📄 PDF</button>
+        <button onclick="saveMinutes(this)" data-text="${encodeURIComponent(result)}" class="ai-tool-btn" style="flex:1;padding:0.4rem;font-size:0.75rem;background:linear-gradient(135deg,#10b981,#059669)">💾 حفظ</button>
+      </div>`;
+    showToast('✅ تم إعداد المحضر!', 'success');
+    addNotification('محضر اجتماع جاهز 🎙️', `تم إعداد ${style==='formal'?'المحضر الرسمي':style==='action'?'بنود الإجراءات':'الملخص السريع'}`, 'ai');
+  }
+}
+
+function applyMinutesToEditor(btn) {
+  const text = decodeURIComponent(btn.dataset.text);
+  const ta = document.querySelector('textarea') || document.getElementById('reportNotes');
+  if (ta) ta.value = text;
+  showSection('create');
+  showToast('✅ تم نقل المحضر للمحرر', 'success');
+}
+
+function exportMinutesPDF(btn) {
+  const text = decodeURIComponent(btn.dataset.text);
+  const b = JSON.parse(localStorage.getItem('mbrcst_branding')||'{}');
+  const now = new Date().toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'});
+  const win = window.open('','_blank');
+  win.document.write(`<html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>محضر اجتماع</title>
+<style>body{font-family:Arial;font-size:11pt;line-height:1.9;padding:2cm;direction:rtl;color:#1a1a2e}
+.header{border-bottom:3px solid ${b.color||'#6c63ff'};padding-bottom:1rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center}
+.body{white-space:pre-wrap}.footer{margin-top:2rem;border-top:1px solid #ddd;padding-top:0.5rem;color:#888;font-size:8pt;text-align:center}</style>
+</head><body>
+<div class="header"><div><div style="font-size:13pt;font-weight:900;color:${b.color||'#6c63ff'}">${b.name||'MBR Reports'}</div><div style="font-size:9pt;color:#666">${b.dept||''}</div></div><div style="font-size:9pt;color:#888">📅 ${now}</div></div>
+<h2 style="color:${b.color||'#6c63ff'}">محضر الاجتماع</h2>
+<div class="body">${text}</div>
+<div class="footer">MBR Reports — أُعدَّ بواسطة الذكاء الاصطناعي</div>
+<script>window.onload=()=>window.print()<\/script></body></html>`);
+  win.document.close();
+}
+
+function saveMinutes(btn) {
+  const text = decodeURIComponent(btn.dataset.text);
+  saveReportToHistory('محضر اجتماع — ' + new Date().toLocaleDateString('ar-SA'), text, 'general');
+  showToast('✅ تم الحفظ في المكتبة', 'success');
+}
+
+// ============================================================
+// CLEANUP: Organize nav into a more compact structure
+// ============================================================
+function rebuildNavIfNeeded() {
+  const navArea = document.querySelector('.nav-actions') || document.querySelector('nav');
+  if (!navArea) return;
+  // Make nav scrollable on overflow
+  navArea.style.overflowX = 'auto';
+  navArea.style.flexWrap = 'nowrap';
+}
+document.addEventListener('DOMContentLoaded', rebuildNavIfNeeded);
+rebuildNavIfNeeded();

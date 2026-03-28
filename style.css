@@ -2241,3 +2241,39 @@ body.light-mode .ai-fullpage-overlay { background: #f4f4f8 !important; }
 }
 .merge-tab.active { background: rgba(108,99,255,0.2); border-color: var(--accent); color: var(--accent); }
 
+
+/* ===== READING + FAVORITES NAV ===== */
+.nav-btn-reading   { background: rgba(99,102,241,0.1) !important; border: 1px solid rgba(99,102,241,0.3) !important; color: #818cf8 !important; }
+.nav-btn-favorites { background: rgba(245,158,11,0.1) !important; border: 1px solid rgba(245,158,11,0.3) !important; color: #f59e0b !important; }
+
+/* ===== READING MODE ===== */
+#readingModeOverlay { display: none; }
+#readingModeOverlay::-webkit-scrollbar { width: 4px; }
+#readingModeOverlay::-webkit-scrollbar-track { background: transparent; }
+#readingModeOverlay::-webkit-scrollbar-thumb { background: rgba(108,99,255,0.4); border-radius: 2px; }
+#readingContent { max-width: 700px; margin: 0 auto; }
+#readingTitle { font-family: var(--font); }
+
+/* ===== FAVORITES BADGE ===== */
+#navFavorites[data-count]:not([data-count="0"])::after {
+  content: attr(data-count);
+  position: absolute; top: 2px; right: 2px;
+  background: #f59e0b; color: white; border-radius: 50%;
+  width: 16px; height: 16px; font-size: 0.6rem;
+  display: flex; align-items: center; justify-content: center; font-weight: 900;
+}
+#navFavorites { position: relative; }
+
+/* ===== NAV SCROLL (many buttons) ===== */
+.nav-actions, nav > div {
+  overflow-x: auto !important;
+  flex-wrap: nowrap !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(108,99,255,0.3) transparent;
+}
+.nav-actions::-webkit-scrollbar, nav > div::-webkit-scrollbar { height: 3px; }
+.nav-actions::-webkit-scrollbar-thumb, nav > div::-webkit-scrollbar-thumb { background: rgba(108,99,255,0.3); border-radius: 2px; }
+
+/* ===== MEETING MINUTES CARD ===== */
+#toolMeetingMinutes .ai-tool-btn { padding: 0.4rem 0.5rem !important; }
+
