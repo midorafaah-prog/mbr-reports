@@ -1003,7 +1003,7 @@ function showAIResult(title, html) {
   const panel = document.createElement('div');
   panel.className = 'ai-result-panel';
   panel.onclick = (e) => { if(e.target===panel) panel.remove(); };
-  panel.innerHTML = '<div class="ai-result-box"><h3>' + title + '</h3><div>' + html + '</div><button class="ai-result-close" onclick="this.closest(\'.ai-result-panel\').remove()">✓ حسناً</button></div>';
+  panel.innerHTML = '<div class="ai-result-box"><h3>' + title + '</h3><div>' + html + '</div><button class="ai-result-close" onclick="this.closest('.ai-result-panel').remove()">✓ حسناً</button></div>';
   document.body.appendChild(panel);
 }
 
@@ -2611,7 +2611,7 @@ function startVoice() {
   recognition.onresult = (e) => {
     let transcript = Array.from(e.results).map(r => r[0].transcript).join('');
     const el = document.getElementById('voiceTranscript');
-    if (el) { el.style.display = 'block'; el.innerHTML = transcript + '<button class="ai-copy-btn" onclick=\'navigator.clipboard.writeText(this.previousSibling.data||this.parentElement.innerText.replace(this.innerText,""))\'>📋 نسخ</button>'; }
+    if (el) { el.style.display = 'block'; el.innerHTML = transcript + '<button class="ai-copy-btn" onclick='navigator.clipboard.writeText(this.previousSibling.data||this.parentElement.innerText.replace(this.innerText,""))'>📋 نسخ</button>'; }
   };
   recognition.start();
   document.getElementById('voiceVisualizer')?.classList.add('active');
@@ -6374,35 +6374,121 @@ function addCopyBtn(parentEl, text) {
 }
 
 // ================================================================
-// AI TOOLS — SPECIALIZED DEPT REPORTS + INSTITUTIONAL WRITING
+// ⚡ UPGRADED AI ENGINE v2 — Streaming + Quality Score + Send to Form
 // ================================================================
 
-async function _callAI(prompt, maxTokens=700) {
+const AI_SYSTEM_PROMPT = `أنت كاتب تقارير مؤسسي متخصص وخبير في الكتابة الإدارية والحكومية الاحترافية.
+معاييرك:
+- اكتب بالعربية الفصحى الرسمية المؤسسية دائماً
+- استخدم عناوين واضحة وبنية منظمة
+- أبرز الأرقام والمؤشرات بشكل مميز
+- اختم دائماً بتوصيات قابلة للتنفيذ
+- الأسلوب: دقيق، مهني، موثوق`;
+
+async function _callAI(prompt, maxTokens=800, useStreaming=false, targetElId=null) {
   const apiKey = localStorage.getItem('mbrcst_openai_key');
   if (!apiKey) { showToast('أضف OpenAI API Key في الإعدادات', 'error'); return null; }
+  if (useStreaming && targetElId) return _callAIStream(prompt, maxTokens, targetElId, apiKey);
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST', headers: {'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-    body: JSON.stringify({ model:'gpt-4o-mini', messages:[{role:'user',content:prompt}], max_tokens:maxTokens })
+    body: JSON.stringify({ model:'gpt-4o', messages:[{role:'system',content:AI_SYSTEM_PROMPT},{role:'user',content:prompt}], max_tokens:maxTokens, temperature:0.7 })
   });
   const d = await res.json();
   return d.choices?.[0]?.message?.content || 'حدث خطأ في التوليد';
 }
 
-function _aiBtn(selector, loadingText) {
-  const btn = document.querySelector('button[onclick="'+selector+'()"]');
-  if (btn) { btn._origText = btn.textContent; btn.textContent = '⏳ '+loadingText; btn.disabled = true; }
-  return btn;
+async function _callAIStream(prompt, maxTokens, targetElId, apiKey) {
+  const el = document.getElementById(targetElId);
+  if (!el) return null;
+  el.innerHTML = '<span style="color:#a89cff;font-size:0.75rem;display:flex;align-items:center;gap:0.4rem"><span class="ai-spin" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(168,156,255,0.3);border-top-color:#a89cff;border-radius:50%;animation:spin 0.6s linear infinite"></span>يكتب التقرير...</span>';
+  el.style.display = 'block';
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body:JSON.stringify({model:'gpt-4o',messages:[{role:'system',content:AI_SYSTEM_PROMPT},{role:'user',content:prompt}],max_tokens:maxTokens,temperature:0.7,stream:true})
+    });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    el.innerHTML = '';
+    const pre = document.createElement('div');
+    pre.style.cssText = 'white-space:pre-wrap;line-height:1.8;direction:rtl';
+    el.appendChild(pre);
+    while (true) {
+      const {done,value} = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value).split('\n').filter(l=>l.startsWith('data: '));
+      for (const line of lines) {
+        const data = line.slice(6);
+        if (data==='[DONE]') break;
+        try { const delta = JSON.parse(data).choices?.[0]?.delta?.content||''; fullText+=delta; pre.textContent=fullText; } catch(e){}
+      }
+    }
+    _showResultActions(el, fullText, targetElId);
+    if (typeof awardPoints==='function') awardPoints('ai_used',2);
+    showToast('✅ التقرير جاهز', 'success');
+    return fullText;
+  } catch(e) { el.textContent='حدث خطأ في الاتصال'; return null; }
 }
-function _aiBtnReset(btn) { if (btn) { btn.textContent = btn._origText; btn.disabled = false; } }
 
+function _showResultActions(el, text, resultId) {
+  el.querySelectorAll('.ai-result-actions').forEach(a=>a.remove());
+  const words = text.trim().split(/\s+/).length;
+  const hasStructure = (text.match(/\n/g)||[]).length > 3;
+  const hasBullets = text.includes('•') || text.includes('-') || text.includes('*');
+  const score = Math.min(100, Math.round(Math.min(words/3,60) + (hasStructure?25:0) + (hasBullets?15:0)));
+  const scoreColor = score>=80?'#00d4aa':score>=60?'#f59e0b':'#ef4444';
+  const scoreLabel = score>=80?'ممتاز':score>=60?'جيد جداً':'يمكن تحسينه';
+  const actions = document.createElement('div');
+  actions.className = 'ai-result-actions';
+  actions.style.cssText = 'margin-top:0.8rem;display:flex;flex-wrap:wrap;gap:0.4rem;align-items:center;border-top:1px solid rgba(255,255,255,0.07);padding-top:0.7rem';
+  actions.innerHTML = `
+    <span style="background:${scoreColor}18;border:1px solid ${scoreColor}40;color:${scoreColor};padding:0.2rem 0.6rem;border-radius:6px;font-size:0.72rem;font-weight:700">📊 جودة: ${scoreLabel} (${score}%)</span>
+    <span style="color:#555570;font-size:0.7rem">${words} كلمة</span>
+    <button onclick="_copyResult(this,'${resultId}')" style="background:rgba(108,99,255,0.12);border:1px solid rgba(108,99,255,0.25);color:#a89cff;padding:0.22rem 0.65rem;border-radius:6px;cursor:pointer;font-size:0.72rem">📋 نسخ</button>
+    <button onclick="_sendToForm('${resultId}')" style="background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.25);color:#00d4aa;padding:0.22rem 0.65rem;border-radius:6px;cursor:pointer;font-size:0.72rem">📝 أرسل للنموذج</button>
+    <button onclick="_regenerate('${resultId}')" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);color:#f59e0b;padding:0.22rem 0.65rem;border-radius:6px;cursor:pointer;font-size:0.72rem">🔄 أعد التوليد</button>
+  `;
+  el.appendChild(actions);
+}
+
+function _copyResult(btn, resultId) {
+  const el = document.getElementById(resultId);
+  const text = el ? (el.querySelector('div')?.textContent||el.textContent) : '';
+  navigator.clipboard.writeText(text).then(()=>{btn.textContent='✅ تم';setTimeout(()=>btn.textContent='📋 نسخ',1500);});
+}
+function _sendToForm(resultId) {
+  const el = document.getElementById(resultId);
+  const text = el ? (el.querySelector('div')?.textContent||el.textContent) : '';
+  const achEl = document.getElementById('achievements');
+  if (achEl) { achEl.value=text; if(typeof showSection==='function')showSection('create'); showToast('✅ تم النقل لنموذج الإنشاء','success'); }
+  else navigator.clipboard.writeText(text).then(()=>showToast('تم النسخ — افتح نموذج الإنشاء والصق','success'));
+}
+function _regenerate(resultId) {
+  const el = document.getElementById(resultId);
+  const btn = el?.closest('.ai-tool-card')?.querySelector('.ai-tool-btn');
+  if (btn) btn.click();
+}
 function _showResult(id, text) {
   const el = document.getElementById(id);
   if (!el) return;
-  el.textContent = text; el.style.display='block';
-  if (typeof addCopyBtn === 'function') addCopyBtn(el, text);
-  if (typeof awardPoints === 'function') awardPoints('ai_used', 2);
-  showToast('✅ التقرير جاهز', 'success');
+  el.innerHTML = '<div style="white-space:pre-wrap;line-height:1.8;direction:rtl"></div>';
+  el.querySelector('div').textContent = text;
+  el.style.display = 'block';
+  _showResultActions(el, text, id);
+  if (typeof awardPoints==='function') awardPoints('ai_used',2);
+  showToast('✅ التقرير جاهز','success');
 }
+function _aiBtn(selector, loadingText) {
+  const btn = document.querySelector('button[onclick="'+selector+'()"]');
+  if (btn) {
+    btn._origText = btn.textContent;
+    btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:0.5rem"><span class="ai-spin" style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.6s linear infinite"></span>'+loadingText+'</span>';
+    btn.disabled = true;
+  }
+  return btn;
+}
+function _aiBtnReset(btn) { if (btn) { btn.textContent = btn._origText||''; btn.disabled = false; } }
 
 // — KPI —
 async function aiKPIReport() {
@@ -6567,3 +6653,63 @@ async function aiFireEquipReport() {
   try { const txt=await _callAI(`أنت مختص سلامة حريق معتمد. اكتب تقرير الفحص الدوري لمعدات الإطفاء بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nاشمل: نتائج الفحص، المعدات التي تحتاج صيانة أو استبدال، الجدول الزمني للإصلاح، التحقق من الامتثال لمعايير السلامة.`); _showResult('fireEqResult',txt); }
   catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
 }
+
+// ================================================================
+// ⚡ UPGRADE: Switch all new tools to Streaming mode
+// ================================================================
+// Override all new tool functions to use streaming for real-time output
+
+const _toolStreamMap = {
+  aiKPIReport:       { input:'kpiInput',      extra:()=>`قسم: ${document.getElementById('kpiDept')?.value||'القسم'}`, result:'kpiResult',        prompt:(d,x)=>`أنت محلل أداء مؤسسي. اكتب تقرير مؤشرات KPI لـ${x} بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: ملخص تنفيذي، قراءة المؤشرات، نقاط القوة والتحسين، التوصيات.` },
+  aiAttendanceReport:{ input:'attendanceInput',extra:()=>`الفترة: ${document.getElementById('attendancePeriod')?.value}`, result:'attendanceResult',  prompt:(d,x)=>`اكتب تقرير الحضور والغياب ${x} بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: ملخص الحضور، تحليل الغياب والتأخرات، التوصيات.` },
+  aiProjectsReport:  { input:'projectsInput', extra:()=>``, result:'projectsResult',    prompt:(d,x)=>`اكتب تقرير حالة المشاريع والمبادرات بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: ملخص تنفيذي، حالة كل مشروع، المتأخرة وأسبابها، الإنجازات، خطة الفترة القادمة.` },
+  aiBudgetReport:    { input:'budgetInput',   extra:()=>``, result:'budgetResult',      prompt:(d,x)=>`اكتب تقريراً مالياً دورياً بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: الملخص المالي، تحليل الصرف، الوفر والتجاوزات، توصيات الترشيد.` },
+  aiFleetReport:     { input:'fleetInput',    extra:()=>``, result:'fleetResult',       prompt:(d,x)=>`اكتب تقرير الأسطول الدوري بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: حالة المركبات، استهلاك الوقود، جدول الصيانة، المخالفات، التوصيات.` },
+  aiSustainReport:   { input:'sustainInput',  extra:()=>``, result:'sustainResult',     prompt:(d,x)=>`اكتب تقرير الاستدامة البيئية بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: استهلاك الطاقة والمياه، التوفير المحقق، التوصيات.` },
+  aiInventoryReport: { input:'inventoryInput',extra:()=>``, result:'inventoryResult',   prompt:(d,x)=>`اكتب تقرير المخزون بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: الرصيد الحالي، حركة المخزون، الأصناف الحرجة، طلبات الشراء المقترحة.` },
+  aiPerformanceReport:{input:'performanceInput',extra:()=>`${document.getElementById('perfIncludeScore')?.checked?'اشمل تقييماً نهائياً.':''} ${document.getElementById('perfIncludeRec')?.checked?'اشمل توصيات تطوير.':''}`, result:'performanceResult', prompt:(d,x)=>`اكتب تقرير أداء وظيفي احترافي بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\n${x}` },
+  aiExecutiveEmail:  { input:'emailInput',    extra:()=>`موجّه إلى: ${document.getElementById('emailTo')?.value||'المدير'}، أسلوب: ${document.querySelector('input[name="emailTone"]:checked')?.value||'رسمي'}`, result:'emailResult', prompt:(d,x)=>`اكتب إيميلاً مؤسسياً ${x} يلخّص:\n\n${d}\n\nيشمل: تحية رسمية، ملخص الوضع، النقاط الرئيسية، المطلوب، خاتمة.` },
+  aiOfficialLetter:  { input:'letterInput',   extra:()=>`نوع: ${document.getElementById('letterType')?.value}`, result:'letterResult',  prompt:(d,x)=>`اكتب ${x} رسمياً بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${d}\n\nيبدأ بالبسملة والتحية، ثم الموضوع، ثم التفاصيل، ثم الخاتمة.` },
+  aiMeetingAgenda:   { input:'agendaInput',   extra:()=>`المدة: ${document.getElementById('agendaDuration')?.value||'60 دقيقة'}`, result:'agendaResult',  prompt:(d,x)=>`أنشئ أجندة اجتماع متابعة منظمة بمدة ${x} بناءً على:\n\n${d}\n\nأجندة مرقمة مع توزيع الوقت لكل بند وقسم القرارات والإجراءات.` },
+  aiActionPlan:      { input:'actionPlanInput',extra:()=>`الإطار الزمني: ${document.getElementById('actionPlanTimeframe')?.value||'3 أشهر'}`, result:'actionPlanResult', prompt:(d,x)=>`أنشئ خطة عمل SMART لمعالجة التحديات خلال ${x}:\n\n${d}\n\nجدول بالمهام والمسؤوليات والجداول الزمنية.` },
+  aiRiskReport:      { input:'riskInput',     extra:()=>``, result:'riskResult',        prompt:(d,x)=>`اكتب تقرير تقييم مخاطر مؤسسي بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nصنّف المخاطر (عالية/متوسطة/منخفضة)، الاحتمالية والأثر، خطة التخفيف، الإجراءات التصحيحية.` },
+  aiEvacuationReport:{ input:'evacuationInput',extra:()=>``, result:'evacuationResult', prompt:(d,x)=>`اكتب تقرير مناورة إخلاء رسمي بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: ملخص المناورة، الأداء الزمني، الملاحظات، المقارنة بالمعيار، التوصيات.` },
+  aiCCTVReport:      { input:'cctvInput',     extra:()=>``, result:'cctvResult',        prompt:(d,x)=>`اكتب تقرير حالة منظومة المراقبة الدورية بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: نسبة التشغيل، الأعطال، جدول الإصلاح، التوصيات.` },
+  aiAccessReport:    { input:'accessInput',   extra:()=>``, result:'accessResult',      prompt:(d,x)=>`اكتب تقرير نظام التحكم بالدخول بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: إحصائيات البطاقات، المخالفات، حالة البوابات، التوصيات.` },
+  aiFireEquipReport: { input:'fireEqInput',   extra:()=>``, result:'fireEqResult',      prompt:(d,x)=>`اكتب تقرير الفحص الدوري لمعدات الإطفاء بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: نتائج الفحص، المعدات التي تحتاج صيانة، جدول الإصلاح، الامتثال لمعايير السلامة.` },
+  aiMaintenanceReport:{input:'maintReportInput',extra:()=>`الفترة: ${document.getElementById('maintReportPeriod')?.value}`, result:'maintReportResult', prompt:(d,x)=>`اكتب تقرير صيانة ${x} احترافياً بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: الملخص التنفيذي، الأعمال المنجزة، المعلقة مع الأسباب، التوصيات.` },
+  aiSecurityReport:  { input:'securityReportInput',extra:()=>`${document.getElementById('secIncludeStats')?.checked?'اشمل إحصائيات تفصيلية.':''} ${document.getElementById('secIncludeRec')?.checked?'اشمل توصيات أمنية.':''}`, result:'securityReportResult', prompt:(d,x)=>`اكتب تقرير أمني رسمي بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\n${x} اشمل: ملخص القسم الأمني، الأنشطة، الحوادث وكيفية التعامل معها، الوضع العام.` },
+  aiSafetyReport:    { input:'safetyReportInput',extra:()=>`الفترة: ${document.getElementById('safetyPeriodType')?.value}`, result:'safetyReportResult', prompt:(d,x)=>`اكتب تقرير السلامة المهنية ${x} بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: مؤشرات السلامة، التدريبات، الحوادث والإجراءات، التوصيات.` },
+  aiInspectionReport:{ input:'inspectionInput',extra:()=>`الموقع: ${document.getElementById('inspectionLocation')?.value||'الموقع'}`, result:'inspectionReportResult', prompt:(d,x)=>`اكتب تقرير جولة تفتيشية رسمي لـ${x} بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\n${d}\n\nاشمل: معلومات الجولة، نتائج الفحص، البنود التي تحتاج معالجة، التوصيات.` },
+};
+
+// Override each function to use streaming
+Object.entries(_toolStreamMap).forEach(([fnName, cfg]) => {
+  window[fnName] = async function() {
+    const data = document.getElementById(cfg.input)?.value?.trim();
+    if (!data) { showToast('يرجى ملء الحقل المطلوب', 'error'); return; }
+    const apiKey = localStorage.getItem('mbrcst_openai_key');
+    if (!apiKey) { showToast('أضف OpenAI API Key في الإعدادات', 'error'); return; }
+    const extra = cfg.extra();
+    const prompt = cfg.prompt(data, extra);
+    const btn = _aiBtn(fnName, 'يكتب التقرير...');
+    try {
+      await _callAIStream(prompt, 900, cfg.result, apiKey);
+    } catch(e) { showToast('خطأ في الاتصال', 'error'); }
+    _aiBtnReset(btn);
+  };
+});
+
+// Special case for compare (two inputs)
+window.aiDeptCompare = async function() {
+  const curr=document.getElementById('compareCurrentInput')?.value?.trim();
+  const prev=document.getElementById('comparePrevInput')?.value?.trim();
+  if(!curr||!prev){showToast('أدخل بيانات الفترتين','error');return;}
+  const apiKey=localStorage.getItem('mbrcst_openai_key');
+  if(!apiKey){showToast('أضف OpenAI API Key في الإعدادات','error');return;}
+  const btn=_aiBtn('aiDeptCompare','يقارن...');
+  const prompt=`قارن بين الفترتين وأنتج تقرير مقارنة احترافي بتاريخ ${new Date().toLocaleDateString('ar-SA')}:\n\nالفترة الحالية:\n${curr}\n\nالفترة السابقة:\n${prev}\n\nاشمل: جدول مقارنة، نسب التغيير، نقاط الارتفاع والانخفاض، تفسير الفروق، التوصيات.`;
+  try { await _callAIStream(prompt,900,'compareResult',apiKey); }
+  catch(e){showToast('خطأ في الاتصال','error');}
+  _aiBtnReset(btn);
+};
