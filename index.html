@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=1774716083" />
+  <link rel="stylesheet" href="style.css?v=1774716619" />
   <!-- SheetJS for Excel parsing -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <!-- html2pdf for PDF export -->
@@ -1258,7 +1258,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=1774716083"></script>
+  <script src="app.js?v=1774716619"></script>
 
   <!-- ===== DASHBOARD OVERLAY ===== -->
   <div id="dashboardOverlay" class="ai-fullpage-overlay" style="display:none">
@@ -2284,6 +2284,7 @@
 <script src="features-voice-notif.js?v=20260328"></script>
 <script src="features-infographic.js?v=20260328"></script>
 <script src="features-team.js?v=20260328"></script>
+<script src="features-facilities.js?v=20260328"></script>
 <script>
 // Wire new features into existing nav dropdowns
 document.addEventListener('DOMContentLoaded', function() {
@@ -2321,6 +2322,7 @@ document.addEventListener('DOMContentLoaded', function() {
       bar.innerHTML = `
         <button onclick="showQuick60Report()" style="background:linear-gradient(135deg,#6c63ff,#5a52f0);border:none;color:white;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">⚡ تقرير 60 ثانية</button>
         <button onclick="showTemplatesPanel()" style="background:rgba(108,99,255,0.15);border:1px solid rgba(108,99,255,0.35);color:#c4bfff;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">📋 قوالب الأقسام</button>
+        <button onclick="showFacilitiesPanel()" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);color:#fbbf24;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">🏢 المرافق والأمن</button>
         <button onclick="showTeamBoard()" style="background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.25);color:#00d4aa;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">👥 لوحة الفريق</button>
         <button onclick="showGamPanel()" id="gamPointsBadge" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);color:#f59e0b;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">⭐ 0 نقطة</button>
       `;
