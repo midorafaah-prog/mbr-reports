@@ -6372,3 +6372,198 @@ function addCopyBtn(parentEl, text) {
   btn.onclick = () => navigator.clipboard.writeText(text).then(()=>showToast('✅ تم النسخ','success'));
   parentEl.appendChild(btn);
 }
+
+// ================================================================
+// AI TOOLS — SPECIALIZED DEPT REPORTS + INSTITUTIONAL WRITING
+// ================================================================
+
+async function _callAI(prompt, maxTokens=700) {
+  const apiKey = localStorage.getItem('mbrcst_openai_key');
+  if (!apiKey) { showToast('أضف OpenAI API Key في الإعدادات', 'error'); return null; }
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST', headers: {'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+    body: JSON.stringify({ model:'gpt-4o-mini', messages:[{role:'user',content:prompt}], max_tokens:maxTokens })
+  });
+  const d = await res.json();
+  return d.choices?.[0]?.message?.content || 'حدث خطأ في التوليد';
+}
+
+function _aiBtn(selector, loadingText) {
+  const btn = document.querySelector('button[onclick="'+selector+'()"]');
+  if (btn) { btn._origText = btn.textContent; btn.textContent = '⏳ '+loadingText; btn.disabled = true; }
+  return btn;
+}
+function _aiBtnReset(btn) { if (btn) { btn.textContent = btn._origText; btn.disabled = false; } }
+
+function _showResult(id, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text; el.style.display='block';
+  if (typeof addCopyBtn === 'function') addCopyBtn(el, text);
+  if (typeof awardPoints === 'function') awardPoints('ai_used', 2);
+  showToast('✅ التقرير جاهز', 'success');
+}
+
+// — KPI —
+async function aiKPIReport() {
+  const data=document.getElementById('kpiInput')?.value?.trim(); const dept=document.getElementById('kpiDept')?.value?.trim()||'القسم';
+  if(!data){showToast('أدخل مؤشرات KPI','error');return;}
+  const btn=_aiBtn('aiKPIReport','جاري التحليل...');
+  try { const txt=await _callAI(`أنت محلل أداء مؤسسي. اكتب تقرير مؤشرات الأداء الرئيسية (KPI) لقسم ${dept} بتاريخ ${new Date().toLocaleDateString('ar-SA')} بأسلوب رسمي احترافي بناءً على:\n\n${data}\n\nاجعل التقرير يشمل: ملخص تنفيذي، قراءة المؤشرات، نقاط القوة، نقاط التحسين، التوصيات.`); _showResult('kpiResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Attendance —
+async function aiAttendanceReport() {
+  const data=document.getElementById('attendanceInput')?.value?.trim(); const period=document.getElementById('attendancePeriod')?.value||'شهري';
+  if(!data){showToast('أدخل إحصائيات الحضور','error');return;}
+  const btn=_aiBtn('aiAttendanceReport','جاري التوليد...');
+  try { const txt=await _callAI(`أنت مختص موارد بشرية. اكتب تقرير الحضور والغياب ${period} بتاريخ ${new Date().toLocaleDateString('ar-SA')} بأسلوب مؤسسي رسمي بناءً على:\n\n${data}\n\nاجعل التقرير يشمل: ملخص الحضور، تحليل الغياب والتأخرات، المقارنة بالفترة السابقة إن أمكن، التوصيات.`); _showResult('attendanceResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Projects —
+async function aiProjectsReport() {
+  const data=document.getElementById('projectsInput')?.value?.trim();
+  if(!data){showToast('أدخل حالة المشاريع','error');return;}
+  const btn=_aiBtn('aiProjectsReport','جاري التوليد...');
+  try { const txt=await _callAI(`أنت مدير مشاريع محترف. اكتب تقرير حالة المشاريع والمبادرات بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nاشمل: ملخص تنفيذي، حالة كل مشروع، المشاريع المتأخرة وأسبابها، الإنجازات المكتملة، خطة الفترة القادمة.`); _showResult('projectsResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Budget —
+async function aiBudgetReport() {
+  const data=document.getElementById('budgetInput')?.value?.trim();
+  if(!data){showToast('أدخل بيانات الميزانية','error');return;}
+  const btn=_aiBtn('aiBudgetReport','جاري التوليد...');
+  try { const txt=await _callAI(`أنت محاسب ومحلل مالي. اكتب تقريراً مالياً دورياً احترافياً بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nاشمل: الملخص المالي، تحليل الصرف، الوفر والتجاوزات، توصيات الترشيد.`); _showResult('budgetResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Fleet —
+async function aiFleetReport() {
+  const data=document.getElementById('fleetInput')?.value?.trim();
+  if(!data){showToast('أدخل بيانات الأسطول','error');return;}
+  const btn=_aiBtn('aiFleetReport','جاري التوليد...');
+  try { const txt=await _callAI(`أنت مدير أسطول مركبات. اكتب تقرير الأسطول الدوري بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nاشمل: حالة المركبات، استهلاك الوقود، جدول الصيانة، المخالفات، التوصيات.`); _showResult('fleetResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Sustainability —
+async function aiSustainReport() {
+  const data=document.getElementById('sustainInput')?.value?.trim();
+  if(!data){showToast('أدخل بيانات الاستهلاك','error');return;}
+  const btn=_aiBtn('aiSustainReport','جاري التوليد...');
+  try { const txt=await _callAI(`أنت مختص استدامة بيئية. اكتب تقرير الاستدامة البيئية بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nاشمل: استهلاك الطاقة والمياه، مقارنة الفترات، التوفير المحقق، توصيات لتحسين الكفاءة.`); _showResult('sustainResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Inventory —
+async function aiInventoryReport() {
+  const data=document.getElementById('inventoryInput')?.value?.trim();
+  if(!data){showToast('أدخل بيانات المخزون','error');return;}
+  const btn=_aiBtn('aiInventoryReport','جاري التوليد...');
+  try { const txt=await _callAI(`أنت مشرف مستودعات. اكتب تقرير المخزون والمستودعات بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nاشمل: الرصيد الحالي، حركة المخزون، الأصناف الحرجة (نفاد/منتهٍ)، طلبات الشراء المقترحة.`); _showResult('inventoryResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Performance —
+async function aiPerformanceReport() {
+  const data=document.getElementById('performanceInput')?.value?.trim();
+  const withRec=document.getElementById('perfIncludeRec')?.checked; const withScore=document.getElementById('perfIncludeScore')?.checked;
+  if(!data){showToast('أدخل بيانات الأداء','error');return;}
+  const btn=_aiBtn('aiPerformanceReport','جاري التوليد...');
+  try { const txt=await _callAI(`أنت مختص تقييم موظفين. اكتب تقرير أداء وظيفي احترافي بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\n${withScore?'اشمل: تقييم نهائي بمقياس (ممتاز/جيدجداً/جيد/يحتاج تطوير).':''} ${withRec?'اشمل: توصيات تطوير محددة وقابلة للتطبيق.':''}`); _showResult('performanceResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Executive Email —
+async function aiExecutiveEmail() {
+  const data=document.getElementById('emailInput')?.value?.trim(); const to=document.getElementById('emailTo')?.value?.trim()||'المدير المختص';
+  const tone=document.querySelector('input[name="emailTone"]:checked')?.value||'رسمي';
+  if(!data){showToast('أدخل محتوى التقرير','error');return;}
+  const btn=_aiBtn('aiExecutiveEmail','جاري الصياغة...');
+  try { const txt=await _callAI(`اكتب إيميلاً مؤسسياً ${tone} باللغة العربية موجّهاً إلى: ${to}، يلخّص التقرير التالي بشكل منظّم ومقنع ويطلب الإجراء المناسب:\n\n${data}\n\nاجعله يشمل: تحية رسمية، ملخص الوضع، أبرز النقاط (Bullet)، المطلوب من المستلم، خاتمة رسمية.`); _showResult('emailResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Official Letter —
+async function aiOfficialLetter() {
+  const data=document.getElementById('letterInput')?.value?.trim(); const type=document.getElementById('letterType')?.value||'طلب موافقة';
+  if(!data){showToast('أدخل موضوع الخطاب','error');return;}
+  const btn=_aiBtn('aiOfficialLetter','جاري الصياغة...');
+  try { const txt=await _callAI(`أنت كاتب خطابات رسمي حكومي. اكتب ${type} باللغة العربية الرسمية بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nاجعل الخطاب يبدأ بالبسملة والتحية، ثم الموضوع، ثم التفاصيل بأسلوب حكومي رسمي، ثم الخاتمة والتوقيع.`); _showResult('letterResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Meeting Agenda —
+async function aiMeetingAgenda() {
+  const data=document.getElementById('agendaInput')?.value?.trim(); const dur=document.getElementById('agendaDuration')?.value||'60 دقيقة';
+  if(!data){showToast('أدخل محاور الاجتماع','error');return;}
+  const btn=_aiBtn('aiMeetingAgenda','جاري التوليد...');
+  try { const txt=await _callAI(`أنت منسق اجتماعات محترف. أنشئ أجندة اجتماع متابعة منظّمة باللغة العربية بمدة ${dur} بناءً على:\n\n${data}\n\nاجعلها: أجندة مرقمة مع توزيع الوقت لكل بند، اسم المسؤول عن كل بند إن أمكن، قسم للقرارات والإجراءات في النهاية.`); _showResult('agendaResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Action Plan —
+async function aiActionPlan() {
+  const data=document.getElementById('actionPlanInput')?.value?.trim(); const timeframe=document.getElementById('actionPlanTimeframe')?.value||'3 أشهر';
+  if(!data){showToast('أدخل التحديات أو المشكلات','error');return;}
+  const btn=_aiBtn('aiActionPlan','جاري التوليد...');
+  try { const txt=await _callAI(`أنت مستشار إداري. أنشئ خطة عمل SMART احترافية لمعالجة التحديات التالية خلال ${timeframe}:\n\n${data}\n\nاجعل الخطة تشمل: الأهداف المحددة (Specific)، قابلة للقياس (Measurable)، قابلة للتحقيق، ذات صلة، محددة زمنياً. قدّم جدولاً بالمهام والمسؤوليات والجداول الزمنية.`); _showResult('actionPlanResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Risk Report —
+async function aiRiskReport() {
+  const data=document.getElementById('riskInput')?.value?.trim();
+  if(!data){showToast('أدخل المخاطر المحتملة','error');return;}
+  const btn=_aiBtn('aiRiskReport','جاري التحليل...');
+  try { const txt=await _callAI(`أنت مختص تقييم مخاطر مؤسسية. اكتب تقرير تقييم مخاطر احترافياً بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nاجعله يشمل: تصنيف المخاطر (عالية/متوسطة/منخفضة)، الاحتمالية والأثر، خطة التخفيف لكل خطر، الإجراءات التصحيحية المقترحة.`); _showResult('riskResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Department Compare —
+async function aiDeptCompare() {
+  const curr=document.getElementById('compareCurrentInput')?.value?.trim(); const prev=document.getElementById('comparePrevInput')?.value?.trim();
+  if(!curr||!prev){showToast('أدخل بيانات الفترتين','error');return;}
+  const btn=_aiBtn('aiDeptCompare','جاري المقارنة...');
+  try { const txt=await _callAI(`أنت محلل أداء مؤسسي. قارن بين الفترتين وأنتج تقرير مقارنة احترافي:\n\nالفترة الحالية:\n${curr}\n\nالفترة السابقة:\n${prev}\n\nاشمل: جدول مقارنة، نسب التغيير، نقاط الارتفاع والانخفاض، تفسير الفروق، توصيات للفترة القادمة.`); _showResult('compareResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Evacuation Drill —
+async function aiEvacuationReport() {
+  const data=document.getElementById('evacuationInput')?.value?.trim();
+  if(!data){showToast('أدخل بيانات المناورة','error');return;}
+  const btn=_aiBtn('aiEvacuationReport','جاري التوليد...');
+  try { const txt=await _callAI(`أنت مختص سلامة وطوارئ. اكتب تقرير مناورة إخلاء رسمي بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nاشمل: ملخص المناورة، الأداء الزمني، الملاحظات والمخالفات، المقارنة بالمعيار، توصيات لتحسين خطة الإخلاء.`); _showResult('evacuationResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — CCTV Report —
+async function aiCCTVReport() {
+  const data=document.getElementById('cctvInput')?.value?.trim();
+  if(!data){showToast('أدخل بيانات منظومة المراقبة','error');return;}
+  const btn=_aiBtn('aiCCTVReport','جاري التوليد...');
+  try { const txt=await _callAI(`أنت مختص أنظمة مراقبة أمنية. اكتب تقرير حالة منظومة المراقبة الدورية بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nاشمل: نسبة التشغيل، الكاميرات المعطلة والأسباب، جدول الإصلاح، توصيات لتحسين التغطية.`); _showResult('cctvResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Access Control —
+async function aiAccessReport() {
+  const data=document.getElementById('accessInput')?.value?.trim();
+  if(!data){showToast('أدخل بيانات نظام الدخول','error');return;}
+  const btn=_aiBtn('aiAccessReport','جاري التوليد...');
+  try { const txt=await _callAI(`أنت مختص أمن وتحكم بالدخول. اكتب تقرير نظام التحكم بالدخول الدوري بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nاشمل: إحصائيات البطاقات، المخالفات وكيفية التعامل معها، حالة البوابات، توصيات التحسين الأمني.`); _showResult('accessResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}
+
+// — Fire Equipment —
+async function aiFireEquipReport() {
+  const data=document.getElementById('fireEqInput')?.value?.trim();
+  if(!data){showToast('أدخل بيانات معدات الإطفاء','error');return;}
+  const btn=_aiBtn('aiFireEquipReport','جاري التوليد...');
+  try { const txt=await _callAI(`أنت مختص سلامة حريق معتمد. اكتب تقرير الفحص الدوري لمعدات الإطفاء بتاريخ ${new Date().toLocaleDateString('ar-SA')} بناءً على:\n\n${data}\n\nاشمل: نتائج الفحص، المعدات التي تحتاج صيانة أو استبدال، الجدول الزمني للإصلاح، التحقق من الامتثال لمعايير السلامة.`); _showResult('fireEqResult',txt); }
+  catch(e){showToast('خطأ في الاتصال','error');} _aiBtnReset(btn);
+}

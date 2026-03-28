@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=1774717861" />
+  <link rel="stylesheet" href="style.css?v=1774718391" />
   <!-- SheetJS for Excel parsing -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <!-- html2pdf for PDF export -->
@@ -1077,6 +1077,226 @@
         </div>
       </div>
 
+
+      <!-- ===== GROUP: تقارير الأقسام المتخصصة ===== -->
+      <div class="ai-group">
+        <div class="ai-group-title" style="background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(168,85,247,0.08));border-color:rgba(99,102,241,0.2)">📊 تقارير الأقسام المتخصصة</div>
+        <div class="ai-tools-grid">
+
+          <div class="ai-tool-card" id="toolKPI">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#6366f1,#4f46e5)">🎯</div>
+            <h4>🎯 تقرير مؤشرات KPI</h4>
+            <p>أدخل أرقام مؤشراتك وسيحولها AI لتقرير أداء احترافي</p>
+            <textarea id="kpiInput" class="ai-tool-input" rows="4" placeholder="• الهدف الشهري: 100 | المحقق: 87 | النسبة: 87%&#10;• رضا العملاء: 4.5/5&#10;• معدل الاستجابة: 2 ساعة&#10;• مشاريع مكتملة: 3/4"></textarea>
+            <input id="kpiDept" class="ai-tool-input" placeholder="اسم القسم" style="margin-top:0.4rem">
+            <button class="ai-tool-btn" onclick="aiKPIReport()" style="background:linear-gradient(135deg,#6366f1,#4f46e5)">🎯 توليد تقرير KPI</button>
+            <div class="ai-tool-result" id="kpiResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolAttendance">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#10b981,#059669)">👥</div>
+            <h4>👥 تقرير الحضور والغياب</h4>
+            <p>إحصائيات الحضور → تقرير HR دوري احترافي</p>
+            <textarea id="attendanceInput" class="ai-tool-input" rows="4" placeholder="• إجمالي الموظفين: 45&#10;• متوسط الحضور: 97%&#10;• غياب بعذر: 3 حالات&#10;• تأخرات: 7 حالات&#10;• إجازات مستخدمة: 12 يوم"></textarea>
+            <div class="ai-tool-select-row">
+              <select id="attendancePeriod" class="ai-mini-select">
+                <option value="أسبوعي">أسبوعي</option>
+                <option value="شهري" selected>شهري</option>
+                <option value="ربعي">ربعي</option>
+              </select>
+            </div>
+            <button class="ai-tool-btn" onclick="aiAttendanceReport()" style="background:linear-gradient(135deg,#10b981,#059669)">👥 توليد تقرير الحضور</button>
+            <div class="ai-tool-result" id="attendanceResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolProjects">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)">📋</div>
+            <h4>📋 تقرير المشاريع والمبادرات</h4>
+            <p>حالة المشاريع + نسب الإنجاز → تقرير شامل للقيادة</p>
+            <textarea id="projectsInput" class="ai-tool-input" rows="4" placeholder="• مشروع رقمنة المستودعات: 75% (في الوقت)&#10;• مبادرة توفير الطاقة: 60% (متأخر أسبوع)&#10;• تطوير منظومة الأمن: 100% (مكتمل)&#10;• تحديث نظام الدخول: 30% (بدأ حديثاً)"></textarea>
+            <button class="ai-tool-btn" onclick="aiProjectsReport()" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)">📋 توليد تقرير المشاريع</button>
+            <div class="ai-tool-result" id="projectsResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolBudget">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#10b981,#047857)">💰</div>
+            <h4>💰 تقرير الميزانية والصرف</h4>
+            <p>مقارنة المخطط بالفعلي → تقرير مالي دوري احترافي</p>
+            <textarea id="budgetInput" class="ai-tool-input" rows="4" placeholder="• الميزانية المعتمدة: 500,000 ريال&#10;• المصروف الفعلي: 380,000 ريال&#10;• الوفر: 120,000 ريال (24%)&#10;• أكبر بند صرف: الصيانة 45%&#10;• بند تجاوز: المواد الاستهلاكية +15%"></textarea>
+            <button class="ai-tool-btn" onclick="aiBudgetReport()" style="background:linear-gradient(135deg,#10b981,#047857)">💰 توليد التقرير المالي</button>
+            <div class="ai-tool-result" id="budgetResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolFleet">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#f97316,#ea580c)">🚗</div>
+            <h4>🚗 تقرير أسطول المركبات</h4>
+            <p>حالة المركبات + الصيانة + الاستهلاك → تقرير الأسطول</p>
+            <textarea id="fleetInput" class="ai-tool-input" rows="4" placeholder="• إجمالي المركبات: 12&#10;• في الخدمة: 10 | في الصيانة: 2&#10;• استهلاك الوقود: 850 لتر&#10;• مخالفات: 0&#10;• مركبة تحتاج تجديد رخصة: 2"></textarea>
+            <button class="ai-tool-btn" onclick="aiFleetReport()" style="background:linear-gradient(135deg,#f97316,#ea580c)">🚗 توليد تقرير الأسطول</button>
+            <div class="ai-tool-result" id="fleetResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolSustainability">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#22c55e,#16a34a)">🌿</div>
+            <h4>🌿 تقرير الاستدامة البيئية</h4>
+            <p>استهلاك الطاقة والمياه + التوفير → تقرير الاستدامة</p>
+            <textarea id="sustainInput" class="ai-tool-input" rows="4" placeholder="• استهلاك الكهرباء: 45,000 كيلوواط (↓8% عن الشهر السابق)&#10;• استهلاك المياه: 320 م³ (↓5%)&#10;• توفير فعلي: 12,000 ريال&#10;• نسبة المباني بالإضاءة الذكية: 40%"></textarea>
+            <button class="ai-tool-btn" onclick="aiSustainReport()" style="background:linear-gradient(135deg,#22c55e,#16a34a)">🌿 توليد تقرير الاستدامة</button>
+            <div class="ai-tool-result" id="sustainResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolInventory">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">📦</div>
+            <h4>📦 تقرير المخزون والمستودعات</h4>
+            <p>حركة المخزون + الطلبات → تقرير مستودعات منظّم</p>
+            <textarea id="inventoryInput" class="ai-tool-input" rows="4" placeholder="• رصيد المخزون الحالي: 1,240 صنف&#10;• طلبات جديدة: 34 | مُسلَّمة: 28&#10;• أصناف نفدت: 5 (تم الطلب)&#10;• أصناف بتاريخ منتهٍ: 3&#10;• قيمة المخزون: 180,000 ريال"></textarea>
+            <button class="ai-tool-btn" onclick="aiInventoryReport()" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">📦 توليد تقرير المخزون</button>
+            <div class="ai-tool-result" id="inventoryResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolPerformance">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#ec4899,#db2777)">📊</div>
+            <h4>📊 تقرير الأداء الوظيفي</h4>
+            <p>بيانات الأداء → تقييم موظف أو فريق كامل</p>
+            <textarea id="performanceInput" class="ai-tool-input" rows="4" placeholder="• الموظف / الفريق: ___&#10;• أهداف مكتملة: 8/10&#10;• جودة العمل: ممتازة&#10;• الالتزام بالمواعيد: 95%&#10;• مبادرات إضافية: 2&#10;• نقاط تطوير: ..."></textarea>
+            <div class="ai-tool-options">
+              <label><input type="checkbox" id="perfIncludeRec" checked> توصيات التطوير</label>
+              <label><input type="checkbox" id="perfIncludeScore" checked> التقييم النهائي</label>
+            </div>
+            <button class="ai-tool-btn" onclick="aiPerformanceReport()" style="background:linear-gradient(135deg,#ec4899,#db2777)">📊 توليد تقرير الأداء</button>
+            <div class="ai-tool-result" id="performanceResult" style="display:none"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ===== GROUP: أدوات كتابية متخصصة ===== -->
+      <div class="ai-group">
+        <div class="ai-group-title" style="background:linear-gradient(135deg,rgba(20,184,166,0.12),rgba(6,182,212,0.08));border-color:rgba(20,184,166,0.2)">✉️ أدوات الكتابة المؤسسية المتخصصة</div>
+        <div class="ai-tools-grid">
+
+          <div class="ai-tool-card" id="toolExecutiveEmail">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#14b8a6,#0891b2)">✉️</div>
+            <h4>✉️ مولّد الإيميل التنفيذي</h4>
+            <p>حوّل تقريرك لإيميل احترافي جاهز للإرسال للمدير</p>
+            <textarea id="emailInput" class="ai-tool-input" rows="3" placeholder="الصق ملخص تقريرك هنا أو اكتب أبرز نقاطه..."></textarea>
+            <input id="emailTo" class="ai-tool-input" placeholder="مستلم الإيميل (مثال: مدير الإدارة)" style="margin-top:0.4rem">
+            <div class="ai-tool-options">
+              <label><input type="radio" name="emailTone" value="رسمي" checked> رسمي</label>
+              <label><input type="radio" name="emailTone" value="مختصر"> مختصر جداً</label>
+              <label><input type="radio" name="emailTone" value="ودي"> ودّي ومهني</label>
+            </div>
+            <button class="ai-tool-btn" onclick="aiExecutiveEmail()" style="background:linear-gradient(135deg,#14b8a6,#0891b2)">✉️ توليد الإيميل</button>
+            <div class="ai-tool-result" id="emailResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolOfficialLetter">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#6366f1,#4338ca)">📨</div>
+            <h4>📨 صياغة الخطابات الرسمية</h4>
+            <p>اكتب فكرتك بسطور وسيُنتج AI خطاباً رسمياً كاملاً</p>
+            <textarea id="letterInput" class="ai-tool-input" rows="3" placeholder="الغرض من الخطاب بكلماتك البسيطة...&#10;مثال: أطلب الموافقة على شراء 3 كاميرات مراقبة للمستودع بسبب..."></textarea>
+            <div class="ai-tool-select-row">
+              <select id="letterType" class="ai-mini-select">
+                <option>طلب موافقة</option>
+                <option>تقرير إلى الإدارة</option>
+                <option>مذكرة داخلية</option>
+                <option>خطاب شكر</option>
+                <option>خطاب تنبيه</option>
+                <option>طلب ميزانية</option>
+              </select>
+            </div>
+            <button class="ai-tool-btn" onclick="aiOfficialLetter()" style="background:linear-gradient(135deg,#6366f1,#4338ca)">📨 صياغة الخطاب</button>
+            <div class="ai-tool-result" id="letterResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolMeetingAgenda">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#f59e0b,#b45309)">🗓️</div>
+            <h4>🗓️ مولّد أجندة الاجتماع</h4>
+            <p>حوّل تقريرك لأجندة اجتماع متابعة منظّمة</p>
+            <textarea id="agendaInput" class="ai-tool-input" rows="3" placeholder="أدخل محاور التقرير أو نقاط المتابعة..."></textarea>
+            <div class="ai-tool-select-row">
+              <input id="agendaDuration" class="ai-mini-select" placeholder="مدة الاجتماع (60 دقيقة)" style="width:auto">
+            </div>
+            <button class="ai-tool-btn" onclick="aiMeetingAgenda()" style="background:linear-gradient(135deg,#f59e0b,#b45309)">🗓️ توليد أجندة الاجتماع</button>
+            <div class="ai-tool-result" id="agendaResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolActionPlan">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">⚠️</div>
+            <h4>⚠️ مولّد خطة العمل SMART</h4>
+            <p>من التحديات والمشكلات → خطة عمل ذكية بأهداف قابلة للقياس</p>
+            <textarea id="actionPlanInput" class="ai-tool-input" rows="3" placeholder="اكتب التحديات أو المشكلات التي تواجه قسمك..."></textarea>
+            <input id="actionPlanTimeframe" class="ai-tool-input" placeholder="الإطار الزمني (مثال: 3 أشهر)" style="margin-top:0.4rem">
+            <button class="ai-tool-btn" onclick="aiActionPlan()" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">⚠️ توليد خطة العمل</button>
+            <div class="ai-tool-result" id="actionPlanResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolRiskReport">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#dc2626,#7f1d1d)">🔺</div>
+            <h4>🔺 تقرير المخاطر والمعالجة</h4>
+            <p>حدّد المخاطر وسيُنتج AI تقرير تقييم مخاطر باحترافية</p>
+            <textarea id="riskInput" class="ai-tool-input" rows="3" placeholder="اكتب المخاطر المحتملة أو المُلاحظة...&#10;مثال: قد ينتهي عقد المزود في شهرين دون بديل جاهز."></textarea>
+            <button class="ai-tool-btn" onclick="aiRiskReport()" style="background:linear-gradient(135deg,#dc2626,#7f1d1d)">🔺 توليد تقرير المخاطر</button>
+            <div class="ai-tool-result" id="riskResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolDeptCompare">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">🔄</div>
+            <h4>🔄 مقارنة أداء الفترات</h4>
+            <p>قارن أداء الفترة الحالية بالسابقة وأبرز الفروق بشكل احترافي</p>
+            <textarea id="compareCurrentInput" class="ai-tool-input" rows="2" placeholder="ملخص الفترة الحالية..."></textarea>
+            <textarea id="comparePrevInput" class="ai-tool-input" rows="2" placeholder="ملخص الفترة السابقة..." style="margin-top:0.4rem"></textarea>
+            <button class="ai-tool-btn" onclick="aiDeptCompare()" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">🔄 توليد تقرير المقارنة</button>
+            <div class="ai-tool-result" id="compareResult" style="display:none"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ===== GROUP: توسعة الأمن والسلامة ===== -->
+      <div class="ai-group">
+        <div class="ai-group-title" style="background:linear-gradient(135deg,rgba(220,38,38,0.1),rgba(245,158,11,0.07));border-color:rgba(220,38,38,0.18)">🔒 تقارير الأمن المتخصصة</div>
+        <div class="ai-tools-grid">
+
+          <div class="ai-tool-card" id="toolEvacuation" style="border:1px solid rgba(239,68,68,0.2)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#f97316,#dc2626)">🔥</div>
+            <h4>🔥 تقرير مناورة الإخلاء</h4>
+            <p>بيانات التدريب على الإخلاء → تقرير تقييم رسمي</p>
+            <textarea id="evacuationInput" class="ai-tool-input" rows="4" placeholder="• تاريخ المناورة: ___&#10;• عدد المشاركين: 145 موظف&#10;• وقت الإخلاء الكامل: 4 دقائق 20 ثانية&#10;• الهدف المحدد: أقل من 5 دقائق&#10;• ملاحظات: ارتباك في مخرج B الشمالي"></textarea>
+            <button class="ai-tool-btn" onclick="aiEvacuationReport()" style="background:linear-gradient(135deg,#f97316,#dc2626)">🔥 توليد تقرير المناورة</button>
+            <div class="ai-tool-result" id="evacuationResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolCCTV" style="border:1px solid rgba(99,102,241,0.2)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#6366f1,#4338ca)">📡</div>
+            <h4>📡 تقرير منظومة المراقبة</h4>
+            <p>حالة كاميرات المراقبة + أوقات العطل → تقرير دوري</p>
+            <textarea id="cctvInput" class="ai-tool-input" rows="4" placeholder="• إجمالي الكاميرات: 54&#10;• تعمل: 52 | معطلة: 2 (موقع: ___، السبب: ___)&#10;• تم إصلاح: 1 كاميرا هذا الأسبوع&#10;• تسجيل مستمر: 100%&#10;• مساحة تخزين متبقية: 60%"></textarea>
+            <button class="ai-tool-btn" onclick="aiCCTVReport()" style="background:linear-gradient(135deg,#6366f1,#4338ca)">📡 توليد تقرير المراقبة</button>
+            <div class="ai-tool-result" id="cctvResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolAccessControl" style="border:1px solid rgba(16,185,129,0.2)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#10b981,#0284c7)">🔐</div>
+            <h4>🔐 تقرير نظام التحكم بالدخول</h4>
+            <p>بطاقات الدخول + المخالفات + الإحصائيات → تقرير أمني</p>
+            <textarea id="accessInput" class="ai-tool-input" rows="4" placeholder="• بطاقات نشطة: 248&#10;• بطاقات منتهية/معلّقة: 5&#10;• دخول بعد وقت الدوام: 12 حادثة&#10;• محاولات دخول غير مصرح: 2 (تمت المعالجة)&#10;• بوابات بحيّز عمل: 8/8"></textarea>
+            <button class="ai-tool-btn" onclick="aiAccessReport()" style="background:linear-gradient(135deg,#10b981,#0284c7)">🔐 توليد تقرير الدخول</button>
+            <div class="ai-tool-result" id="accessResult" style="display:none"></div>
+          </div>
+
+          <div class="ai-tool-card" id="toolFireEquipment" style="border:1px solid rgba(249,115,22,0.2)">
+            <div class="ai-tool-icon" style="background:linear-gradient(135deg,#f97316,#dc2626)">🧯</div>
+            <h4>🧯 تقرير معدات الإطفاء</h4>
+            <p>الفحص الدوري لمعدات الحريق → تقرير سلامة رسمي</p>
+            <textarea id="fireEqInput" class="ai-tool-input" rows="4" placeholder="• طفايات تم فحصها: 45/48&#10;• صالحة: 43 | تحتاج شحن: 2&#10;• خراطيم حريق: سليمة (8/8)&#10;• رشاشات (Sprinklers): 120 تعمل&#10;• التاريخ المحدد للصيانة الشاملة: ___"></textarea>
+            <button class="ai-tool-btn" onclick="aiFireEquipReport()" style="background:linear-gradient(135deg,#f97316,#dc2626)">🧯 توليد تقرير الإطفاء</button>
+            <div class="ai-tool-result" id="fireEqResult" style="display:none"></div>
+          </div>
+
+        </div>
+      </div>
+
       </div>
     </section>
 
@@ -1319,7 +1539,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=1774717861"></script>
+  <script src="app.js?v=1774718391"></script>
 
   <!-- ===== DASHBOARD OVERLAY ===== -->
   <div id="dashboardOverlay" class="ai-fullpage-overlay" style="display:none">
