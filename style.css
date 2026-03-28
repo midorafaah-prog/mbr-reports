@@ -2132,3 +2132,31 @@ body.light-mode .ai-fullpage-overlay { background: #f4f4f8 !important; }
 /* ===== IMPROVE CARD ===== */
 #toolImprove .ai-tool-btn { font-size: 0.75rem; padding: 0.45rem 0.6rem; }
 
+
+/* ===== QUICK REPORT + PROMPTS NAV ===== */
+.nav-btn-quickreport { background: linear-gradient(135deg,rgba(245,158,11,0.15),rgba(239,68,68,0.1)) !important; border: 1px solid rgba(245,158,11,0.4) !important; color: #f59e0b !important; font-weight: 800 !important; }
+.nav-btn-prompts { background: rgba(139,92,246,0.1) !important; border: 1px solid rgba(139,92,246,0.3) !important; color: #8b5cf6 !important; }
+
+/* ===== DRAG DROP ===== */
+#dropZone:hover { border-color: #6c63ff !important; background: rgba(108,99,255,0.06) !important; }
+
+/* ===== QUICK REPORT TYPE BUTTONS ===== */
+.qr-type-btn {
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  border-radius: 10px; padding: 0.6rem; color: var(--text-muted);
+  cursor: pointer; font-family: var(--font); font-size: 0.82rem;
+  font-weight: 700; transition: all 0.15s; text-align: center;
+}
+.qr-type-btn:hover, .qr-type-btn.selected {
+  background: rgba(108,99,255,0.15); border-color: rgba(108,99,255,0.4);
+  color: var(--accent);
+}
+.qr-step {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(108,99,255,0.15); border: 2px solid rgba(108,99,255,0.3);
+  color: var(--text-muted); display: flex; align-items: center;
+  justify-content: center; font-size: 0.75rem; font-weight: 900;
+  transition: all 0.2s; flex-shrink: 0;
+}
+.qr-step.active { background: rgba(108,99,255,0.4); border-color: var(--accent); color: white; }
+

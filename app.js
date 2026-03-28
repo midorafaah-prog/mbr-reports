@@ -4421,3 +4421,320 @@ document.getElementById('globalSearchInput')?.addEventListener('keydown', e => {
 // Init badge on load
 document.addEventListener('DOMContentLoaded', updateNotifBadge);
 updateNotifBadge();
+
+// ============================================================
+// 16. DRAG & DROP FILE UPLOAD + ANALYSIS
+// ============================================================
+function dropZoneOver(e) {
+  e.preventDefault();
+  const dz = document.getElementById('dropZone');
+  if (dz) { dz.style.borderColor = '#6c63ff'; dz.style.background = 'rgba(108,99,255,0.08)'; }
+}
+function dropZoneLeave(e) {
+  const dz = document.getElementById('dropZone');
+  if (dz) { dz.style.borderColor = 'rgba(108,99,255,0.35)'; dz.style.background = 'rgba(108,99,255,0.03)'; }
+}
+function handleFileDrop(e) {
+  e.preventDefault();
+  dropZoneLeave(e);
+  const file = e.dataTransfer.files[0];
+  if (file) processDroppedFile(file);
+}
+function handleFileInputChange(input) {
+  const file = input.files[0];
+  if (file) processDroppedFile(file);
+}
+
+async function processDroppedFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const resultEl = document.getElementById('dropResult');
+  if (!resultEl) return;
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>⏳ يحلل AI ملف: ${file.name}...</span></div>`;
+  const dz = document.getElementById('dropZone');
+  if (dz) dz.querySelector('div').textContent = `📎 ${file.name} (${(file.size/1024).toFixed(0)} KB)`;
+
+  try {
+    // Images → OCR via AI Vision
+    if (['png','jpg','jpeg','gif','webp'].includes(ext)) {
+      const reader = new FileReader();
+      reader.onload = async e => {
+        const base64 = e.target.result.split(',')[1];
+        const key = localStorage.getItem('mbrcst_openai_key') || '';
+        if (!key) { resultEl.innerHTML = '<div style="color:#ef4444;padding:1rem">❌ أضف مفتاح OpenAI أولاً</div>'; return; }
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+          body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{
+            role: 'user', content: [
+              { type: 'text', text: 'حلّل هذه الصورة واستخرج منها تقريراً احترافياً بالعربية.' },
+              { type: 'image_url', image_url: { url: `data:image/${ext};base64,${base64}` } }
+            ]
+          }], max_tokens: 1500 })
+        });
+        const data = await res.json();
+        const report = data.choices?.[0]?.message?.content || '';
+        if (report) { showDropResult(resultEl, report, file.name); }
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // Text files (CSV, TXT, JSON)
+    if (['csv','txt','json'].includes(ext)) {
+      const text = await file.text();
+      const sample = text.substring(0, 3000);
+      const result = await callAI(
+        `حلّل هذه البيانات من ملف ${ext.toUpperCase()} وأنشئ تقريراً احترافياً:\n\n${sample}`,
+        'أنت محلل بيانات متخصص في إنشاء تقارير من ملفات البيانات المختلفة.'
+      );
+      if (result) showDropResult(resultEl, result, file.name);
+      return;
+    }
+
+    // Excel, Word, PDF (read as text best we can)
+    if (['xlsx','xls','doc','docx','pdf'].includes(ext)) {
+      // For xlsx, use the Sheets API approach if available; otherwise prompt user
+      const reader = new FileReader();
+      reader.onload = async e => {
+        let text = '';
+        // Try to extract some text (works better for .doc/.txt embedded in docx)
+        try {
+          const arr = new Uint8Array(e.target.result);
+          text = String.fromCharCode(...arr.slice(0, 5000)).replace(/[^\u0020-\u007E\u0600-\u06FF\n\r\t ]/g, ' ').replace(/\s{3,}/g,' ');
+        } catch {}
+        if (text.length < 50) {
+          resultEl.innerHTML = `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:1rem;font-size:0.82rem;color:#f59e0b">
+            ⚠️ ملفات ${ext.toUpperCase()} تحتاج معالجة خاصة.<br>
+            💡 <strong>الحل:</strong> افتح الملف وانسخ النص ثم الصقه في المحرر، أو حوّله لـ CSV وارفعه مجدداً.
+          </div>`;
+          return;
+        }
+        const result = await callAI(`حلّل هذا المحتوى من ملف ${ext.toUpperCase()} وأنشئ تقريراً:\n${text}`, 'أنت محلل بيانات احترافي.');
+        if (result) showDropResult(resultEl, result, file.name);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  } catch(err) {
+    resultEl.innerHTML = `<div style="color:#ef4444;padding:1rem">❌ خطأ في قراءة الملف: ${err.message}</div>`;
+  }
+}
+
+function showDropResult(el, text, fileName) {
+  el.innerHTML = `
+    <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:12px;padding:1rem;margin-top:0.5rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.7rem">
+        <span style="color:#00d4aa;font-size:0.78rem;font-weight:700">✅ تم تحليل: ${fileName}</span>
+        <button onclick="applyDropResult(this)" data-text="${encodeURIComponent(text)}" class="ai-tool-btn" style="padding:0.3rem 0.8rem;font-size:0.75rem">📋 نقل للمحرر</button>
+      </div>
+      <div style="white-space:pre-wrap;color:var(--text-secondary);font-size:0.78rem;line-height:1.7;max-height:200px;overflow:auto">${text.substring(0,800)}${text.length>800?'...':''}</div>
+    </div>`;
+  saveReportToHistory('تحليل: ' + fileName, text, 'general');
+  showToast(`✅ تم تحليل ${fileName}`, 'success');
+}
+
+function applyDropResult(btn) {
+  const text = decodeURIComponent(btn.dataset.text);
+  const ta = document.getElementById('reportNotes') || document.getElementById('reportObjectives') || document.querySelector('textarea');
+  if (ta) { ta.value = text; updateWritingStats(text); }
+  showToast('✅ تم نقل النتيجة للمحرر', 'success');
+}
+
+// ============================================================
+// 17. PROMPTS LIBRARY
+// ============================================================
+const BUILTIN_PROMPTS = [
+  { id:'p1', title:'تحليل مبيعات', category:'analyze', body:'حلّل هذه بيانات المبيعات واكتب تقريراً يشمل: الاتجاهات الرئيسية، أعلى المنتجات، مقارنة الفترات، والتوصيات:', icon:'📈' },
+  { id:'p2', title:'تقرير موارد بشرية', category:'write', body:'اكتب تقرير موارد بشرية شهرياً يشمل: حضور الموظفين، الإنجازات، التحديات، التدريبات، والتوصيات. بناءً على المعلومات التالية:', icon:'👥' },
+  { id:'p3', title:'ملخص اجتماع', category:'summarize', body:'حوّل محضر الاجتماع التالي إلى ملخص تنفيذي يشمل: أبرز النقاط، القرارات المتخذة، والإجراءات المطلوبة:', icon:'📝' },
+  { id:'p4', title:'تقرير مشروع', category:'write', body:'اكتب تقرير حالة مشروع احترافياً يشمل: نسبة الإنجاز، المهام المكتملة، التحديات، المخاطر، والخطوات القادمة:', icon:'🚀' },
+  { id:'p5', title:'تحليل بيانات Excel', category:'analyze', body:'حلّل هذه البيانات المستخرجة من Excel وأعطني: أبرز الأرقام، الاتجاهات، الشذوذات، والتوصيات الإدارية:', icon:'📊' },
+  { id:'p6', title:'تقرير رقمي / IT', category:'write', body:'اكتب تقرير تقنية المعلومات يشمل: أداء الأنظمة، الحوادث والاستجابة، المشاريع الجارية، خطة الصيانة القادمة:', icon:'💻' },
+];
+
+function showPromptsLib() {
+  const overlay = document.getElementById('promptsLibOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navPrompts')?.classList.add('active');
+  renderPromptsGrid();
+}
+function closePromptsLib() {
+  document.getElementById('promptsLibOverlay').style.display = 'none';
+  document.getElementById('navPrompts')?.classList.remove('active');
+}
+
+function savePrompt() {
+  const title = (document.getElementById('promptTitle')||{}).value?.trim();
+  const body = (document.getElementById('promptBody')||{}).value?.trim();
+  const cat = (document.getElementById('promptCategory')||{}).value || 'other';
+  if (!title || !body) { showToast('أدخل العنوان والنص', 'error'); return; }
+  const prompts = JSON.parse(localStorage.getItem('mbrcst_custom_prompts') || '[]');
+  prompts.unshift({ id: 'u_' + Date.now(), title, body, category: cat, icon: '💾', custom: true });
+  localStorage.setItem('mbrcst_custom_prompts', JSON.stringify(prompts));
+  document.getElementById('promptTitle').value = '';
+  document.getElementById('promptBody').value = '';
+  renderPromptsGrid();
+  showToast('✅ تم حفظ الـ Prompt', 'success');
+}
+
+function renderPromptsGrid() {
+  const grid = document.getElementById('promptsGrid');
+  if (!grid) return;
+  const custom = JSON.parse(localStorage.getItem('mbrcst_custom_prompts') || '[]');
+  const all = [...custom, ...BUILTIN_PROMPTS];
+  const catColors = { analyze:'#0ea5e9', write:'#6c63ff', improve:'#f59e0b', summarize:'#10b981', other:'#a855f7' };
+  const catNames = { analyze:'تحليل', write:'كتابة', improve:'تحسين', summarize:'تلخيص', other:'أخرى' };
+  grid.innerHTML = all.map(p => `
+    <div style="background:#1a1a2e;border:1px solid rgba(${p.custom?'0,212,170':'108,99,255'},0.2);border-radius:12px;padding:1rem;cursor:pointer;transition:all 0.2s"
+      onmouseover="this.style.borderColor='rgba(108,99,255,0.5)'" onmouseout="this.style.borderColor='rgba(${p.custom?'0,212,170':'108,99,255'},0.2)'">
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+        <span style="font-size:1.1rem">${p.icon}</span>
+        <div style="display:flex;gap:0.3rem;align-items:center">
+          <span style="font-size:0.65rem;background:${catColors[p.category]||'#6c63ff'}22;color:${catColors[p.category]||'#6c63ff'};border-radius:4px;padding:1px 6px;font-weight:700">${catNames[p.category]||p.category}</span>
+          ${p.custom?`<button onclick="deletePrompt('${p.id}',event)" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:0.75rem;opacity:0.6" title="حذف">🗑️</button>`:''}
+        </div>
+      </div>
+      <div style="font-weight:800;color:#fff;font-size:0.82rem;margin-bottom:0.4rem">${p.title}</div>
+      <div style="font-size:0.72rem;color:var(--text-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${p.body.substring(0,80)}...</div>
+      <button onclick="usePrompt('${p.id}')" class="ai-tool-btn" style="margin-top:0.7rem;padding:0.4rem;font-size:0.75rem;width:100%">⚡ استخدم هذا الـ Prompt</button>
+    </div>`).join('');
+}
+
+function deletePrompt(id, e) {
+  e.stopPropagation();
+  const prompts = JSON.parse(localStorage.getItem('mbrcst_custom_prompts') || '[]').filter(p => p.id !== id);
+  localStorage.setItem('mbrcst_custom_prompts', JSON.stringify(prompts));
+  renderPromptsGrid();
+  showToast('تم الحذف', 'success');
+}
+
+function usePrompt(id) {
+  const custom = JSON.parse(localStorage.getItem('mbrcst_custom_prompts') || '[]');
+  const p = [...custom, ...BUILTIN_PROMPTS].find(x => x.id === id);
+  if (!p) return;
+  const ta = document.getElementById('reportNotes') || document.querySelector('.ai-custom-prompt textarea') || document.createElement('textarea');
+  if (ta) ta.value = p.body;
+  closePromptsLib();
+  showSection('ai-tools');
+  const customArea = document.getElementById('customPromptInput');
+  if (customArea) { customArea.value = p.body; customArea.focus(); }
+  showToast(`✅ تم تحميل Prompt: ${p.title}`, 'success');
+}
+
+// ============================================================
+// 18. QUICK REPORT GENERATOR
+// ============================================================
+let quickReportType = 'شهرية';
+
+function showQuickReport() {
+  document.getElementById('quickReportOverlay').style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navQuickReport')?.classList.add('active');
+}
+function closeQuickReport() {
+  document.getElementById('quickReportOverlay').style.display = 'none';
+  document.getElementById('navQuickReport')?.classList.remove('active');
+}
+function selectQRType(btn, type) {
+  quickReportType = type;
+  document.querySelectorAll('.qr-type-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+async function generateQuickReport(mode='full') {
+  const q1 = (document.getElementById('qrQ1')||{}).value || '';
+  const q2 = (document.getElementById('qrQ2')||{}).value || '';
+  const q3 = (document.getElementById('qrQ3')||{}).value || '';
+  const q4 = (document.getElementById('qrQ4')||{}).value || '';
+  const resultEl = document.getElementById('quickReportResult');
+  if (!resultEl) return;
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>⚡ AI يولّد التقرير...</span></div>';
+
+  const fullPrompt = mode === 'short'
+    ? `اكتب ملخصاً تنفيذياً قصيراً (فقرة واحدة أو نقاط) للمعلومات التالية:\nالنوع: تقرير ${quickReportType}\nالمشروع/الفترة: ${q1}\nالإنجازات: ${q2}\nالتحديات: ${q3}\nالخطوات القادمة: ${q4}\nيجب أن يكون الملخص لا يزيد عن 150 كلمة.`
+    : `اكتب تقريراً ${quickReportType} احترافياً كاملاً بالعربية بناءً على:\nالمشروع/الفترة: ${q1 || 'غير محدد'}\nأبرز الإنجازات: ${q2 || 'غير محدد'}\nالتحديات: ${q3 || 'لا يوجد'}\nالخطوات القادمة: ${q4 || 'تحت المتابعة'}\n\nالهيكل المطلوب:\n١. المقدمة\n٢. الملخص التنفيذي\n٣. الإنجازات والنتائج\n٤. التحديات والحلول\n٥. الخطة المقبلة\n٦. التوصيات\n٧. الخاتمة`;
+
+  const result = await callAI(fullPrompt, 'أنت كاتب تقارير احترافي متخصص في إنشاء تقارير رسمية للمؤسسات.');
+  if (result && resultEl) {
+    resultEl.innerHTML = `
+      <div style="background:#0a0a1a;border:1px solid rgba(0,212,170,0.2);border-radius:12px;padding:1.2rem;max-height:350px;overflow:auto">
+        <div style="white-space:pre-wrap;color:var(--text-secondary);font-size:0.82rem;line-height:1.8">${result}</div>
+      </div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.7rem;flex-wrap:wrap">
+        <button onclick="applyQuickReport(this)" data-text="${encodeURIComponent(result)}" data-title="${encodeURIComponent('تقرير '+quickReportType+' - '+(q1||''))}" class="ai-tool-btn" style="flex:1;padding:0.5rem">📋 نقل للمحرر</button>
+        <button onclick="showPdfPanel()" class="ai-tool-btn" style="flex:1;padding:0.5rem;background:linear-gradient(135deg,#ef4444,#b91c1c)">📄 PDF</button>
+        <button onclick="exportPowerPoint()" class="ai-tool-btn" style="flex:1;padding:0.5rem;background:linear-gradient(135deg,#ea580c,#c2410c)">🎯 PPT</button>
+      </div>`;
+    showToast('✅ تم توليد التقرير!', 'success');
+    updateNotifBadge && updateNotifBadge();
+    addNotification && addNotification('تقرير سريع جاهز ⚡', `تقرير ${quickReportType} - ${q1||''}`, 'report');
+  }
+}
+
+function applyQuickReport(btn) {
+  const text = decodeURIComponent(btn.dataset.text);
+  const title = decodeURIComponent(btn.dataset.title);
+  const titleEl = document.getElementById('reportTitle');
+  if (titleEl) titleEl.value = title;
+  saveReportToHistory(title, text, 'general');
+  closeQuickReport();
+  showSection('create');
+  showToast('✅ تم نقل التقرير للمحرر', 'success');
+  updateWritingStats(text);
+}
+
+// ============================================================
+// 19. PRINT-OPTIMIZED VIEW
+// ============================================================
+function printReport() {
+  const branding = JSON.parse(localStorage.getItem('mbrcst_branding') || '{}');
+  const content = getCurrentReportText();
+  const title = (document.getElementById('reportTitle')||{}).value || 'التقرير';
+  const now = new Date().toLocaleDateString('ar-SA', {year:'numeric', month:'long', day:'numeric'});
+  const logoHtml = orgLogoDataUrl ? `<img src="${orgLogoDataUrl}" style="max-height:70px;max-width:140px;object-fit:contain">` : '';
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><title>${title}</title>
+<style>
+  @page { margin: 2cm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Arial', 'Tahoma', sans-serif; font-size: 11pt; line-height: 1.8; color: #1a1a2e; direction: rtl; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid ${branding.color||'#6c63ff'}; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  .org-name { font-size: 14pt; font-weight: 900; color: ${branding.color||'#6c63ff'}; }
+  .org-dept { font-size: 9pt; color: #666; margin-top: 3px; }
+  h1 { font-size: 18pt; text-align: center; color: ${branding.color||'#6c63ff'}; margin: 1rem 0; }
+  .meta { display: flex; gap: 2rem; background: #f8f8ff; padding: 0.5rem 1rem; border-radius: 6px; font-size: 9pt; color: #555; margin-bottom: 1rem; }
+  .body { white-space: pre-wrap; font-size: 11pt; line-height: 2; }
+  .footer { margin-top: 3rem; border-top: 1px solid #ddd; padding-top: 0.7rem; text-align: center; font-size: 8pt; color: #888; }
+  @media print { body { -webkit-print-color-adjust: exact; } }
+</style></head><body>
+<div class="header">
+  ${logoHtml}
+  <div style="text-align:right">
+    <div class="org-name">${branding.name||'MBR Reports'}</div>
+    ${branding.dept?`<div class="org-dept">${branding.dept}</div>`:''}
+  </div>
+</div>
+<h1>${title}</h1>
+<div class="meta">
+  <span>📅 ${now}</span>
+  <span>👤 ${(currentUser||{}).fullName||''}</span>
+</div>
+<div class="body">${content}</div>
+<div class="footer">MBR Reports — ${window.location.hostname} | صفحة 1</div>
+<script>window.onload=()=>{window.print();}<\/script>
+</body></html>`);
+  win.document.close();
+}
+
+// Override Ctrl+P
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key === 'p') {
+    const content = getCurrentReportText();
+    if (content && content !== 'لا يوجد محتوى تقرير حالياً') {
+      e.preventDefault(); printReport();
+    }
+  }
+});
