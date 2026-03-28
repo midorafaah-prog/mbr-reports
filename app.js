@@ -1873,11 +1873,18 @@ function loginSuccess(username, fullName) {
     overlay.style.transition = 'opacity 0.5s';
     setTimeout(() => { overlay.style.display = 'none'; }, 500);
   }
-  // Show user badge
+  // Show user badge (old header-actions — now hidden via CSS, kept for JS compat)
   const badge = document.getElementById('userBadge');
   const nameEl = document.getElementById('userNameBadge');
   if (badge) badge.style.display = 'flex';
   if (nameEl) nameEl.textContent = fullName || username;
+  // Sync new nav-utils profile button
+  localStorage.setItem('mbrcst_last_login', username);
+  localStorage.setItem('mbrcst_current_user', JSON.stringify({ username, fullName, name: fullName }));
+  setTimeout(() => {
+    if (typeof syncProfileButton === 'function') syncProfileButton();
+    if (typeof showWelcomeDashboard === 'function') showWelcomeDashboard();
+  }, 600);
   // Load user-scoped profile
   const savedTheme = localStorage.getItem('mbrcst_' + username + '_theme') || 'dark';
   setTheme(savedTheme);
@@ -6192,3 +6199,33 @@ function showSection(section) {
   }
   window.syncProfileButton = syncProfileButton;
 })();
+
+// ============================================================
+// WELCOME DASHBOARD — load stats after login
+// ============================================================
+function showWelcomeDashboard() {
+  var dash = document.getElementById('welcomeDashboard');
+  if (!dash) return;
+  dash.style.display = 'block';
+  // Load stats
+  var reports = JSON.parse(localStorage.getItem('mbrcst_reports') || '[]');
+  var favs    = JSON.parse(localStorage.getItem('mbrcst_favorites') || '[]');
+  var now     = new Date();
+  var thisMonth = reports.filter(function(r) {
+    var d = new Date(r.date || r.createdAt || 0);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  var el = function(id) { return document.getElementById(id); };
+  if (el('dashTotalReports')) el('dashTotalReports').textContent = reports.length;
+  if (el('dashThisMonth'))    el('dashThisMonth').textContent    = thisMonth;
+  if (el('dashFavCount'))     el('dashFavCount').textContent     = favs.length;
+}
+
+// Hide dashboard when navigating away from create section
+var _origShowSectionForDash = typeof _doShowSection === 'function' ? _doShowSection : null;
+function _doShowSection(section) {
+  if (_origShowSectionForDash) _origShowSectionForDash(section);
+  // Hide dashboard when NOT on create section
+  var dash = document.getElementById('welcomeDashboard');
+  if (dash) dash.style.display = (section === 'create') ? 'block' : 'none';
+}

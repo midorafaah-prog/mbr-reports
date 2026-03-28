@@ -2504,3 +2504,60 @@ body.light-mode .nav-icon-btn { color: rgba(0,0,0,0.55); background: rgba(0,0,0,
 /* Hide site-header overflow issues */
 .site-header { overflow: visible !important; }
 
+
+/* ====================================================
+   WELCOME DASHBOARD CARDS
+   ==================================================== */
+.dash-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.2rem 1rem;
+  text-align: center;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.dash-stat-card::before {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 80px; height: 80px;
+  background: radial-gradient(circle, rgba(108,99,255,0.12), transparent);
+  border-radius: 50%;
+}
+.dash-stat-card:hover {
+  border-color: rgba(108,99,255,0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+.dash-stat-icon { font-size: 1.6rem; margin-bottom: 0.4rem; }
+.dash-stat-value {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: 0.2rem;
+}
+.dash-stat-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+
+.dash-quick-btn {
+  padding: 0.42rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.dash-quick-btn:hover {
+  background: rgba(108,99,255,0.15);
+  border-color: rgba(108,99,255,0.35);
+  color: var(--accent);
+  transform: scale(1.03);
+}
+

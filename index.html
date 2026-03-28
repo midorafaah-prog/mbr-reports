@@ -305,6 +305,42 @@
     </div>
   </section>
 
+
+  <!-- ====== WELCOME DASHBOARD (shown right after login) ====== -->
+  <div id="welcomeDashboard" style="display:none;padding:1.5rem 2rem 0">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem;max-width:1000px;margin-left:auto;margin-right:auto">
+      <div class="dash-stat-card" onclick="showSection('create')" style="cursor:pointer">
+        <div class="dash-stat-icon">✏️</div>
+        <div class="dash-stat-value" id="dashTotalReports">0</div>
+        <div class="dash-stat-label">إجمالي التقارير</div>
+      </div>
+      <div class="dash-stat-card" onclick="showSection('history')" style="cursor:pointer">
+        <div class="dash-stat-icon">📅</div>
+        <div class="dash-stat-value" id="dashThisMonth">0</div>
+        <div class="dash-stat-label">تقارير هذا الشهر</div>
+      </div>
+      <div class="dash-stat-card" onclick="showAnalytics()" style="cursor:pointer">
+        <div class="dash-stat-icon">⭐</div>
+        <div class="dash-stat-value" id="dashFavCount">0</div>
+        <div class="dash-stat-label">المفضلة</div>
+      </div>
+      <div class="dash-stat-card" onclick="showSection('ai')" style="cursor:pointer;background:linear-gradient(135deg,rgba(108,99,255,0.2),rgba(0,212,170,0.1));border-color:rgba(108,99,255,0.35)">
+        <div class="dash-stat-icon">🤖</div>
+        <div class="dash-stat-value" style="color:var(--accent)">AI</div>
+        <div class="dash-stat-label">أدوات الذكاء</div>
+      </div>
+    </div>
+    <!-- Quick access row -->
+    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;max-width:1000px;margin:0 auto 1rem;justify-content:center">
+      <button onclick="showQuickReport()" class="dash-quick-btn">⚡ تقرير سريع</button>
+      <button onclick="showSection('history')" class="dash-quick-btn">📁 آخر التقارير</button>
+      <button onclick="showChartsPanel()" class="dash-quick-btn">📈 رسوم بيانية</button>
+      <button onclick="showTranslatePanel()" class="dash-quick-btn">🌍 ترجمة</button>
+      <button onclick="showAnalytics()" class="dash-quick-btn">📊 تحليلاتي</button>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin-bottom:1.2rem;max-width:1000px;margin-left:auto;margin-right:auto">
+  </div>
+
   <!-- ====== MAIN SECTIONS ====== -->
   <main class="main-wrap">
 
@@ -1226,7 +1262,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=1774708579"></script>
+  <script src="app.js?v=1774708773"></script>
 
   <!-- ===== DASHBOARD OVERLAY ===== -->
   <div id="dashboardOverlay" class="ai-fullpage-overlay" style="display:none">
