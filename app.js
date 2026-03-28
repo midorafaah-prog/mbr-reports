@@ -2016,47 +2016,50 @@ function getGoogleClientId() {
 function signInWithGoogle() {
   const clientId = getGoogleClientId();
   if (!clientId) {
-    // Show inline setup modal
     showGoogleSetupModal();
     return;
   }
-  // Use Google ID Token (works without backend!)
+  // Wait for GIS to load if not ready
   if (typeof google === 'undefined' || !google.accounts) {
-    showAuthError('❌ تعذّر تحميل Google Sign-In. تحقق من الإنترنت.');
+    showToast('⏳ جاري تحميل Google Sign-In...', 'success');
+    let tries = 0;
+    const wait = setInterval(() => {
+      tries++;
+      if (typeof google !== 'undefined' && google.accounts) {
+        clearInterval(wait); signInWithGoogle();
+      } else if (tries > 10) {
+        clearInterval(wait);
+        showAuthError('❌ تعذّر تحميل Google. حاول مرة أخرى.');
+      }
+    }, 500);
     return;
   }
-  google.accounts.id.initialize({
-    client_id: clientId,
-    callback: handleGoogleCredential,
-    auto_select: false,
-    cancel_on_tap_outside: true,
-    context: 'signin'
-  });
-  google.accounts.id.prompt(notification => {
-    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-      // Fallback to popup button
-      google.accounts.id.renderButton(
-        document.createElement('div'),
-        { theme: 'outline', size: 'large' }
-      );
-      // Force popup via oauth2 token flow
-      const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: 'email profile openid',
-        callback: async (tokenResponse) => {
-          if (tokenResponse.error) { showAuthError('❌ فشل تسجيل الدخول بـ Google'); return; }
-          // Fetch user info from Google
+  // Direct OAuth Token flow — most reliable, opens popup immediately
+  try {
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'email profile openid',
+      prompt: 'select_account',
+      callback: async (tokenResponse) => {
+        if (tokenResponse.error) {
+          showAuthError('❌ تم إلغاء تسجيل الدخول');
+          return;
+        }
+        try {
           const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-            headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+            headers: { Authorization: 'Bearer ' + tokenResponse.access_token }
           });
           const user = await res.json();
           if (!user.email) { showAuthError('❌ لم نحصل على بيانات المستخدم'); return; }
           handleGoogleUserInfo(user.email, user.name || user.email, user.picture);
-        }
-      });
-      tokenClient.requestAccessToken({ prompt: 'select_account' });
-    }
-  });
+        } catch(e) { showAuthError('❌ خطأ في الاتصال بـ Google'); }
+      }
+    });
+    tokenClient.requestAccessToken({ prompt: 'select_account' });
+  } catch(e) {
+    showAuthError('❌ خطأ: ' + e.message);
+  }
+  // Dummy block to balance braces
 }
 
 function handleGoogleUserInfo(email, name, picture) {
