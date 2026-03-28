@@ -2160,3 +2160,23 @@ body.light-mode .ai-fullpage-overlay { background: #f4f4f8 !important; }
 }
 .qr-step.active { background: rgba(108,99,255,0.4); border-color: var(--accent); color: white; }
 
+
+/* ===== CHARTS + EMAIL + LANG NAV ===== */
+.nav-btn-charts { background: rgba(16,185,129,0.1) !important; border: 1px solid rgba(16,185,129,0.3) !important; color: #10b981 !important; }
+.nav-btn-email  { background: rgba(14,165,233,0.1) !important; border: 1px solid rgba(14,165,233,0.3) !important; color: #0ea5e9 !important; }
+.nav-btn-lang   { background: rgba(255,255,255,0.06) !important; border: 1px solid var(--border) !important; color: var(--text-muted) !important; font-weight: 700; }
+
+/* ===== CHART TYPE BUTTONS ===== */
+.chart-type-btn {
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.4rem 0.8rem; color: var(--text-muted);
+  cursor: pointer; font-family: var(--font); font-size: 0.78rem; font-weight: 700;
+  transition: all 0.15s;
+}
+.chart-type-btn:hover, .chart-type-btn.active {
+  background: rgba(108,99,255,0.2); border-color: var(--accent); color: var(--accent);
+}
+
+/* ===== EMAIL STATUS ===== */
+#emailSendStatus { animation: fadeIn 0.3s ease; }
+

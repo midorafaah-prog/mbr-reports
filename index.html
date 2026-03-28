@@ -192,6 +192,15 @@
         <button class="nav-btn nav-btn-profile" id="navProfile" onclick="showProfilePanel()" title="ملفي">
           <span id="navAvatarIcon">👤</span> ملفي
         </button>
+        <button class="nav-btn nav-btn-lang" id="navLang" onclick="toggleLanguage()" title="تبديل اللغة">
+          <span id="langIcon">🌐</span> <span id="langLabel">EN</span>
+        </button>
+        <button class="nav-btn nav-btn-charts" id="navCharts" onclick="showChartsPanel()" title="مولّد الرسوم">
+          <span>📈</span> <span data-i18n="charts">رسوم بيانية</span>
+        </button>
+        <button class="nav-btn nav-btn-email" id="navEmail" onclick="showEmailPanel()" title="إرسال البريد">
+          <span>📧</span> <span data-i18n="send">إرسال</span>
+        </button>
         <button class="nav-btn nav-btn-quickreport" id="navQuickReport" onclick="showQuickReport()" title="تقرير سريع">
           <span>⚡</span> سريع
         </button>
@@ -1756,6 +1765,139 @@
       <!-- Built-in Prompts -->
       <div style="font-weight:700;color:#fff;margin-bottom:0.8rem;font-size:0.88rem">⭐ Prompts مدمجة + المحفوظة</div>
       <div id="promptsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem"></div>
+    </div>
+  </div>
+
+  <!-- CHARTS GENERATOR OVERLAY -->
+  <div id="chartsOverlay" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:900px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+        <div>
+          <h2 style="color:#fff;font-size:1.5rem;font-weight:900;margin:0" data-i18n="chartsTitle">📈 مولّد الرسوم البيانية</h2>
+          <p style="color:var(--text-muted);font-size:0.82rem;margin:0.3rem 0 0" data-i18n="chartsSubtitle">أدخل بياناتك واحصل على رسم بياني فوري يمكن تضمينه في تقريرك</p>
+        </div>
+        <button onclick="closeChartsPanel()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.4rem 1rem;cursor:pointer;font-family:var(--font)">✕</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:1.5rem">
+        <!-- Left: inputs -->
+        <div>
+          <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:14px;padding:1.2rem;margin-bottom:1rem">
+            <div style="font-weight:800;color:#fff;margin-bottom:0.8rem;font-size:0.88rem">⚙️ إعدادات الرسم</div>
+            <div style="margin-bottom:0.6rem">
+              <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">نوع الرسم</label>
+              <div style="display:flex;gap:0.4rem;flex-wrap:wrap" id="chartTypeRow">
+                <button class="chart-type-btn active" data-type="bar" onclick="selectChartType(this,'bar')">📊 عمودي</button>
+                <button class="chart-type-btn" data-type="line" onclick="selectChartType(this,'line')">📈 خطي</button>
+                <button class="chart-type-btn" data-type="pie" onclick="selectChartType(this,'pie')">🥧 دائري</button>
+                <button class="chart-type-btn" data-type="doughnut" onclick="selectChartType(this,'doughnut')">⭕ دونات</button>
+                <button class="chart-type-btn" data-type="radar" onclick="selectChartType(this,'radar')">🕸️ رادار</button>
+              </div>
+            </div>
+            <div style="margin-bottom:0.6rem">
+              <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">عنوان الرسم</label>
+              <input type="text" id="chartTitle" placeholder="مثال: مبيعات الربع الأول" class="email-input" style="width:100%;box-sizing:border-box" oninput="liveUpdateChart()">
+            </div>
+            <div style="margin-bottom:0.6rem">
+              <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">التسميات (افصل بفاصلة)</label>
+              <input type="text" id="chartLabels" placeholder="يناير, فبراير, مارس, أبريل" class="email-input" style="width:100%;box-sizing:border-box" oninput="liveUpdateChart()">
+            </div>
+            <div style="margin-bottom:0.6rem">
+              <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">البيانات (افصل بفاصلة)</label>
+              <input type="text" id="chartData" placeholder="120, 180, 150, 220" class="email-input" style="width:100%;box-sizing:border-box" oninput="liveUpdateChart()">
+            </div>
+            <div>
+              <label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">سلسلة ثانية (اختياري)</label>
+              <input type="text" id="chartData2" placeholder="100, 160, 130, 200" class="email-input" style="width:100%;box-sizing:border-box" oninput="liveUpdateChart()">
+              <input type="text" id="chartLabel2" placeholder="اسم السلسلة الثانية" class="email-input" style="width:100%;box-sizing:border-box;margin-top:0.3rem" oninput="liveUpdateChart()">
+            </div>
+          </div>
+
+          <!-- Quick Templates -->
+          <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.15);border-radius:14px;padding:1rem">
+            <div style="font-weight:700;color:#fff;margin-bottom:0.6rem;font-size:0.82rem">⚡ بيانات جاهزة</div>
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
+              <button onclick="loadChartSample('sales')" class="chart-type-btn">📈 مبيعات</button>
+              <button onclick="loadChartSample('kpi')" class="chart-type-btn">🎯 KPIs</button>
+              <button onclick="loadChartSample('dept')" class="chart-type-btn">🏢 أقسام</button>
+              <button onclick="loadChartSample('budget')" class="chart-type-btn">💰 ميزانية</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Preview -->
+        <div>
+          <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:14px;padding:1.2rem;margin-bottom:1rem">
+            <div style="font-weight:800;color:#fff;margin-bottom:0.8rem;font-size:0.88rem">👁️ المعاينة</div>
+            <div style="background:#fff;border-radius:10px;padding:1rem;position:relative">
+              <canvas id="mainChartCanvas" height="250"></canvas>
+            </div>
+          </div>
+          <div style="display:flex;gap:0.7rem;flex-wrap:wrap">
+            <button onclick="downloadChart()" class="ai-tool-btn" style="flex:1;padding:0.7rem">📥 تنزيل PNG</button>
+            <button onclick="addChartToReport()" class="ai-tool-btn" style="flex:1;padding:0.7rem;background:linear-gradient(135deg,#10b981,#059669)">📋 إضافة للتقرير</button>
+            <button onclick="aiAnalyzeChart()" class="ai-tool-btn" style="flex:1;padding:0.7rem;background:linear-gradient(135deg,#6c63ff,#4f46e5)">🤖 AI يحلل البيانات</button>
+          </div>
+          <div id="chartAnalysis" style="display:none;margin-top:0.8rem;background:#0a0a1a;border:1px solid rgba(108,99,255,0.15);border-radius:10px;padding:1rem;font-size:0.78rem;color:var(--text-secondary);line-height:1.7"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMAIL PANEL OVERLAY -->
+  <div id="emailPanel" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:700px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem">
+        <div>
+          <h2 style="color:#fff;font-size:1.5rem;font-weight:900;margin:0">📧 إرسال التقرير بالبريد</h2>
+          <p style="color:var(--text-muted);font-size:0.82rem;margin:0.3rem 0 0">أرسل تقريرك مباشرة من المنصة</p>
+        </div>
+        <button onclick="closeEmailPanel()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.4rem 1rem;cursor:pointer;font-family:var(--font)">✕</button>
+      </div>
+
+      <!-- EmailJS Config -->
+      <div id="emailjsSetup" style="background:#1a1a2e;border:1px solid rgba(245,158,11,0.25);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem">
+          <div style="font-weight:800;color:#f59e0b;font-size:0.88rem">⚙️ إعداد EmailJS (مرة واحدة)</div>
+          <a href="https://www.emailjs.com" target="_blank" style="color:var(--accent);font-size:0.72rem">إنشاء حساب مجاني →</a>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem">
+          <div><label style="color:var(--text-muted);font-size:0.75rem;display:block;margin-bottom:0.3rem">Public Key</label>
+            <input type="text" id="ejPublicKey" placeholder="xxxxxxxxxxxxx" class="email-input" style="width:100%;box-sizing:border-box;direction:ltr;font-size:0.78rem"></div>
+          <div><label style="color:var(--text-muted);font-size:0.75rem;display:block;margin-bottom:0.3rem">Service ID</label>
+            <input type="text" id="ejServiceId" placeholder="service_xxxxxxx" class="email-input" style="width:100%;box-sizing:border-box;direction:ltr;font-size:0.78rem"></div>
+          <div><label style="color:var(--text-muted);font-size:0.75rem;display:block;margin-bottom:0.3rem">Template ID</label>
+            <input type="text" id="ejTemplateId" placeholder="template_xxxxxxx" class="email-input" style="width:100%;box-sizing:border-box;direction:ltr;font-size:0.78rem"></div>
+          <div style="display:flex;align-items:flex-end">
+            <button onclick="saveEmailJSConfig()" style="width:100%;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:8px;color:#f59e0b;padding:0.55rem;cursor:pointer;font-family:var(--font);font-weight:700;font-size:0.82rem">💾 حفظ</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compose -->
+      <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem">
+        <div style="font-weight:800;color:#fff;margin-bottom:1rem;font-size:0.88rem">✉️ تأليف الرسالة</div>
+        <div style="display:grid;gap:0.7rem">
+          <div><label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">إلى (البريد)</label>
+            <input type="email" id="emailTo" placeholder="receiver@example.com" class="email-input" style="width:100%;box-sizing:border-box;direction:ltr"></div>
+          <div><label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">نسخة (CC) - اختياري</label>
+            <input type="email" id="emailCC" placeholder="cc@example.com" class="email-input" style="width:100%;box-sizing:border-box;direction:ltr"></div>
+          <div><label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">الموضوع</label>
+            <input type="text" id="emailSubject" class="email-input" style="width:100%;box-sizing:border-box"></div>
+          <div><label style="color:var(--text-muted);font-size:0.78rem;display:block;margin-bottom:0.3rem">رسالة مرافقة</label>
+            <textarea id="emailBody" rows="3" class="email-input" style="width:100%;box-sizing:border-box;resize:vertical" placeholder="أرجو الاطلاع على التقرير المرفق..."></textarea></div>
+          <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:0.7rem;font-size:0.75rem;color:var(--text-muted)">
+            📎 سيُرفق التقرير الحالي تلقائياً مع الرسالة
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:0.8rem;flex-wrap:wrap">
+        <button onclick="sendEmailJS()" class="ai-tool-btn" style="flex:1;padding:0.85rem;font-size:0.95rem">📧 إرسال الآن</button>
+        <button onclick="sendEmailFallback()" class="ai-tool-btn" style="flex:1;padding:0.85rem;background:linear-gradient(135deg,#475569,#334155);font-size:0.95rem">📮 فتح تطبيق البريد</button>
+      </div>
+
+      <div id="emailSendStatus" style="display:none;margin-top:1rem"></div>
     </div>
   </div>
 </body>

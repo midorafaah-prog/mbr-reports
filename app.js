@@ -4738,3 +4738,276 @@ document.addEventListener('keydown', e => {
     }
   }
 });
+
+// ============================================================
+// 20. CHARTS GENERATOR
+// ============================================================
+let mainChart = null;
+let currentChartType = 'bar';
+const CHART_COLORS = ['#6c63ff','#00d4aa','#f59e0b','#ef4444','#10b981','#0ea5e9','#a855f7','#ec4899'];
+
+function showChartsPanel() {
+  document.getElementById('chartsOverlay').style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navCharts')?.classList.add('active');
+  setTimeout(initDefaultChart, 100);
+}
+function closeChartsPanel() {
+  document.getElementById('chartsOverlay').style.display = 'none';
+  document.getElementById('navCharts')?.classList.remove('active');
+}
+
+function selectChartType(btn, type) {
+  currentChartType = type;
+  document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  liveUpdateChart();
+}
+
+function initDefaultChart() {
+  document.getElementById('chartTitle').value = 'أداء الإدارات - الربع الأول';
+  document.getElementById('chartLabels').value = 'يناير, فبراير, مارس, أبريل';
+  document.getElementById('chartData').value = '85, 92, 78, 96';
+  document.getElementById('chartData2').value = '70, 80, 65, 88';
+  document.getElementById('chartLabel2').value = 'العام الماضي';
+  liveUpdateChart();
+}
+
+function loadChartSample(type) {
+  const samples = {
+    sales: { title:'مبيعات 2025', labels:'Q1, Q2, Q3, Q4', data:'450000, 520000, 480000, 610000', data2:'380000, 410000, 430000, 520000', label2:'2024' },
+    kpi:   { title:'مؤشرات الأداء', labels:'الجودة, الكفاءة, رضا العملاء, الابتكار, التسليم', data:'88, 92, 85, 78, 94', data2:'', label2:'' },
+    dept:  { title:'إنجازات الأقسام', labels:'المالية, الموارد البشرية, التشغيل, التقنية, التسويق', data:'90, 75, 85, 95, 80', data2:'', label2:'' },
+    budget:{ title:'توزيع الميزانية', labels:'التشغيل, الموارد البشرية, التقنية, التسويق, البنية التحتية', data:'35, 25, 20, 12, 8', data2:'', label2:'' },
+  };
+  const s = samples[type];
+  if (!s) return;
+  document.getElementById('chartTitle').value = s.title;
+  document.getElementById('chartLabels').value = s.labels;
+  document.getElementById('chartData').value = s.data;
+  document.getElementById('chartData2').value = s.data2;
+  document.getElementById('chartLabel2').value = s.label2;
+  if (type === 'budget') { currentChartType = 'pie'; document.querySelectorAll('.chart-type-btn').forEach((b,i)=>{ if(b.dataset.type==='pie') b.classList.add('active'); else b.classList.remove('active'); }); }
+  else if (type === 'kpi') { currentChartType = 'radar'; document.querySelectorAll('.chart-type-btn').forEach(b=>{ if(b.dataset.type==='radar') b.classList.add('active'); else b.classList.remove('active'); }); }
+  liveUpdateChart();
+}
+
+function liveUpdateChart() {
+  const title = document.getElementById('chartTitle')?.value || '';
+  const labelsRaw = document.getElementById('chartLabels')?.value || '';
+  const dataRaw = document.getElementById('chartData')?.value || '';
+  const data2Raw = document.getElementById('chartData2')?.value || '';
+  const label2 = document.getElementById('chartLabel2')?.value || 'السلسلة الثانية';
+  const labels = labelsRaw.split(',').map(s => s.trim()).filter(Boolean);
+  const data1 = dataRaw.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+  const data2 = data2Raw.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+  if (!labels.length || !data1.length) return;
+  const canvas = document.getElementById('mainChartCanvas');
+  if (!canvas || !window.Chart) return;
+  if (mainChart) mainChart.destroy();
+  const isPie = ['pie','doughnut'].includes(currentChartType);
+  const datasets = [{
+    label: title || 'البيانات',
+    data: data1,
+    backgroundColor: isPie ? CHART_COLORS.slice(0, data1.length) : CHART_COLORS[0] + 'cc',
+    borderColor: isPie ? CHART_COLORS.slice(0, data1.length) : CHART_COLORS[0],
+    borderWidth: 2, borderRadius: currentChartType === 'bar' ? 6 : 0,
+    fill: currentChartType === 'line' ? false : undefined,
+    tension: 0.4,
+  }];
+  if (data2.length && !isPie) {
+    datasets.push({ label: label2, data: data2, backgroundColor: CHART_COLORS[1] + 'aa', borderColor: CHART_COLORS[1], borderWidth: 2, borderRadius: currentChartType === 'bar' ? 6 : 0, tension: 0.4 });
+  }
+  mainChart = new Chart(canvas, {
+    type: currentChartType,
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { color: '#1a1a2e', font: { family: 'Arial', size: 11 } } },
+        title: { display: !!title, text: title, color: '#1a1a2e', font: { family: 'Arial', size: 13, weight: 'bold' } }
+      },
+      scales: isPie || currentChartType === 'radar' ? {} : {
+        x: { ticks: { color: '#444', font: { family: 'Arial' } }, grid: { color: '#eee' } },
+        y: { ticks: { color: '#444', font: { family: 'Arial' } }, grid: { color: '#eee' } }
+      }
+    }
+  });
+}
+
+function downloadChart() {
+  const canvas = document.getElementById('mainChartCanvas');
+  if (!canvas) return;
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png', 1.0);
+  a.download = `chart-${Date.now()}.png`; a.click();
+  showToast('✅ تم تنزيل الرسم البياني', 'success');
+}
+
+function addChartToReport() {
+  const canvas = document.getElementById('mainChartCanvas');
+  if (!canvas || !mainChart) return;
+  const imgData = canvas.toDataURL('image/png', 0.9);
+  const title = document.getElementById('chartTitle')?.value || 'رسم بياني';
+  const ta = document.querySelector('textarea') || document.getElementById('reportNotes');
+  if (ta) { ta.value += `\n\n[رسم بياني: ${title}]\n`; }
+  // Store chart for PDF
+  localStorage.setItem('mbrcst_last_chart', JSON.stringify({ img: imgData, title }));
+  closeChartsPanel();
+  showToast(`✅ تم إضافة "${title}" للتقرير`, 'success');
+}
+
+async function aiAnalyzeChart() {
+  const labels = document.getElementById('chartLabels')?.value || '';
+  const data1 = document.getElementById('chartData')?.value || '';
+  const title = document.getElementById('chartTitle')?.value || 'البيانات';
+  const resultEl = document.getElementById('chartAnalysis');
+  if (!resultEl) return;
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<div class="ai-loading" style="justify-content:flex-start"><div class="spinner"></div><span style="font-size:0.78rem">AI يحلل البيانات...</span></div>';
+  const result = await callAI(
+    `حلّل هذه البيانات من رسم بياني:\nالعنوان: ${title}\nالبيانات: ${labels} → ${data1}\n\nالمطلوب:\n١. أبرز الاتجاه العام\n٢. أعلى وأدنى قيمة وسببها المحتمل\n٣. التوصية للإدارة\nاجعل إجابتك مختصرة (٣-٤ جمل).`,
+    'أنت محلل بيانات موجز ومحترف.'
+  );
+  if (result) resultEl.innerHTML = `<div style="font-size:0.78rem;color:var(--text-secondary);line-height:1.7">${result}</div>`;
+}
+
+// ============================================================
+// 21. EMAIL DIRECT SEND (EmailJS + Fallback)
+// ============================================================
+function showEmailPanel() {
+  const overlay = document.getElementById('emailPanel');
+  if (!overlay) return;
+  overlay.style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navEmail')?.classList.add('active');
+  // Pre-fill
+  const cfg = JSON.parse(localStorage.getItem('mbrcst_emailjs_cfg') || '{}');
+  if (cfg.publicKey) document.getElementById('ejPublicKey').value = cfg.publicKey;
+  if (cfg.serviceId) document.getElementById('ejServiceId').value = cfg.serviceId;
+  if (cfg.templateId) document.getElementById('ejTemplateId').value = cfg.templateId;
+  const title = (document.getElementById('reportTitle') || {}).value || 'التقرير الدوري';
+  const subjEl = document.getElementById('emailSubject');
+  if (subjEl) subjEl.value = `تقرير: ${title}`;
+  const bodyEl = document.getElementById('emailBody');
+  if (bodyEl && !bodyEl.value) bodyEl.value = `السلام عليكم،\n\nأرجو الاطلاع على التقرير المرفق.\n\nمع التحية،\n${(currentUser || {}).fullName || ''}`;
+}
+
+function closeEmailPanel() {
+  document.getElementById('emailPanel').style.display = 'none';
+  document.getElementById('navEmail')?.classList.remove('active');
+}
+
+function saveEmailJSConfig() {
+  const cfg = {
+    publicKey: (document.getElementById('ejPublicKey')||{}).value?.trim(),
+    serviceId: (document.getElementById('ejServiceId')||{}).value?.trim(),
+    templateId: (document.getElementById('ejTemplateId')||{}).value?.trim(),
+  };
+  if (!cfg.publicKey || !cfg.serviceId || !cfg.templateId) { showToast('أدخل جميع بيانات EmailJS', 'error'); return; }
+  localStorage.setItem('mbrcst_emailjs_cfg', JSON.stringify(cfg));
+  if (window.emailjs) emailjs.init(cfg.publicKey);
+  showToast('✅ تم حفظ إعدادات EmailJS', 'success');
+  document.getElementById('emailjsSetup').style.opacity = '0.5';
+}
+
+async function sendEmailJS() {
+  const cfg = JSON.parse(localStorage.getItem('mbrcst_emailjs_cfg') || '{}');
+  const to = (document.getElementById('emailTo')||{}).value?.trim();
+  const subject = (document.getElementById('emailSubject')||{}).value?.trim();
+  const body = (document.getElementById('emailBody')||{}).value?.trim();
+  const reportContent = getCurrentReportText();
+  const statusEl = document.getElementById('emailSendStatus');
+
+  if (!to) { showToast('أدخل بريد المستقبِل', 'error'); return; }
+  if (!cfg.publicKey || !cfg.serviceId || !cfg.templateId) {
+    showToast('⚙️ أدخل إعدادات EmailJS أولاً', 'error'); return;
+  }
+
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>⏳ جارٍ الإرسال...</span></div>'; }
+
+  try {
+    if (window.emailjs) emailjs.init(cfg.publicKey);
+    else throw new Error('EmailJS not loaded');
+    await emailjs.send(cfg.serviceId, cfg.templateId, {
+      to_email: to,
+      to_name: to,
+      from_name: (currentUser||{}).fullName || 'MBR Reports',
+      subject, message: body,
+      report_content: reportContent.substring(0, 5000),
+      reply_to: (currentUser||{}).username || '',
+    });
+    if (statusEl) statusEl.innerHTML = '<div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:0.8rem;color:#10b981;font-size:0.82rem">✅ تم إرسال التقرير بنجاح!</div>';
+    showToast('✅ تم الإرسال بنجاح!', 'success');
+    addNotification('تم إرسال التقرير 📧', `إلى: ${to}`, 'success');
+  } catch(err) {
+    if (statusEl) statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:0.8rem;color:#ef4444;font-size:0.82rem">❌ فشل الإرسال. جرّب "فتح تطبيق البريد" بدلاً.</div>`;
+    showToast('❌ فشل الإرسال — جرّب البديل', 'error');
+  }
+}
+
+function sendEmailFallback() {
+  const to = (document.getElementById('emailTo')||{}).value?.trim() || '';
+  const subject = (document.getElementById('emailSubject')||{}).value?.trim() || 'تقرير';
+  const body = (document.getElementById('emailBody')||{}).value?.trim() || '';
+  const report = getCurrentReportText().substring(0, 2000);
+  const fullBody = `${body}\n\n--- محتوى التقرير ---\n${report}`;
+  window.open(`mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(fullBody)}`);
+  showToast('✅ تم فتح تطبيق البريد', 'success');
+}
+
+// ============================================================
+// 22. MULTI-LANGUAGE UI (Arabic ↔ English)
+// ============================================================
+let currentLang = localStorage.getItem('mbrcst_lang') || 'ar';
+
+const TRANSLATIONS = {
+  ar: {
+    charts: 'رسوم بيانية', send: 'إرسال', chartsTitle: '📈 مولّد الرسوم البيانية',
+    chartsSubtitle: 'أدخل بياناتك واحصل على رسم بياني فوري',
+    newReport: '+ تقرير جديد', generate: 'توليد بـ AI', save: 'حفظ',
+    'ai-tools': 'أدوات AI', dashboard: 'Dashboard', templates: 'قوالب',
+    history: 'المكتبة', voice: 'مساعد صوتي', profile: 'ملفي',
+  },
+  en: {
+    charts: 'Charts', send: 'Send', chartsTitle: '📈 Charts Generator',
+    chartsSubtitle: 'Enter your data and get instant visual charts',
+    newReport: '+ New Report', generate: 'Generate with AI', save: 'Save',
+    'ai-tools': 'AI Tools', dashboard: 'Dashboard', templates: 'Templates',
+    history: 'Library', voice: 'Voice', profile: 'Profile',
+  }
+};
+
+function toggleLanguage() {
+  currentLang = currentLang === 'ar' ? 'en' : 'ar';
+  localStorage.setItem('mbrcst_lang', currentLang);
+  applyLanguage();
+}
+
+function applyLanguage() {
+  const isAr = currentLang === 'ar';
+  document.documentElement.lang = currentLang;
+  document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+  // Update all i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    const val = TRANSLATIONS[currentLang]?.[key];
+    if (val) el.textContent = val;
+  });
+  // Update nav labels
+  const langIcon = document.getElementById('langIcon');
+  const langLabel = document.getElementById('langLabel');
+  if (langIcon) langIcon.textContent = '🌐';
+  if (langLabel) langLabel.textContent = isAr ? 'EN' : 'عر';
+  // Font
+  document.documentElement.style.fontFamily = isAr ? "var(--font)" : "'Inter', 'Arial', sans-serif";
+  showToast(isAr ? '🌐 اللغة: العربية' : '🌐 Language: English', 'success');
+}
+
+// Apply on load
+applyLanguage();
+
+// Init charts on panel open (Chart.js check)
+(function waitForChart() {
+  if (!window.Chart) { setTimeout(waitForChart, 500); return; }
+})();
