@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=1774714413" />
+  <link rel="stylesheet" href="style.css?v=1774716083" />
   <!-- SheetJS for Excel parsing -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <!-- html2pdf for PDF export -->
@@ -1258,7 +1258,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=1774714413"></script>
+  <script src="app.js?v=1774716083"></script>
 
   <!-- ===== DASHBOARD OVERLAY ===== -->
   <div id="dashboardOverlay" class="ai-fullpage-overlay" style="display:none">
@@ -2276,4 +2276,68 @@
     </div>
   </div>
 </body>
+
+<!-- ===== NEW FEATURES: All Employee Adoption ===== -->
+<script src="features-gamification.js?v=20260328"></script>
+<script src="features-templates.js?v=20260328"></script>
+<script src="features-quick60.js?v=20260328"></script>
+<script src="features-voice-notif.js?v=20260328"></script>
+<script src="features-infographic.js?v=20260328"></script>
+<script src="features-team.js?v=20260328"></script>
+<script>
+// Wire new features into existing nav dropdowns
+document.addEventListener('DOMContentLoaded', function() {
+  // Quick 60 Report — override existing showQuickReport
+  if (typeof showQuick60Report === 'function') {
+    window.showQuickReport = showQuick60Report;
+  }
+  // Templates — override existing showTemplates
+  if (typeof showTemplatesPanel === 'function') {
+    window.showTemplates = showTemplatesPanel;
+  }
+  // Award points on report save by hooking into existing saveReport
+  const _origSave = window.saveReport;
+  if (_origSave) {
+    window.saveReport = function(...args) {
+      const r = _origSave.apply(this, args);
+      if (typeof awardPoints === 'function') awardPoints('report_created', 10);
+      return r;
+    };
+  }
+  // Award AI points on existing AI calls
+  const _origGenAI = window.generateWithAI;
+  if (_origGenAI) {
+    window.generateWithAI = function(...args) {
+      if (typeof awardPoints === 'function') awardPoints('ai_used', 2);
+      return _origGenAI.apply(this, args);
+    };
+  }
+  // Add ⚡ quick report & 📋 templates shortcut buttons under hero
+  setTimeout(() => {
+    const hero = document.querySelector('.hero-section') || document.querySelector('.dash-hero');
+    if (hero) {
+      const bar = document.createElement('div');
+      bar.style.cssText = 'display:flex;gap:0.6rem;justify-content:center;flex-wrap:wrap;margin-top:1rem;margin-bottom:0.5rem';
+      bar.innerHTML = `
+        <button onclick="showQuick60Report()" style="background:linear-gradient(135deg,#6c63ff,#5a52f0);border:none;color:white;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">⚡ تقرير 60 ثانية</button>
+        <button onclick="showTemplatesPanel()" style="background:rgba(108,99,255,0.15);border:1px solid rgba(108,99,255,0.35);color:#c4bfff;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">📋 قوالب الأقسام</button>
+        <button onclick="showTeamBoard()" style="background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.25);color:#00d4aa;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">👥 لوحة الفريق</button>
+        <button onclick="showGamPanel()" id="gamPointsBadge" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);color:#f59e0b;padding:0.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem">⭐ 0 نقطة</button>
+      `;
+      hero.appendChild(bar);
+    }
+    // Add infographic button to export form area
+    const exportArea = document.getElementById('formActions') || document.querySelector('.form-actions');
+    if (exportArea) {
+      const btn = document.createElement('button');
+      btn.type='button'; btn.onclick=generateInfographic;
+      btn.style.cssText='background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.25);color:#c4bfff;padding:0.5rem 1rem;border-radius:9px;cursor:pointer;font-size:0.82rem;font-weight:700';
+      btn.textContent='🖼️ إنفوجرافيك';
+      exportArea.appendChild(btn);
+    }
+    // Update gam UI
+    if (typeof updateGamUI === 'function') updateGamUI();
+  }, 1600);
+});
+</script>
 </html>
