@@ -2211,3 +2211,33 @@ body.light-mode .ai-fullpage-overlay { background: #f4f4f8 !important; }
 #coverPageModal { display: none; }
 #coverPageModal.open { display: flex !important; }
 
+
+/* ===== TRANSLATE + FOCUS + MERGE NAV ===== */
+.nav-btn-translate { background: rgba(20,184,166,0.1) !important; border: 1px solid rgba(20,184,166,0.3) !important; color: #14b8a6 !important; }
+.nav-btn-focus     { background: rgba(99,102,241,0.1) !important; border: 1px solid rgba(99,102,241,0.3) !important; color: #818cf8 !important; }
+.nav-btn-merge     { background: rgba(249,115,22,0.1) !important; border: 1px solid rgba(249,115,22,0.3) !important; color: #f97316 !important; }
+
+/* ===== TRANSLATE LANG BUTTONS ===== */
+.trans-lang-btn {
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  border-radius: 20px; padding: 0.4rem 1rem; font-size: 0.78rem; font-weight: 700;
+  cursor: pointer; color: var(--text-muted); font-family: var(--font); transition: all 0.15s;
+}
+.trans-lang-btn.active, .trans-lang-btn:hover {
+  background: rgba(20,184,166,0.15); border-color: rgba(20,184,166,0.4); color: #14b8a6;
+}
+
+/* ===== FOCUS MODE ===== */
+#focusModeOverlay { display: none; }
+#focusModeOverlay.open { display: flex !important; }
+#focusTextarea::placeholder { color: rgba(255,255,255,0.15); }
+#focusTextarea:focus { outline: none; }
+
+/* ===== MERGE TABS ===== */
+.merge-tab {
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.5rem 1.2rem; font-size: 0.82rem; font-weight: 700;
+  cursor: pointer; color: var(--text-muted); font-family: var(--font); transition: all 0.15s;
+}
+.merge-tab.active { background: rgba(108,99,255,0.2); border-color: var(--accent); color: var(--accent); }
+

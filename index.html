@@ -194,6 +194,15 @@
         <button class="nav-btn nav-btn-lang" id="navLang" onclick="toggleLanguage()" title="تبديل اللغة">
           <span id="langIcon">🌐</span> <span id="langLabel">EN</span>
         </button>
+        <button class="nav-btn nav-btn-translate" id="navTranslate" onclick="showTranslatePanel()" title="ترجمة التقرير">
+          <span>🌍</span> ترجمة
+        </button>
+        <button class="nav-btn nav-btn-focus" id="navFocus" onclick="toggleFocusMode()" title="وضع التركيز">
+          <span>🎯</span> تركيز
+        </button>
+        <button class="nav-btn nav-btn-merge" id="navMerge" onclick="showMergePanel()" title="دمج التقارير">
+          <span>🔀</span> دمج
+        </button>
         <button class="nav-btn nav-btn-analytics" id="navAnalytics" onclick="showAnalytics()" title="تحليلاتي">
           <span>📊</span> Analytics
         </button>
@@ -2008,6 +2017,131 @@
       <div style="display:flex;gap:0.7rem">
         <button onclick="exportCoverPDF()" class="ai-tool-btn" style="flex:1;padding:0.7rem">📄 تصدير PDF مع الغلاف</button>
         <button onclick="printCover()" class="ai-tool-btn" style="flex:1;padding:0.7rem;background:linear-gradient(135deg,#475569,#334155)">🖨️ طباعة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRANSLATE OVERLAY -->
+  <div id="translateOverlay" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:900px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+        <div>
+          <h2 style="color:#fff;font-size:1.5rem;font-weight:900;margin:0">🌍 ترجمة التقرير</h2>
+          <p style="color:var(--text-muted);font-size:0.82rem;margin:0.3rem 0 0">ترجمة احترافية تحافظ على الأسلوب الرسمي</p>
+        </div>
+        <button onclick="closeTranslate()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.4rem 1rem;cursor:pointer;font-family:var(--font)">✕</button>
+      </div>
+
+      <!-- Language selector -->
+      <div style="display:flex;gap:1rem;align-items:center;margin-bottom:1.5rem;background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:14px;padding:1.2rem">
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button class="trans-lang-btn active" onclick="setTransLang(this,'ar','en')">🇸🇦 عربي → 🇺🇸 إنجليزي</button>
+          <button class="trans-lang-btn" onclick="setTransLang(this,'en','ar')">🇺🇸 إنجليزي → 🇸🇦 عربي</button>
+          <button class="trans-lang-btn" onclick="setTransLang(this,'ar','fr')">🇸🇦 عربي → 🇫🇷 فرنسي</button>
+          <button class="trans-lang-btn" onclick="setTransLang(this,'ar','tr')">🇸🇦 عربي → 🇹🇷 تركي</button>
+        </div>
+        <button onclick="runTranslation()" class="ai-tool-btn" style="margin-right:auto;white-space:nowrap;padding:0.6rem 1.5rem">🌍 ترجم الآن</button>
+      </div>
+
+      <!-- Side by side -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem">
+        <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.15);border-radius:14px;padding:1.2rem">
+          <div style="display:flex;justify-content:space-between;margin-bottom:0.7rem">
+            <span id="transFromLabel" style="font-weight:700;color:#fff;font-size:0.85rem">📄 النص الأصلي</span>
+            <span id="transOrigWords" style="font-size:0.7rem;color:var(--text-muted)"></span>
+          </div>
+          <div id="transOrigText" style="font-size:0.8rem;color:var(--text-secondary);line-height:1.8;max-height:350px;overflow:auto;white-space:pre-wrap;background:rgba(255,255,255,0.03);border-radius:8px;padding:0.8rem"></div>
+        </div>
+        <div style="background:#1a1a2e;border:1px solid rgba(0,212,170,0.15);border-radius:14px;padding:1.2rem">
+          <div style="display:flex;justify-content:space-between;margin-bottom:0.7rem">
+            <span id="transToLabel" style="font-weight:700;color:#00d4aa;font-size:0.85rem">✨ الترجمة</span>
+            <button id="transApplyBtn" onclick="applyTranslation()" style="display:none;background:rgba(0,212,170,0.15);border:1px solid rgba(0,212,170,0.3);border-radius:6px;color:#00d4aa;padding:2px 10px;cursor:pointer;font-size:0.72rem;font-family:var(--font)">✅ تطبيق</button>
+          </div>
+          <div id="transResultText" style="font-size:0.8rem;color:var(--text-secondary);line-height:1.8;max-height:350px;overflow:auto;white-space:pre-wrap;background:rgba(255,255,255,0.03);border-radius:8px;padding:0.8rem">ستظهر الترجمة هنا...</div>
+        </div>
+      </div>
+
+      <!-- Export translated -->
+      <div id="transActions" style="display:none;margin-top:1rem;display:flex;gap:0.7rem;flex-wrap:wrap">
+        <button onclick="exportTranslatedPDF()" class="ai-tool-btn" style="flex:1;padding:0.6rem">📄 PDF بالترجمة</button>
+        <button onclick="exportTranslatedWord()" class="ai-tool-btn" style="flex:1;padding:0.6rem;background:linear-gradient(135deg,#0078d4,#004e8c)">�� Word بالترجمة</button>
+        <button onclick="saveTranslatedReport()" class="ai-tool-btn" style="flex:1;padding:0.6rem;background:linear-gradient(135deg,#10b981,#059669)">💾 حفظ في المكتبة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOCUS MODE OVERLAY -->
+  <div id="focusModeOverlay" style="display:none;position:fixed;inset:0;background:#080810;z-index:88880;flex-direction:column;align-items:center;justify-content:flex-start;padding:4rem 2rem 2rem">
+    <div style="max-width:800px;width:100%;position:relative">
+      <!-- Top bar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;opacity:0.4;transition:opacity 0.3s" id="focusTopBar"
+        onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <span style="color:var(--accent);font-weight:900;font-size:0.9rem">✍️ وضع التركيز</span>
+          <span id="focusWordCount" style="color:var(--text-muted);font-size:0.78rem">0 كلمة</span>
+        </div>
+        <div style="display:flex;gap:0.5rem">
+          <button onclick="focusSave()" style="background:rgba(108,99,255,0.15);border:1px solid rgba(108,99,255,0.3);border-radius:8px;color:var(--accent);padding:0.4rem 1rem;cursor:pointer;font-family:var(--font);font-size:0.8rem;font-weight:700">💾 حفظ</button>
+          <button onclick="exitFocusMode()" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.4rem 1rem;cursor:pointer;font-family:var(--font);font-size:0.8rem">✕ خروج</button>
+        </div>
+      </div>
+      <!-- Title -->
+      <input type="text" id="focusTitle" placeholder="عنوان تقريرك..." style="width:100%;background:none;border:none;color:#fff;font-size:1.8rem;font-weight:900;font-family:var(--font);text-align:center;margin-bottom:1.5rem;outline:none;padding:0.5rem;box-sizing:border-box" oninput="updateFocusStats()">
+      <!-- Writing area -->
+      <textarea id="focusTextarea" placeholder="ابدأ الكتابة هنا... اضغط Tab لإكمال الجملة بـ AI"
+        style="width:100%;min-height:60vh;background:transparent;border:none;color:rgba(255,255,255,0.85);font-size:1rem;line-height:2;font-family:var(--font);resize:none;outline:none;direction:rtl;box-sizing:border-box"
+        oninput="updateFocusStats()" onkeydown="handleFocusKeydown(event)"></textarea>
+      <!-- Autocomplete ghost -->
+      <div id="focusAutocomplete" style="position:absolute;color:rgba(255,255,255,0.25);font-size:1rem;pointer-events:none;font-family:var(--font);line-height:2;display:none"></div>
+    </div>
+    <!-- Bottom stats -->
+    <div style="position:fixed;bottom:1.5rem;display:flex;gap:2rem;font-size:0.75rem;color:rgba(255,255,255,0.25);transition:opacity 0.3s" id="focusStats">
+      <span id="focusWords">0 كلمة</span>
+      <span id="focusReadTime">0 دقيقة</span>
+      <span style="opacity:0.5">Tab: إكمال AI • Esc: خروج</span>
+    </div>
+  </div>
+
+  <!-- MERGE OVERLAY -->
+  <div id="mergeOverlay" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:800px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+        <div>
+          <h2 style="color:#fff;font-size:1.5rem;font-weight:900;margin:0">🔀 دمج + نسخ التقارير</h2>
+          <p style="color:var(--text-muted);font-size:0.82rem;margin:0.3rem 0 0">اختر تقارير للدمج أو نسخ تقرير للتعديل</p>
+        </div>
+        <button onclick="closeMerge()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.4rem 1rem;cursor:pointer;font-family:var(--font)">✕</button>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem">
+        <button class="merge-tab active" id="mergeTabBtn" onclick="showMergeTab('merge',this)">🔀 دمج تقارير</button>
+        <button class="merge-tab" id="cloneTabBtn" onclick="showMergeTab('clone',this)">📋 نسخ تقرير</button>
+      </div>
+
+      <!-- MERGE TAB -->
+      <div id="mergeTab">
+        <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:14px;padding:1.2rem;margin-bottom:1rem">
+          <div style="font-weight:700;color:#fff;margin-bottom:0.8rem;font-size:0.88rem">اختر تقارير للدمج (2 أو أكثر)</div>
+          <div id="mergeReportsList" style="display:grid;gap:0.4rem;max-height:300px;overflow-y:auto"></div>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.8rem">
+          <select id="mergeStyle" class="email-input" style="flex:1;box-sizing:border-box">
+            <option value="sequential">تسلسلي (الأول ثم الثاني)</option>
+            <option value="ai">AI يدمج ويُنسّق تلقائياً</option>
+            <option value="executive">ملخص تنفيذي من الكل</option>
+          </select>
+          <button onclick="executeMerge()" class="ai-tool-btn" style="white-space:nowrap;padding:0.6rem 1.2rem">🔀 دمج الآن</button>
+        </div>
+        <div id="mergeResult" style="display:none;background:#0a0a1a;border:1px solid rgba(108,99,255,0.15);border-radius:12px;padding:1rem;max-height:300px;overflow:auto;font-size:0.8rem;color:var(--text-secondary);line-height:1.7;white-space:pre-wrap"></div>
+      </div>
+
+      <!-- CLONE TAB -->
+      <div id="cloneTab" style="display:none">
+        <div style="background:#1a1a2e;border:1px solid rgba(0,212,170,0.2);border-radius:14px;padding:1.2rem;margin-bottom:1rem">
+          <div style="font-weight:700;color:#fff;margin-bottom:0.8rem;font-size:0.88rem">اختر تقريراً لنسخه</div>
+          <div id="cloneReportsList" style="display:grid;gap:0.4rem;max-height:350px;overflow-y:auto"></div>
+        </div>
       </div>
     </div>
   </div>

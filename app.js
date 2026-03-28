@@ -5348,3 +5348,339 @@ function printCover() {
   win.document.write(`<html><head><meta charset="utf-8"><style>body{margin:0;padding:0}</style></head><body>${prev.innerHTML}<script>window.onload=()=>window.print()<\/script></body></html>`);
   win.document.close();
 }
+
+// ============================================================
+// 27. AI TRANSLATOR
+// ============================================================
+let transLangFrom = 'ar', transLangTo = 'en';
+let translatedText = '';
+
+const LANG_NAMES = { ar:'العربية', en:'الإنجليزية', fr:'الفرنسية', tr:'التركية' };
+const LANG_DIRS  = { ar:'rtl', en:'ltr', fr:'ltr', tr:'ltr' };
+
+function showTranslatePanel() {
+  const overlay = document.getElementById('translateOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navTranslate')?.classList.add('active');
+  // Load original text
+  const text = getCurrentReportText();
+  const origEl = document.getElementById('transOrigText');
+  const wordsEl = document.getElementById('transOrigWords');
+  if (origEl) origEl.textContent = text || 'لا يوجد تقرير حالياً';
+  if (wordsEl) wordsEl.textContent = text ? text.split(/\s+/).length + ' كلمة' : '';
+}
+
+function closeTranslate() {
+  document.getElementById('translateOverlay').style.display = 'none';
+  document.getElementById('navTranslate')?.classList.remove('active');
+}
+
+function setTransLang(btn, from, to) {
+  transLangFrom = from;
+  transLangTo = to;
+  document.querySelectorAll('.trans-lang-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const fromLabel = document.getElementById('transFromLabel');
+  const toLabel = document.getElementById('transToLabel');
+  if (fromLabel) fromLabel.textContent = `📄 النص بالـ${LANG_NAMES[from]||from}`;
+  if (toLabel) toLabel.textContent = `✨ الترجمة إلى ${LANG_NAMES[to]||to}`;
+}
+
+async function runTranslation() {
+  const orig = getCurrentReportText();
+  if (!orig || orig.length < 10) { showToast('أنشئ تقريراً أولاً للترجمة', 'error'); return; }
+  const resultEl = document.getElementById('transResultText');
+  const actionsEl = document.getElementById('transActions');
+  const applyBtn = document.getElementById('transApplyBtn');
+  if (resultEl) resultEl.innerHTML = '<div class="ai-loading" style="justify-content:flex-start"><div class="spinner"></div><span>AI يترجم...</span></div>';
+
+  const langNames = { ar:'Arabic', en:'English', fr:'French', tr:'Turkish' };
+  const result = await callAI(
+    `Translate the following report from ${langNames[transLangFrom]||transLangFrom} to ${langNames[transLangTo]||transLangTo}. Maintain the professional formal tone and report structure. Keep all section headers and formatting:\n\n${orig.substring(0, 4000)}`,
+    `You are a professional translator specializing in formal business reports and government documents. Translate accurately while maintaining all formatting.`,
+    { maxTokens: 3000 }
+  );
+  translatedText = result || '';
+  if (resultEl) {
+    resultEl.style.direction = LANG_DIRS[transLangTo] || 'rtl';
+    resultEl.textContent = translatedText;
+  }
+  if (actionsEl) actionsEl.style.display = 'flex';
+  if (applyBtn) applyBtn.style.display = 'block';
+  showToast(`✅ تمت الترجمة إلى ${LANG_NAMES[transLangTo]||transLangTo}!`, 'success');
+  saveReportToHistory(
+    (document.getElementById('reportTitle')||{}).value + ` (${LANG_NAMES[transLangTo]||transLangTo})`,
+    translatedText, 'general'
+  );
+}
+
+function applyTranslation() {
+  if (!translatedText) return;
+  const ta = document.querySelector('textarea') || document.getElementById('reportNotes');
+  if (ta) ta.value = translatedText;
+  closeTranslate();
+  showToast('✅ تم تطبيق الترجمة', 'success');
+}
+
+function exportTranslatedPDF() {
+  if (!translatedText) { showToast('اترجم أولاً', 'error'); return; }
+  const b = JSON.parse(localStorage.getItem('mbrcst_branding')||'{}');
+  const title = (document.getElementById('reportTitle')||{}).value || 'Report';
+  const isRtl = LANG_DIRS[transLangTo] === 'rtl';
+  const win = window.open('', '_blank');
+  win.document.write(`<html lang="${transLangTo}" dir="${isRtl?'rtl':'ltr'}"><head><meta charset="utf-8"><title>${title}</title>
+<style>body{font-family:Arial;font-size:11pt;line-height:1.8;padding:2cm;color:#1a1a2e;direction:${isRtl?'rtl':'ltr'}}
+.header{border-bottom:3px solid ${b.color||'#6c63ff'};padding-bottom:1rem;margin-bottom:1rem}
+h1{color:${b.color||'#6c63ff'};font-size:16pt}
+.body{white-space:pre-wrap}.footer{margin-top:2rem;border-top:1px solid #ddd;padding-top:0.5rem;color:#888;font-size:8pt;text-align:center}</style>
+</head><body>
+<div class="header"><div style="font-weight:900;color:${b.color||'#6c63ff'};font-size:13pt">${b.name||'MBR Reports'}</div></div>
+<h1>${title} — ${LANG_NAMES[transLangTo]||transLangTo}</h1>
+<div class="body">${translatedText}</div>
+<div class="footer">MBR Reports | Translated by AI</div>
+<script>window.onload=()=>window.print()<\/script></body></html>`);
+  win.document.close();
+  showToast('✅ تم فتح نافذة الطباعة/PDF', 'success');
+}
+
+function exportTranslatedWord() {
+  if (!translatedText) return;
+  const title = (document.getElementById('reportTitle')||{}).value || 'Report';
+  const b = JSON.parse(localStorage.getItem('mbrcst_branding')||'{}');
+  const isRtl = LANG_DIRS[transLangTo] === 'rtl';
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"><title>${title}</title>
+<style>body{font-family:Arial;direction:${isRtl?'rtl':'ltr'};padding:2cm;font-size:11pt}h1{color:${b.color||'#6c63ff'}}</style>
+</head><body><h1>${title} — ${LANG_NAMES[transLangTo]||transLangTo}</h1><div style="white-space:pre-wrap">${translatedText}</div></body></html>`;
+  const blob = new Blob(['\ufeff'+html], {type:'application/msword'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `${title}_${transLangTo}.doc`; a.click();
+  showToast('✅ تم تصدير Word', 'success');
+}
+
+function saveTranslatedReport() {
+  if (!translatedText) return;
+  const title = (document.getElementById('reportTitle')||{}).value || 'تقرير';
+  saveReportToHistory(`${title} — ${LANG_NAMES[transLangTo]||transLangTo}`, translatedText, 'general');
+  showToast('✅ تم الحفظ في المكتبة', 'success');
+}
+
+// ============================================================
+// 28. FOCUS MODE + TAB AUTOCOMPLETE
+// ============================================================
+let focusMode = false;
+let autocompleteText = '';
+let autocompleteTimeout = null;
+
+function toggleFocusMode() {
+  if (focusMode) { exitFocusMode(); } else { enterFocusMode(); }
+}
+
+function enterFocusMode() {
+  const overlay = document.getElementById('focusModeOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  focusMode = true;
+  document.getElementById('navFocus')?.classList.add('active');
+  // Load current content
+  const title = (document.getElementById('reportTitle')||{}).value || '';
+  const content = getCurrentReportText();
+  const titEl = document.getElementById('focusTitle');
+  const ta = document.getElementById('focusTextarea');
+  if (titEl) titEl.value = title;
+  if (ta) { ta.value = content !== 'لا يوجد محتوى تقرير حالياً' ? content : ''; ta.focus(); }
+  updateFocusStats();
+}
+
+function exitFocusMode() {
+  const overlay = document.getElementById('focusModeOverlay');
+  if (overlay) overlay.style.display = 'none';
+  focusMode = false;
+  document.getElementById('navFocus')?.classList.remove('active');
+  // Ask to save
+  const ta = document.getElementById('focusTextarea');
+  if (ta && ta.value.length > 50) {
+    const title = document.getElementById('focusTitle')?.value || 'تقرير Focus Mode';
+    const titleEl = document.getElementById('reportTitle');
+    if (titleEl) titleEl.value = title;
+    saveReportToHistory(title, ta.value, 'general');
+    showToast('✅ تم حفظ التقرير تلقائياً', 'success');
+  }
+}
+
+function focusSave() {
+  const ta = document.getElementById('focusTextarea');
+  const title = document.getElementById('focusTitle')?.value || 'تقرير Focus';
+  if (ta && ta.value.length > 20) {
+    saveReportToHistory(title, ta.value, 'general');
+    showToast('✅ تم الحفظ', 'success');
+  }
+}
+
+function updateFocusStats() {
+  const ta = document.getElementById('focusTextarea');
+  if (!ta) return;
+  const words = ta.value.trim().split(/\s+/).filter(w => w.length > 0).length;
+  const readMin = Math.max(1, Math.ceil(words / 200));
+  const wordsEl = document.getElementById('focusWordCount');
+  const wEl = document.getElementById('focusWords');
+  const rEl = document.getElementById('focusReadTime');
+  if (wordsEl) wordsEl.textContent = words + ' كلمة';
+  if (wEl) wEl.textContent = words.toLocaleString('ar') + ' كلمة';
+  if (rEl) rEl.textContent = readMin + ' دقيقة قراءة';
+  // Trigger autocomplete after 2s of inactivity
+  clearTimeout(autocompleteTimeout);
+  autocompleteTimeout = setTimeout(() => suggestAutocomplete(ta), 2000);
+}
+
+async function suggestAutocomplete(ta) {
+  if (!focusMode || !ta || ta.value.length < 50) return;
+  const lastSentences = ta.value.slice(-300);
+  const result = await callAI(
+    `أكمل هذه الجملة أو الفقرة الناقصة بجملة واحدة فقط (لا أكثر):\n"${lastSentences}"`,
+    'أنت مساعد كتابة يكمل الجمل. أعطِ جملة واحدة قصيرة فقط.', { maxTokens:100 }
+  );
+  if (!result || !focusMode) return;
+  autocompleteText = ' ' + result.trim().split(/[.!؟\n]/)[0];
+  const ghost = document.getElementById('focusAutocomplete');
+  if (ghost) {
+    ghost.textContent = autocompleteText;
+    ghost.style.display = 'block';
+    setTimeout(() => { if (ghost) ghost.style.display = 'none'; autocompleteText = ''; }, 5000);
+  }
+}
+
+function handleFocusKeydown(e) {
+  if (e.key === 'Escape') { exitFocusMode(); return; }
+  if (e.key === 'Tab' && autocompleteText) {
+    e.preventDefault();
+    const ta = document.getElementById('focusTextarea');
+    if (ta) {
+      ta.value += autocompleteText;
+      autocompleteText = '';
+      const ghost = document.getElementById('focusAutocomplete');
+      if (ghost) ghost.style.display = 'none';
+      updateFocusStats();
+    }
+  }
+}
+
+// ============================================================
+// 29. MERGE + CLONE REPORTS
+// ============================================================
+let selectedMergeIds = new Set();
+let mergeCurrentTab = 'merge';
+
+function showMergePanel() {
+  const overlay = document.getElementById('mergeOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('navMerge')?.classList.add('active');
+  renderMergeList();
+  renderCloneList();
+}
+
+function closeMerge() {
+  document.getElementById('mergeOverlay').style.display = 'none';
+  document.getElementById('navMerge')?.classList.remove('active');
+}
+
+function showMergeTab(tab, btn) {
+  mergeCurrentTab = tab;
+  document.querySelectorAll('.merge-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('mergeTab').style.display = tab === 'merge' ? 'block' : 'none';
+  document.getElementById('cloneTab').style.display = tab === 'clone' ? 'block' : 'none';
+}
+
+function renderMergeList() {
+  const el = document.getElementById('mergeReportsList');
+  if (!el) return;
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  if (!history.length) { el.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;padding:0.5rem">لا توجد تقارير محفوظة</div>'; return; }
+  el.innerHTML = history.slice(0, 20).map(r => {
+    const d = new Date(r.date).toLocaleDateString('ar-SA', {month:'short', day:'numeric'});
+    return `<label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;padding:0.5rem;background:rgba(255,255,255,0.03);border-radius:8px;transition:background 0.1s" onmouseover="this.style.background='rgba(108,99,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+      <input type="checkbox" value="${r.id}" onchange="toggleMergeSelect(${r.id},this.checked)" style="accent-color:var(--accent)">
+      <div style="flex:1">
+        <div style="font-size:0.8rem;font-weight:700;color:#fff">${r.title}</div>
+        <div style="font-size:0.68rem;color:var(--text-muted)">${d} • ${r.wordCount||0} كلمة</div>
+      </div>
+    </label>`;
+  }).join('');
+}
+
+function toggleMergeSelect(id, checked) {
+  if (checked) selectedMergeIds.add(id);
+  else selectedMergeIds.delete(id);
+}
+
+async function executeMerge() {
+  if (selectedMergeIds.size < 2) { showToast('اختر تقريرين على الأقل', 'error'); return; }
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const selected = history.filter(r => selectedMergeIds.has(r.id));
+  const style = (document.getElementById('mergeStyle')||{}).value || 'sequential';
+  const resultEl = document.getElementById('mergeResult');
+  if (resultEl) { resultEl.style.display = 'block'; resultEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>يدمج...</span></div>'; }
+
+  let merged = '';
+  if (style === 'sequential') {
+    merged = selected.map(r => `=== ${r.title} ===\n\n${r.content}`).join('\n\n' + '─'.repeat(40) + '\n\n');
+    if (resultEl) resultEl.textContent = merged;
+    saveReportToHistory('تقرير مدمج: ' + selected.map(r=>r.title).join(' + '), merged, 'general');
+    showToast('✅ تم الدمج', 'success');
+  } else if (style === 'ai' || style === 'executive') {
+    const combined = selected.map((r,i) => `=== التقرير ${i+1}: ${r.title} ===\n${r.content.substring(0,1500)}`).join('\n\n');
+    const prompt = style === 'executive'
+      ? `اكتب ملخصاً تنفيذياً شاملاً يجمع أبرز نقاط هذه التقارير:\n\n${combined}`
+      : `ادمج هذه التقارير في تقرير واحد متماسك ومتسق:\n\n${combined}`;
+    merged = await callAI(prompt, 'أنت محرر تقارير محترف.') || '';
+    if (resultEl) resultEl.textContent = merged;
+    saveReportToHistory('تقرير مدمج', merged, 'general');
+    showToast('✅ تم الدمج بـ AI', 'success');
+  }
+  selectedMergeIds.clear();
+}
+
+function renderCloneList() {
+  const el = document.getElementById('cloneReportsList');
+  if (!el) return;
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  el.innerHTML = history.slice(0,15).map(r => {
+    const d = new Date(r.date).toLocaleDateString('ar-SA', {month:'short', day:'numeric'});
+    return `<div style="display:flex;align-items:center;gap:0.7rem;padding:0.6rem;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:0.3rem">
+      <div style="flex:1">
+        <div style="font-size:0.8rem;font-weight:700;color:#fff">${r.title}</div>
+        <div style="font-size:0.68rem;color:var(--text-muted)">${d} • ${r.wordCount||0} كلمة</div>
+      </div>
+      <button onclick="cloneReport(${r.id})" style="background:rgba(0,212,170,0.15);border:1px solid rgba(0,212,170,0.3);border-radius:8px;color:#00d4aa;padding:0.35rem 0.8rem;cursor:pointer;font-family:var(--font);font-size:0.75rem;font-weight:700;white-space:nowrap">📋 نسخ</button>
+      <button onclick="editClonedReport(${r.id})" style="background:rgba(108,99,255,0.15);border:1px solid rgba(108,99,255,0.3);border-radius:8px;color:var(--accent);padding:0.35rem 0.8rem;cursor:pointer;font-family:var(--font);font-size:0.75rem;font-weight:700;white-space:nowrap">✏️ نسخ وتحرير</button>
+    </div>`;
+  }).join('');
+}
+
+function cloneReport(id) {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const r = history.find(x => x.id === id);
+  if (!r) return;
+  const clone = {...r, id: Date.now(), title: 'نسخة من: ' + r.title, date: new Date().toISOString()};
+  const newHistory = [clone, ...history];
+  localStorage.setItem('mbrcst_history', JSON.stringify(newHistory));
+  renderCloneList();
+  showToast(`✅ تم نسخ "${r.title}"`, 'success');
+}
+
+function editClonedReport(id) {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const r = history.find(x => x.id === id);
+  if (!r) return;
+  const titleEl = document.getElementById('reportTitle');
+  if (titleEl) titleEl.value = 'نسخة: ' + r.title;
+  closeMerge();
+  enterFocusMode();
+  const focusTa = document.getElementById('focusTextarea');
+  if (focusTa) focusTa.value = r.content;
+  showToast(`✅ تحرير نسخة من "${r.title}"`, 'success');
+}
