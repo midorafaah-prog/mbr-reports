@@ -7014,3 +7014,48 @@ function selTransDir(el, val) {
   el.classList.add('active');
   document.getElementById('translateDir').value = val;
 }
+
+// ================================================================
+// 🔒 SECRET SETTINGS ACCESS — 5 taps on logo
+// ================================================================
+(function() {
+  let _tapCount = 0;
+  let _tapTimer = null;
+
+  window._secretSettingsTap = function() {
+    _tapCount++;
+    clearTimeout(_tapTimer);
+
+    // Flash the logo icon subtly
+    const icon = document.querySelector('.logo-icon');
+    if (icon) {
+      icon.style.transform = 'scale(1.25)';
+      setTimeout(() => icon.style.transform = '', 150);
+    }
+
+    if (_tapCount >= 5) {
+      _tapCount = 0;
+      // Show settings section
+      showSection('settings');
+      showToast('⚙️ الإعدادات', 'success');
+    } else if (_tapCount >= 2) {
+      // Show subtle hint after 2 taps
+      const remaining = 5 - _tapCount;
+      showToast(`🔒 ${remaining} مرات للإعدادات`, 'success');
+    }
+
+    // Reset after 2 seconds of inactivity
+    _tapTimer = setTimeout(() => { _tapCount = 0; }, 2000);
+  };
+})();
+
+// Override showSection to hide settings button when leaving settings
+const _origShowSection = typeof showSection === 'function' ? showSection : null;
+if (_origShowSection) {
+  window.showSection = function(sec) {
+    _origShowSection(sec);
+    // Keep settings tab hidden always (even when active)
+    const navSettings = document.getElementById('navSettings');
+    if (navSettings) navSettings.style.display = 'none';
+  };
+}

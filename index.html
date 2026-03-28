@@ -165,7 +165,7 @@
   <!-- ====== HEADER ====== -->
   <header class="site-header">
     <div class="header-inner">
-      <div class="logo-wrap">
+      <div class="logo-wrap" id="logoWrap" onclick="_secretSettingsTap()" style="cursor:pointer;user-select:none">
         <div class="logo-icon">✦</div>
         <div class="logo-text">
           <span class="logo-mbr">MBR</span>
@@ -186,7 +186,8 @@
           <button class="nav-tab" id="navAi" onclick="showSection('ai')">
             <span>🤖</span><span class="tab-label">أدوات الذكاء</span>
           </button>
-          <button class="nav-tab" id="navSettings" onclick="showSection('settings')">
+          <!-- Settings tab hidden — accessible via 5 taps on logo -->
+          <button class="nav-tab" id="navSettings" onclick="showSection('settings')" style="display:none">
             <span>⚙️</span><span class="tab-label">إعدادات</span>
           </button>
         </div>
@@ -1772,7 +1773,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=1774723526"></script>
+  <script src="app.js?v=1774723845"></script>
 
   <!-- ===== DASHBOARD OVERLAY ===== -->
   <div id="dashboardOverlay" class="ai-fullpage-overlay" style="display:none">
