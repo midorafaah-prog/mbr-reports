@@ -2700,3 +2700,267 @@ body.theme-light .section-content { background: #07070f !important; }
   font-size: 0.75rem !important;
 }
 
+
+/* ====================================================
+   EXPERT UI REDESIGN v3 — Premium Dark SaaS Look
+   ==================================================== */
+
+/* === HEADER: 3-column balanced grid === */
+.site-header {
+  height: 58px !important;
+  background: rgba(8,8,18,0.96) !important;
+  backdrop-filter: blur(24px) !important;
+  border-bottom: 1px solid rgba(108,99,255,0.12) !important;
+}
+.header-inner {
+  height: 58px !important;
+  padding: 0 1.2rem !important;
+  max-width: 100% !important;
+  display: grid !important;
+  grid-template-columns: auto 1fr auto !important;
+  align-items: center !important;
+  gap: 0 !important;
+}
+.logo-wrap {
+  grid-column: 1;
+  padding-left: 0.5rem;
+}
+.header-nav {
+  grid-column: 2;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+  justify-content: flex-end !important;
+  padding: 0 0.5rem;
+  overflow: visible !important;
+}
+.nav-primary {
+  display: flex !important;
+  gap: 2px !important;
+}
+.nav-dropdowns {
+  display: flex !important;
+  gap: 2px !important;
+  margin-right: 6px;
+}
+.nav-utils {
+  grid-column: 3;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  margin: 0 !important;
+  padding-right: 0.5rem;
+  flex-shrink: 0 !important;
+}
+
+/* Remove OpenAI key warning pill from nav */
+#apiKeyWarnPill, .openai-key-pill, [id*="keyWarn"] { display: none !important; }
+
+/* === NAV BUTTONS — More refined === */
+.nav-tab, .nav-btn {
+  padding: 0.32rem 0.7rem !important;
+  font-size: 0.78rem !important;
+  border-radius: 7px !important;
+  font-weight: 600 !important;
+  transition: all 0.18s !important;
+  white-space: nowrap;
+}
+.nav-tab.active, .nav-btn.active {
+  background: linear-gradient(135deg, rgba(108,99,255,0.25), rgba(0,212,170,0.1)) !important;
+  border: 1px solid rgba(108,99,255,0.35) !important;
+  color: #a89cff !important;
+}
+.nav-dropdown-btn {
+  padding: 0.32rem 0.65rem !important;
+  font-size: 0.75rem !important;
+  border-radius: 7px !important;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: #8888aa !important;
+  font-weight: 600 !important;
+  gap: 4px !important;
+}
+.nav-dropdown-btn:hover {
+  background: rgba(108,99,255,0.12) !important;
+  border-color: rgba(108,99,255,0.3) !important;
+  color: #c4bfff !important;
+}
+.nav-icon-btn {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 7px !important;
+  font-size: 0.82rem !important;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  color: #7878a0 !important;
+  transition: all 0.15s !important;
+}
+.nav-icon-btn:hover {
+  background: rgba(108,99,255,0.15) !important;
+  color: #a89cff !important;
+  border-color: rgba(108,99,255,0.3) !important;
+}
+
+/* AI Status compact in nav */
+#aiStatusBadge {
+  font-size: 0.66rem !important;
+  padding: 0.2rem 0.5rem !important;
+  border-radius: 5px !important;
+  height: 24px !important;
+}
+
+/* Logo icon gradient */
+.logo-icon {
+  background: linear-gradient(135deg, #6c63ff, #00d4aa) !important;
+  width: 30px !important; height: 30px !important;
+  font-size: 0.9rem !important;
+  border-radius: 8px !important;
+}
+.logo-text { font-size: 0.98rem !important; }
+
+/* === HERO — Premium mesh gradient === */
+.hero-section {
+  background: #07070f !important;
+  padding: 3rem 2rem 2.5rem !important;
+  position: relative;
+  overflow: hidden;
+}
+.hero-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 60% 50% at 80% 20%, rgba(108,99,255,0.18) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 20% 80%, rgba(0,212,170,0.1) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 50% 50%, rgba(108,99,255,0.05) 0%, transparent 80%);
+  pointer-events: none;
+}
+.hero-title {
+  font-size: clamp(2rem, 4.5vw, 3.2rem) !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.5px;
+  line-height: 1.2 !important;
+  margin-bottom: 1rem !important;
+}
+.hero-sub {
+  font-size: 1rem !important;
+  color: rgba(200,200,230,0.7) !important;
+  line-height: 1.7 !important;
+}
+.hero-badge {
+  background: rgba(108,99,255,0.12) !important;
+  border: 1px solid rgba(108,99,255,0.25) !important;
+  color: #b0a8ff !important;
+  font-size: 0.82rem !important;
+  letter-spacing: 0.3px;
+  padding: 0.38rem 1.1rem !important;
+}
+
+/* === DASHBOARD STATS — Premium cards === */
+#welcomeDashboard {
+  background: #07070f !important;
+  padding: 1.5rem 1.5rem 0 !important;
+  border-top: 1px solid rgba(255,255,255,0.04) !important;
+}
+.dash-stat-card {
+  background: rgba(255,255,255,0.025) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  border-radius: 14px !important;
+  padding: 1.4rem 1rem !important;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s !important;
+  position: relative;
+  overflow: hidden;
+}
+.dash-stat-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(108,99,255,0.3), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.dash-stat-card:hover { 
+  transform: translateY(-4px) !important;
+  border-color: rgba(108,99,255,0.22) !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(108,99,255,0.15) !important;
+}
+.dash-stat-card:hover::after { opacity: 1; }
+.dash-stat-icon { font-size: 1.8rem !important; margin-bottom: 0.5rem !important; }
+.dash-stat-value {
+  font-size: 2rem !important;
+  font-weight: 900 !important;
+  background: linear-gradient(135deg, #f0f0f8, #a89cff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.3rem !important;
+}
+.dash-stat-label { 
+  font-size: 0.72rem !important; 
+  color: rgba(150,150,180,0.8) !important; 
+  font-weight: 600 !important; 
+  letter-spacing: 0.3px;
+}
+.dash-quick-btn {
+  padding: 0.4rem 0.9rem !important;
+  border-radius: 22px !important;
+  font-size: 0.75rem !important;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: rgba(180,180,210,0.85) !important;
+  transition: all 0.15s !important;
+}
+.dash-quick-btn:hover {
+  background: rgba(108,99,255,0.15) !important;
+  border-color: rgba(108,99,255,0.3) !important;
+  color: #c4bfff !important;
+  transform: translateY(-1px) !important;
+}
+
+/* === MAIN content spacing === */
+.main-wrap { padding: 0 1.5rem 4rem !important; }
+.report-tabs-wrap { padding: 0 0 1.5rem !important; }
+
+/* === SECTION HEADERS — consistent style === */
+.section-header h2, .ai-section-title, .settings-card h3 {
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  color: rgba(240,240,248,0.9) !important;
+}
+
+/* === INPUT FIELDS — unified premium look === */
+input:not([type=color]):not([type=range]):not([type=checkbox]):not([type=radio]),
+textarea, select {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  color: var(--text-primary) !important;
+  border-radius: 9px !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: rgba(108,99,255,0.45) !important;
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.12) !important;
+  outline: none !important;
+}
+
+/* === BUTTONS — premium gradient primary === */
+.generate-btn {
+  background: linear-gradient(135deg, #6c63ff 0%, #5a52f0 50%, #00d4aa 100%) !important;
+  border: none !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px;
+  transition: all 0.2s !important;
+  box-shadow: 0 4px 20px rgba(108,99,255,0.35) !important;
+}
+.generate-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 30px rgba(108,99,255,0.45) !important;
+  filter: brightness(1.08) !important;
+}
+
+/* Drop shadow for header */
+.site-header {
+  box-shadow: 0 1px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(108,99,255,0.07) !important;
+}
+
