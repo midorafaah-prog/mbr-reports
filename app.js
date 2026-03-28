@@ -5913,3 +5913,85 @@ function rebuildNavIfNeeded() {
 }
 document.addEventListener('DOMContentLoaded', rebuildNavIfNeeded);
 rebuildNavIfNeeded();
+
+// ============================================================
+// FORGOT PASSWORD
+// ============================================================
+function showForgotPassword() {
+  const modal = document.getElementById('forgotModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.getElementById('forgotStep1').style.display = 'block';
+    document.getElementById('forgotStep2').style.display = 'none';
+    document.getElementById('forgotMsg').style.display = 'none';
+    const emailInput = document.getElementById('loginEmail') || document.getElementById('email');
+    const forgotEmail = document.getElementById('forgotEmail');
+    if (emailInput && forgotEmail) forgotEmail.value = emailInput.value || '';
+  }
+}
+
+function closeForgotModal() {
+  const modal = document.getElementById('forgotModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function verifyForgotEmail() {
+  const email = (document.getElementById('forgotEmail')||{}).value?.trim()?.toLowerCase();
+  if (!email) { showForgotMsg('أدخل بريدك الإلكتروني', 'error'); return; }
+  // Check localStorage users
+  const users = JSON.parse(localStorage.getItem('mbrcst_users') || '[]');
+  const found = users.find(u => u.username.toLowerCase() === email || u.email?.toLowerCase() === email);
+  if (found) {
+    document.getElementById('forgotStep1').style.display = 'none';
+    document.getElementById('forgotStep2').style.display = 'block';
+    document.getElementById('forgotMsg').style.display = 'none';
+    // Store temp email for reset
+    sessionStorage.setItem('mbrcst_reset_email', email);
+  } else {
+    // If no users list (old format), allow reset anyway
+    const legacy = localStorage.getItem('mbrcst_password_' + email);
+    if (legacy !== null) {
+      document.getElementById('forgotStep1').style.display = 'none';
+      document.getElementById('forgotStep2').style.display = 'block';
+      sessionStorage.setItem('mbrcst_reset_email', email);
+    } else {
+      // Allow creating new account too
+      showForgotMsg('لم نجد هذا الحساب. يمكنك إنشاء حساب جديد.', 'warn');
+    }
+  }
+}
+
+function resetPassword() {
+  const p1 = (document.getElementById('newPassword1')||{}).value;
+  const p2 = (document.getElementById('newPassword2')||{}).value;
+  if (!p1 || p1.length < 4) { showForgotMsg('كلمة المرور يجب أن تكون 4 أحرف على الأقل', 'error'); return; }
+  if (p1 !== p2) { showForgotMsg('كلمتا المرور غير متطابقتين', 'error'); return; }
+  const email = sessionStorage.getItem('mbrcst_reset_email');
+  if (!email) { showForgotMsg('خطأ، أعد المحاولة', 'error'); return; }
+  // Update in users array
+  const users = JSON.parse(localStorage.getItem('mbrcst_users') || '[]');
+  const idx = users.findIndex(u => u.username.toLowerCase() === email || u.email?.toLowerCase() === email);
+  if (idx >= 0) {
+    users[idx].password = btoa(p1);
+    localStorage.setItem('mbrcst_users', JSON.stringify(users));
+  }
+  // Also update legacy format
+  localStorage.setItem('mbrcst_password_' + email, btoa(p1));
+  // Auto-fill login form
+  const loginEmailEl = document.getElementById('loginEmail') || document.getElementById('email');
+  const loginPassEl = document.getElementById('loginPassword') || document.getElementById('password');
+  if (loginEmailEl) loginEmailEl.value = email;
+  if (loginPassEl) loginPassEl.value = p1;
+  closeForgotModal();
+  showToast('✅ تم تغيير كلمة المرور! يمكنك تسجيل الدخول الآن', 'success');
+  sessionStorage.removeItem('mbrcst_reset_email');
+}
+
+function showForgotMsg(msg, type) {
+  const el = document.getElementById('forgotMsg');
+  if (!el) return;
+  el.style.display = 'block';
+  const colors = { error:'#ef4444', warn:'#f59e0b', success:'#10b981' };
+  el.style.color = colors[type] || '#fff';
+  el.textContent = msg;
+}
