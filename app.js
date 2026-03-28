@@ -3529,3 +3529,327 @@ function startScheduleChecker() {
   const list = JSON.parse(localStorage.getItem('mbrcst_schedules')||'[]');
   if (list.length) startScheduleChecker();
 })();
+
+// ============================================================
+// 4. REPORTS HISTORY LIBRARY — Auto-save + Search
+// ============================================================
+let currentHistReport = null;
+
+function saveReportToHistory(title, content, type) {
+  if (!content || content.length < 50) return;
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const entry = {
+    id: Date.now(),
+    title: title || 'تقرير بدون عنوان',
+    content,
+    type: type || 'general',
+    date: new Date().toISOString(),
+    wordCount: content.split(/\s+/).length,
+    charCount: content.length
+  };
+  history.unshift(entry);
+  // Keep max 100 reports
+  if (history.length > 100) history.pop();
+  localStorage.setItem('mbrcst_history', JSON.stringify(history));
+  return entry;
+}
+
+function showReportsHistory() {
+  const overlay = document.getElementById('reportsHistoryOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const nb = document.getElementById('navHistory2');
+  if (nb) nb.classList.add('active');
+  renderHistory(null);
+  renderHistoryStats();
+  populateCompareSelects();
+}
+
+function closeReportsHistory() {
+  const overlay = document.getElementById('reportsHistoryOverlay');
+  if (overlay) overlay.style.display = 'none';
+  const nb = document.getElementById('navHistory2');
+  if (nb) nb.classList.remove('active');
+}
+
+function renderHistoryStats() {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const el = document.getElementById('historyStats');
+  if (!el || !history.length) return;
+  const totalWords = history.reduce((s, r) => s + (r.wordCount || 0), 0);
+  const thisMonth = history.filter(r => new Date(r.date).getMonth() === new Date().getMonth()).length;
+  const types = {};
+  history.forEach(r => { types[r.type] = (types[r.type] || 0) + 1; });
+  const topType = Object.entries(types).sort((a, b) => b[1] - a[1])[0];
+  el.innerHTML = [
+    { icon: '📑', val: history.length, label: 'إجمالي التقارير', color: '#6c63ff' },
+    { icon: '📅', val: thisMonth, label: 'تقارير هذا الشهر', color: '#00d4aa' },
+    { icon: '✍️', val: totalWords.toLocaleString('ar'), label: 'إجمالي الكلمات', color: '#f59e0b' }
+  ].map(s => `
+    <div style="background:#1a1a2e;border:1px solid rgba(${s.color==='#6c63ff'?'108,99,255':s.color==='#00d4aa'?'0,212,170':'245,158,11'},0.2);border-radius:12px;padding:1rem;text-align:center">
+      <div style="font-size:1.8rem;margin-bottom:0.3rem">${s.icon}</div>
+      <div style="font-size:1.4rem;font-weight:900;color:${s.color}">${s.val}</div>
+      <div style="font-size:0.72rem;color:var(--text-muted)">${s.label}</div>
+    </div>`).join('');
+}
+
+function renderHistory(filter) {
+  const grid = document.getElementById('historyGrid');
+  if (!grid) return;
+  let history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  if (filter) history = history.filter(r =>
+    r.title.includes(filter) || r.content.includes(filter) || r.type.includes(filter)
+  );
+  if (!history.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-muted)">
+      <div style="font-size:2.5rem;margin-bottom:0.5rem">📭</div>
+      <div>${filter ? 'لا نتائج للبحث' : 'لا توجد تقارير محفوظة بعد'}</div>
+      <div style="font-size:0.8rem;margin-top:0.5rem">أنشئ تقريراً وسيُحفظ تلقائياً هنا</div>
+    </div>`; return;
+  }
+  const typeColors = {monthly:'#6c63ff', weekly:'#00d4aa', quarterly:'#f59e0b', annual:'#ef4444', general:'#a855f7', project:'#0ea5e9'};
+  const typeNames = {monthly:'شهري', weekly:'أسبوعي', quarterly:'ربعي', annual:'سنوي', general:'عام', project:'مشروع'};
+  grid.innerHTML = history.map(r => {
+    const d = new Date(r.date);
+    const dateStr = d.toLocaleDateString('ar-SA', {year:'numeric', month:'short', day:'numeric'});
+    const timeStr = d.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'});
+    const preview = r.content.substring(0, 120).replace(/\n/g, ' ');
+    const color = typeColors[r.type] || '#6c63ff';
+    return `
+      <div class="hist-card" onclick="viewHistReport(${r.id})" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:1.2rem;cursor:pointer;transition:all 0.2s;hover:">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.6rem">
+          <span style="font-size:0.68rem;font-weight:700;background:${color}22;color:${color};border-radius:4px;padding:2px 7px">${typeNames[r.type]||r.type}</span>
+          <span style="font-size:0.68rem;color:var(--text-muted)">${dateStr}</span>
+        </div>
+        <div style="font-size:0.88rem;font-weight:800;color:#fff;margin-bottom:0.4rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${r.title}</div>
+        <div style="font-size:0.73rem;color:var(--text-muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${preview}...</div>
+        <div style="display:flex;justify-content:space-between;margin-top:0.8rem;padding-top:0.6rem;border-top:1px solid rgba(255,255,255,0.06)">
+          <span style="font-size:0.68rem;color:var(--text-muted)">📝 ${r.wordCount||0} كلمة</span>
+          <span style="font-size:0.68rem;color:var(--text-muted)">${timeStr}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function searchHistory(q) { renderHistory(q || null); }
+
+function viewHistReport(id) {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const report = history.find(r => r.id === id);
+  if (!report) return;
+  currentHistReport = report;
+  const modal = document.getElementById('historyViewModal');
+  if (!modal) return;
+  modal.style.display = 'flex'; modal.classList.add('open');
+  const titleEl = document.getElementById('histViewTitle');
+  const contentEl = document.getElementById('histViewContent');
+  if (titleEl) titleEl.textContent = report.title;
+  if (contentEl) contentEl.textContent = report.content;
+}
+
+function closeHistView() {
+  const modal = document.getElementById('historyViewModal');
+  if (modal) { modal.style.display = 'none'; modal.classList.remove('open'); }
+  currentHistReport = null;
+}
+
+function loadHistReport() {
+  if (!currentHistReport) return;
+  const titleEl = document.getElementById('reportTitle');
+  if (titleEl) titleEl.value = currentHistReport.title;
+  const outputEl = document.getElementById('reportOutput') || document.querySelector('.report-output-content');
+  if (outputEl) outputEl.textContent = currentHistReport.content;
+  closeHistView();
+  closeReportsHistory();
+  showSection('create');
+  showToast('✅ تم تحميل التقرير في المحرر', 'success');
+}
+
+function exportHistPDF() {
+  if (!currentHistReport) return;
+  const prev = document.getElementById('pdfPreviewBox');
+  if (prev) {
+    const t = document.getElementById('reportTitle');
+    if (t) t.value = currentHistReport.title;
+    closeHistView();
+    closeReportsHistory();
+    showPdfPanel();
+    showToast('اضغط "تصدير PDF" لتحميل التقرير', 'success');
+  }
+}
+
+// AUTO-SAVE hook — patch into callAI result handling
+const _origCallAI = callAI;
+async function callAI(prompt, system, opts) {
+  const result = await _origCallAI(prompt, system, opts);
+  if (result && result.length > 100) {
+    const title = (document.getElementById('reportTitle') || {}).value || 'تقرير AI';
+    const type = (document.getElementById('reportTypeSelect') || {}).value || 'general';
+    saveReportToHistory(title, result, type);
+  }
+  return result;
+}
+
+// ============================================================
+// 5. POWERPOINT EXPORT
+// ============================================================
+async function exportPowerPoint() {
+  const content = getCurrentReportText();
+  if (!content || content === 'لا يوجد محتوى تقرير حالياً') {
+    showToast('❌ أنشئ تقريراً أولاً', 'error'); return;
+  }
+  const b = JSON.parse(localStorage.getItem('mbrcst_branding') || '{}');
+  const title = (document.getElementById('reportTitle') || {}).value || 'التقرير';
+  const brandColor = (b.color || '#6c63ff').replace('#', '');
+  const now = new Date().toLocaleDateString('ar-SA');
+  const author = (currentUser || {}).fullName || 'MBR Reports';
+
+  if (typeof PptxGenJS === 'undefined') {
+    showToast('⏳ تحميل مكتبة PowerPoint...', 'success');
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  if (typeof PptxGenJS === 'undefined') {
+    showToast('❌ مكتبة PowerPoint غير محملة', 'error'); return;
+  }
+
+  showToast('⏳ جاري إنشاء PowerPoint...', 'success');
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_16x9';
+  pptx.author = author;
+  pptx.title = title;
+
+  const ACCENT = '#' + brandColor;
+  const DARK = '#1a1a2e';
+  const WHITE = '#FFFFFF';
+  const GRAY = '#a0a0c0';
+
+  // --- Slide 1: Title ---
+  const slide1 = pptx.addSlide();
+  slide1.background = { color: DARK.replace('#', '') };
+  slide1.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: '100%', h: 0.08, fill: { color: brandColor } });
+  slide1.addShape(pptx.ShapeType.rect, { x: 0, y: '92%', w: '100%', h: 0.08, fill: { color: brandColor } });
+  slide1.addText(b.name || 'MBR Reports', { x: 0.5, y: 0.8, w: 9, fontSize: 14, color: brandColor, bold: false, align: 'right', fontFace: 'Arial' });
+  slide1.addText(title, { x: 0.5, y: 2, w: 9, fontSize: 32, bold: true, color: WHITE, align: 'center', fontFace: 'Arial' });
+  slide1.addShape(pptx.ShapeType.rect, { x: 3.5, y: 3.2, w: 3, h: 0.04, fill: { color: brandColor } });
+  slide1.addText(`${author} | ${now}`, { x: 0.5, y: 3.5, w: 9, fontSize: 14, color: GRAY, align: 'center', fontFace: 'Arial' });
+  slide1.addText('أُعدَّ بواسطة MBR Reports', { x: 0.5, y: 4.8, w: 9, fontSize: 11, color: GRAY, align: 'center', fontFace: 'Arial' });
+
+  // --- Split content into sections/slides ---
+  const lines = content.split('\n').filter(l => l.trim());
+  const chunkSize = 12;
+  let slideNum = 2;
+  for (let i = 0; i < lines.length; i += chunkSize) {
+    const chunk = lines.slice(i, i + chunkSize);
+    const slide = pptx.addSlide();
+    slide.background = { color: DARK.replace('#', '') };
+    slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: '100%', h: 0.06, fill: { color: brandColor } });
+    slide.addText(`${title} — المحتوى`, { x: 0.5, y: 0.2, w: 9, fontSize: 13, bold: true, color: WHITE, align: 'right', fontFace: 'Arial' });
+    const bodyText = chunk.map(l => ({
+      text: l.replace(/^[١٢٣٤٥٦٧٨٩\d]+[.)]\s*/, '').trim(),
+      options: {
+        fontSize: l.match(/^[١٢٣٤٥٦٧٨٩\d]+[.)]/) ? 13 : 12,
+        bold: l.match(/^[١٢٣٤٥٦٧٨٩\d]+[.)]/) ? true : false,
+        color: l.match(/^[١٢٣٤٥٦٧٨٩\d]+[.)]/) ? WHITE : GRAY,
+        bullet: !l.match(/^[١٢٣٤٥٦٧٨٩\d]+[.)]/) && l.trim().length > 5,
+        paraSpaceAfter: 6, fontFace: 'Arial', align: 'right'
+      }
+    }));
+    slide.addText(bodyText, { x: 0.5, y: 0.9, w: 9, h: 4.0, valign: 'top', fontFace: 'Arial' });
+    slide.addText(`${slideNum}`, { x: 9.2, y: 5.1, w: 0.5, fontSize: 10, color: GRAY, align: 'right' });
+    slideNum++;
+  }
+
+  // --- Last slide: closing ---
+  const lastSlide = pptx.addSlide();
+  lastSlide.background = { color: DARK.replace('#', '') };
+  lastSlide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: '100%', h: '100%', fill: { color: brandColor + '22' } });
+  lastSlide.addText('شكراً', { x: 0.5, y: 1.8, w: 9, fontSize: 48, bold: true, color: WHITE, align: 'center', fontFace: 'Arial' });
+  lastSlide.addText(b.name || 'MBR Reports', { x: 0.5, y: 3.3, w: 9, fontSize: 16, color: brandColor, align: 'center', fontFace: 'Arial' });
+  lastSlide.addText(now, { x: 0.5, y: 3.9, w: 9, fontSize: 12, color: GRAY, align: 'center', fontFace: 'Arial' });
+
+  await pptx.writeFile({ fileName: `${title}.pptx` });
+  showToast('✅ تم تصدير PowerPoint بنجاح!', 'success');
+  // Save to history
+  saveReportToHistory(title + ' (PPTX)', content, (document.getElementById('reportTypeSelect') || {}).value || 'general');
+}
+
+// ============================================================
+// 6. COMPARE REPORTS (AI-powered)
+// ============================================================
+let compareReports = { A: null, B: null };
+
+function showComparePanel() {
+  const overlay = document.getElementById('compareOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const nb = document.getElementById('navCompare');
+  if (nb) nb.classList.add('active');
+  populateCompareSelects();
+}
+
+function closeComparePanel() {
+  const overlay = document.getElementById('compareOverlay');
+  if (overlay) overlay.style.display = 'none';
+  const nb = document.getElementById('navCompare');
+  if (nb) nb.classList.remove('active');
+}
+
+function populateCompareSelects() {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  ['compareA', 'compareB'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— اختر تقريراً —</option>' +
+      history.map(r => {
+        const d = new Date(r.date).toLocaleDateString('ar-SA', {month:'short', day:'numeric'});
+        return `<option value="${r.id}">${r.title} (${d})</option>`;
+      }).join('');
+    sel.value = cur;
+  });
+}
+
+function loadCompareReport(side, id) {
+  const history = JSON.parse(localStorage.getItem('mbrcst_history') || '[]');
+  const report = history.find(r => r.id == id);
+  compareReports[side] = report || null;
+  const preview = document.getElementById(`comparePreview${side}`);
+  if (preview) {
+    if (report) {
+      preview.style.display = 'block';
+      preview.textContent = report.content.substring(0, 400) + '...';
+    } else {
+      preview.style.display = 'none';
+    }
+  }
+}
+
+async function runAICompare() {
+  const { A, B } = compareReports;
+  if (!A || !B) { showToast('اختر تقريرين للمقارنة', 'error'); return; }
+  const resultEl = document.getElementById('compareResult');
+  if (!resultEl) return;
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>AI يقارن التقريرين...</span></div>';
+
+  const dA = new Date(A.date).toLocaleDateString('ar-SA', {month:'long', year:'numeric'});
+  const dB = new Date(B.date).toLocaleDateString('ar-SA', {month:'long', year:'numeric'});
+
+  const result = await callAI(
+    `قارن بين هذين التقريرين وأعطني تحليلاً احترافياً:\n\n=== التقرير الأول: ${A.title} (${dA}) ===\n${A.content.substring(0,1500)}\n\n=== التقرير الثاني: ${B.title} (${dB}) ===\n${B.content.substring(0,1500)}\n\nالمطلوب:\n١. الفروقات الجوهرية بين التقريرين\n٢. مؤشرات التحسن أو التراجع\n٣. الاتجاهات الرئيسية\n٤. توصيات بناءً على المقارنة`,
+    'أنت محلل تقارير خبير متخصص في تحليل الاتجاهات والفروقات بين الفترات الزمنية.',
+    { maxTokens: 2000 }
+  );
+  if (result) {
+    resultEl.innerHTML = `
+      <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
+        <div style="background:rgba(108,99,255,0.1);border-radius:8px;padding:0.5rem 0.8rem;font-size:0.8rem;font-weight:700;color:var(--accent)">📄 ${A.title}</div>
+        <div style="color:var(--text-muted);align-self:center">vs</div>
+        <div style="background:rgba(0,212,170,0.1);border-radius:8px;padding:0.5rem 0.8rem;font-size:0.8rem;font-weight:700;color:#00d4aa">📄 ${B.title}</div>
+      </div>
+      <div style="white-space:pre-wrap;color:var(--text-secondary);font-size:0.83rem;line-height:1.8">${result}</div>`;
+    showToast('✅ تمت المقارنة بالـ AI!', 'success');
+  }
+}

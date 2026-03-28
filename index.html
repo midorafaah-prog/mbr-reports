@@ -186,6 +186,9 @@
         <button class="nav-btn nav-btn-ai" id="navAi" onclick="showSection('ai')">
           <span>🤖</span> AI Tools
         </button>
+        <button class="nav-btn nav-btn-history" id="navHistory2" onclick="showReportsHistory()"><span>📚</span> مكتبة</button>
+        <button class="nav-btn nav-btn-compare" id="navCompare" onclick="showComparePanel()"><span>📊</span> مقارنة</button>
+        <button class="nav-btn nav-btn-powerpoint" id="navPPT" onclick="exportPowerPoint()"><span>🎯</span> PowerPoint</button>
         <button class="nav-btn nav-btn-pdf" id="navPdf" onclick="showPdfPanel()">
           <span>📄</span> PDF
         </button>
@@ -1392,6 +1395,68 @@
        data-ux_mode="popup"
        data-callback="handleGoogleSignIn"
        data-auto_prompt="false">
+  </div>
+
+  <!-- REPORTS HISTORY OVERLAY -->
+  <div id="reportsHistoryOverlay" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:900px;margin:0 auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+        <div>
+          <h2 style="color:#fff;font-size:1.5rem;font-weight:900;margin:0">📚 مكتبة التقارير</h2>
+          <p style="color:var(--text-muted);font-size:0.82rem;margin:0.3rem 0 0">جميع تقاريرك محفوظة تلقائياً</p>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <input type="text" id="historySearch" placeholder="🔍 ابحث في التقارير..." oninput="searchHistory(this.value)"
+            style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.9rem;color:#fff;font-size:0.82rem;font-family:var(--font);width:200px">
+          <button onclick="closeReportsHistory()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.5rem 0.9rem;cursor:pointer;font-family:var(--font)">✕</button>
+        </div>
+      </div>
+      <!-- Stats Row -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem" id="historyStats"></div>
+      <!-- Reports Grid -->
+      <div id="historyGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem"></div>
+    </div>
+  </div>
+
+  <!-- COMPARE OVERLAY -->
+  <div id="compareOverlay" class="ai-fullpage-overlay" style="display:none">
+    <div style="max-width:1000px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem">
+        <h2 style="color:#fff;font-size:1.5rem;font-weight:900;margin:0">📊 مقارنة التقارير</h2>
+        <button onclick="closeComparePanel()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:#888;padding:0.5rem 0.9rem;cursor:pointer;font-family:var(--font)">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem">
+        <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:14px;padding:1.2rem">
+          <div style="font-weight:800;color:var(--accent);margin-bottom:0.8rem;font-size:0.9rem">📄 التقرير الأول</div>
+          <select id="compareA" class="email-input" style="width:100%;box-sizing:border-box" onchange="loadCompareReport('A',this.value)"><option value="">— اختر تقريراً —</option></select>
+          <div id="comparePreviewA" style="margin-top:0.8rem;max-height:200px;overflow:auto;font-size:0.75rem;color:var(--text-secondary);white-space:pre-wrap;background:rgba(255,255,255,0.03);border-radius:8px;padding:0.8rem;display:none"></div>
+        </div>
+        <div style="background:#1a1a2e;border:1px solid rgba(0,212,170,0.2);border-radius:14px;padding:1.2rem">
+          <div style="font-weight:800;color:#00d4aa;margin-bottom:0.8rem;font-size:0.9rem">📄 التقرير الثاني</div>
+          <select id="compareB" class="email-input" style="width:100%;box-sizing:border-box" onchange="loadCompareReport('B',this.value)"><option value="">— اختر تقريراً —</option></select>
+          <div id="comparePreviewB" style="margin-top:0.8rem;max-height:200px;overflow:auto;font-size:0.75rem;color:var(--text-secondary);white-space:pre-wrap;background:rgba(255,255,255,0.03);border-radius:8px;padding:0.8rem;display:none"></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-bottom:1.5rem">
+        <button onclick="runAICompare()" class="ai-tool-btn" style="padding:0.85rem 2.5rem;font-size:1rem">🤖 قارن بالـ AI الآن</button>
+      </div>
+      <div id="compareResult" style="display:none;background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:14px;padding:1.5rem"></div>
+    </div>
+  </div>
+
+  <!-- QUICK VIEW MODAL for history card -->
+  <div id="historyViewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;display:none;align-items:center;justify-content:center">
+    <div style="background:#12121e;border:1px solid rgba(108,99,255,0.3);border-radius:20px;width:700px;max-width:95vw;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:1.2rem 1.5rem;border-bottom:1px solid var(--border)">
+        <span id="histViewTitle" style="font-weight:800;color:#fff;font-size:1rem"></span>
+        <button onclick="closeHistView()" style="background:none;border:none;color:#888;cursor:pointer;font-size:1.1rem">✕</button>
+      </div>
+      <div id="histViewContent" style="flex:1;overflow:auto;padding:1.5rem;white-space:pre-wrap;font-size:0.82rem;color:var(--text-secondary);line-height:1.8"></div>
+      <div style="padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:0.5rem">
+        <button onclick="loadHistReport()" class="ai-tool-btn" style="flex:1;padding:0.6rem">📋 تحميل للمحرر</button>
+        <button onclick="exportHistPDF()" class="ai-tool-btn" style="flex:1;padding:0.6rem;background:linear-gradient(135deg,#ef4444,#b91c1c)">📄 PDF</button>
+      </div>
+    </div>
   </div>
 </body>
 </html>

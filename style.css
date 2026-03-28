@@ -2038,3 +2038,20 @@ body.theme-corporate .generate-btn { background: linear-gradient(135deg, #0078d4
 }
 .sched-card:hover { border-color: rgba(108,99,255,0.3); }
 
+
+/* ===== HISTORY & COMPARE NAV ===== */
+.nav-btn-history  { background: rgba(168,85,247,0.1) !important; border: 1px solid rgba(168,85,247,0.3) !important; color: #a855f7 !important; }
+.nav-btn-compare  { background: rgba(14,165,233,0.1) !important; border: 1px solid rgba(14,165,233,0.3) !important; color: #0ea5e9 !important; }
+.nav-btn-powerpoint { background: rgba(234,88,12,0.1) !important; border: 1px solid rgba(234,88,12,0.3) !important; color: #ea580c !important; }
+
+/* ===== HISTORY CARDS ===== */
+.hist-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(108,99,255,0.35) !important;
+  box-shadow: 0 6px 20px rgba(108,99,255,0.12);
+}
+
+/* ===== HISTORYVIEW MODAL FLEX ===== */
+#historyViewModal { display: none; }
+#historyViewModal.open { display: flex !important; }
+
