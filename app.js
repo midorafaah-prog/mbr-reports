@@ -5262,32 +5262,49 @@ function applyLanguage() {
     if (val) el.textContent = val;
   });
 
-  // Helper: set text for element's .tab-label child or the element itself
+  // Helper: set text for element's .tab-label child
   function setLabel(id, text) {
     const el = document.getElementById(id);
     if (!el) return;
     const lbl = el.querySelector('.tab-label');
-    if (lbl) { lbl.textContent = text.replace(/^[^\s]+\s/, ''); } // strip emoji
-    else if (el.querySelector('.dd-arrow')) {
-      // dropdown button — keep the arrow
-      const arrow = el.querySelector('.dd-arrow');
-      el.textContent = '';
-      el.appendChild(document.createTextNode(text + ' '));
-      el.appendChild(arrow);
-    }
+    if (lbl) { lbl.textContent = text.replace(/^[^\s]+\s/, ''); }
   }
 
-  // Nav tabs
+  // Helper: safe set textContent by selector
+  function setText(sel, text) {
+    const el = typeof sel === 'string' ? document.querySelector(sel) : sel;
+    if (el) el.textContent = text;
+  }
+  function setHTML(sel, html) {
+    const el = typeof sel === 'string' ? document.querySelector(sel) : sel;
+    if (el) el.innerHTML = html;
+  }
+  function setAttr(sel, attr, val) {
+    const el = typeof sel === 'string' ? document.querySelector(sel) : sel;
+    if (el) el.setAttribute(attr, val);
+  }
+  // Helper: set multiple children text by parent selector
+  function setChildren(parentSel, texts) {
+    const parent = document.querySelector(parentSel);
+    if (!parent) return;
+    const children = parent.querySelectorAll(':scope > button, :scope > div > button');
+    if (children.length === 0) return;
+    texts.forEach((tx, i) => { if (children[i] && tx) children[i].textContent = tx; });
+  }
+
+  // ============================
+  // NAV TABS
+  // ============================
   setLabel('navCreate', t.navCreate);
   setLabel('navHistory', t.navHistory);
   setLabel('navAi', t.navAi);
   setLabel('navSettings', t.navSettings);
 
-  // Dropdown buttons
-  const dropAIBtn = document.querySelector('#dropAI > .nav-dropdown-btn');
-  const dropExportBtn = document.querySelector('#dropExport > .nav-dropdown-btn');
-  const dropManageBtn = document.querySelector('#dropManage > .nav-dropdown-btn');
-  function setDropBtn(btn, text) {
+  // ============================
+  // DROPDOWN BUTTONS
+  // ============================
+  function setDropBtn(parentId, text) {
+    const btn = document.querySelector(`#${parentId} > .nav-dropdown-btn`);
     if (!btn) return;
     const arrow = btn.querySelector('.dd-arrow');
     btn.textContent = '';
@@ -5295,66 +5312,360 @@ function applyLanguage() {
     if (arrow) btn.appendChild(arrow);
     else { const sp = document.createElement('span'); sp.className='dd-arrow'; sp.textContent='▾'; btn.appendChild(sp); }
   }
-  setDropBtn(dropAIBtn, t.dropAI);
-  setDropBtn(dropExportBtn, t.dropExport);
-  setDropBtn(dropManageBtn, t.dropManage);
+  setDropBtn('dropAI', t.dropAI);
+  setDropBtn('dropExport', t.dropExport);
+  setDropBtn('dropManage', t.dropManage);
 
-  // Dropdown AI menu items
-  const aiMenu = document.querySelector('#dropAI .nav-dropdown-menu');
-  if (aiMenu) {
-    const items = aiMenu.querySelectorAll('button');
-    const aiTexts = [t.menuVoice, t.menuQuickReport, t.menuWritingAssist, t.menuPrompts, t.menuCharts, t.menuTranslate, t.menuFocus, null, t.menuAllAI];
+  // Dropdown menu items
+  const menuTexts = {
+    dropAI: [t.menuVoice, t.menuQuickReport, t.menuWritingAssist, t.menuPrompts, t.menuCharts, t.menuTranslate, t.menuFocus, null, t.menuAllAI],
+    dropExport: [t.menuPdf, t.menuWord, t.menuPPT, t.menuCover, t.menuEmail, t.menuPrint],
+    dropManage: [t.menuReading, t.menuFavorites, t.menuAnalytics, t.menuMerge, t.menuCompare, t.menuSchedule, t.menuTemplates],
+  };
+  ['dropAI','dropExport','dropManage'].forEach(id => {
+    const menu = document.querySelector(`#${id} .nav-dropdown-menu`);
+    if (!menu) return;
+    const items = menu.querySelectorAll('button');
     let idx = 0;
-    items.forEach(btn => { if (aiTexts[idx] !== undefined && aiTexts[idx] !== null) btn.textContent = aiTexts[idx]; idx++; });
-  }
+    items.forEach(btn => {
+      const tx = (menuTexts[id] || [])[idx];
+      if (tx !== undefined && tx !== null) btn.textContent = tx;
+      idx++;
+    });
+  });
 
-  // Dropdown Export menu items
-  const exportMenu = document.querySelector('#dropExport .nav-dropdown-menu');
-  if (exportMenu) {
-    const items = exportMenu.querySelectorAll('button');
-    const exTexts = [t.menuPdf, t.menuWord, t.menuPPT, t.menuCover, t.menuEmail, t.menuPrint];
-    items.forEach((btn, i) => { if (exTexts[i]) btn.textContent = exTexts[i]; });
-  }
-
-  // Dropdown Manage menu items
-  const manageMenu = document.querySelector('#dropManage .nav-dropdown-menu');
-  if (manageMenu) {
-    const items = manageMenu.querySelectorAll('button');
-    const mgTexts = [t.menuReading, t.menuFavorites, t.menuAnalytics, t.menuMerge, t.menuCompare, t.menuSchedule, t.menuTemplates];
-    items.forEach((btn, i) => { if (mgTexts[i]) btn.textContent = mgTexts[i]; });
-  }
-
-  // Hero section
-  const heroBadge = document.querySelector('.hero-badge');
-  if (heroBadge) heroBadge.textContent = t.heroBadge;
+  // ============================
+  // HERO SECTION
+  // ============================
+  setText('.hero-badge', t.heroBadge);
   const heroTitle = document.querySelector('.hero-title');
   if (heroTitle) {
     const grad = heroTitle.querySelector('.gradient-text');
     if (grad) { grad.textContent = t.heroTitle2; heroTitle.childNodes[0].textContent = t.heroTitle1 + ' '; }
   }
-  const heroSub = document.querySelector('.hero-sub');
-  if (heroSub) heroSub.textContent = t.heroSub;
+  setText('.hero-sub', t.heroSub);
 
-  // Dashboard stat labels
+  // ============================
+  // DASHBOARD STATS
+  // ============================
   const dashLabels = document.querySelectorAll('.dash-stat-label');
-  const dashTexts = [t.dashTotal, t.dashMonth, t.dashFav, t.dashAI];
-  dashLabels.forEach((el, i) => { if (dashTexts[i]) el.textContent = dashTexts[i]; });
+  [t.dashTotal, t.dashMonth, t.dashFav, t.dashAI].forEach((tx, i) => { if (dashLabels[i]) dashLabels[i].textContent = tx; });
 
-  // Utility icon tooltips
-  const navTheme = document.getElementById('navTheme');
-  if (navTheme) navTheme.title = t.navThemeTitle;
-  const navLang = document.getElementById('navLang');
-  if (navLang) navLang.title = t.navLangTitle;
-  const navProfile = document.getElementById('navProfile');
-  if (navProfile) navProfile.title = t.navProfileTitle;
-  const navSearch = document.getElementById('navSearch');
-  if (navSearch) navSearch.title = t.navSearchTitle;
-  const navBell = document.getElementById('navBell');
-  if (navBell) navBell.title = t.navBellTitle;
-  const navDashboard2 = document.getElementById('navDashboard2');
-  if (navDashboard2) navDashboard2.title = t.navDashTitle;
+  // ============================
+  // QUICK ACTION BUTTONS
+  // ============================
+  const quickBtns = document.querySelectorAll('.dash-quick-btn');
+  const qkTexts = isAr
+    ? ['⚡ تقرير سريع', '📁 آخر التقارير', '📈 رسوم بيانية', '🌍 ترجمة', '📊 تحليلاتي']
+    : ['⚡ Quick Report', '📁 Recent Reports', '📈 Charts', '🌍 Translate', '📊 Analytics'];
+  quickBtns.forEach((btn, i) => { if (qkTexts[i]) btn.textContent = qkTexts[i]; });
 
-  // Update lang icon/label
+  // ============================
+  // CREATE SECTION — Report form
+  // ============================
+  setText('.report-type-label', isAr ? '📋 نوع التقرير' : '📋 Report Type');
+
+  // Panel card headers (in order: Report Info, Text Content, Images, Excel, AI Settings, Signature)
+  const panelHeaders = document.querySelectorAll('#sectionCreate .panel-card-header h3');
+  const headerTexts = isAr
+    ? ['معلومات التقرير', 'المحتوى النصي', 'الصور والمرفقات المرئية', 'ملف البيانات (Excel)', 'إعدادات الذكاء الاصطناعي', 'التوقيع والاعتماد']
+    : ['Report Information', 'Text Content', 'Images & Visual Attachments', 'Data File (Excel)', 'AI Settings', 'Signature & Approval'];
+  panelHeaders.forEach((h, i) => { if (headerTexts[i]) h.textContent = headerTexts[i]; });
+
+  // Form labels
+  const formLabels = {
+    ar: { title:'عنوان التقرير', dept:'الجهة / القسم', period:'الفترة الزمنية', preparer:'معد التقرير',
+          reportLang:'لغة التقرير', reportNum:'رقم التقرير', approvalDate:'تاريخ الاعتماد',
+          notes:'ملاحظات عامة', writingStyle:'أسلوب الكتابة', detailLevel:'مستوى التفصيل',
+          apiKey:'OpenAI API Key', approvedBy:'معتمد من', approvalDate2:'تاريخ الاعتماد',
+          sigPreparer:'توقيع المعد 🖊️', sigApprover:'توقيع المعتمد / الختم 📛' },
+    en: { title:'Report Title', dept:'Department / Division', period:'Time Period', preparer:'Report Author',
+          reportLang:'Report Language', reportNum:'Report Number', approvalDate:'Approval Date',
+          notes:'General Notes', writingStyle:'Writing Style', detailLevel:'Detail Level',
+          apiKey:'OpenAI API Key', approvedBy:'Approved By', approvalDate2:'Approval Date',
+          sigPreparer:'Preparer Signature 🖊️', sigApprover:'Approver Signature / Stamp 📛' }
+  };
+  const fl = formLabels[currentLang];
+  const allLabels = document.querySelectorAll('#sectionCreate .form-group > label');
+  const labelKeys = ['title','dept','period','preparer','reportLang','reportNum','approvalDate','notes','writingStyle','detailLevel','apiKey','approvedBy','approvalDate2','sigPreparer','sigApprover'];
+  allLabels.forEach((lbl, i) => {
+    if (labelKeys[i] && fl[labelKeys[i]]) {
+      // Preserve children like .optional-tag
+      const optTag = lbl.querySelector('.optional-tag');
+      if (optTag && labelKeys[i] === 'apiKey') {
+        lbl.childNodes[0].textContent = fl.apiKey + ' ';
+        optTag.textContent = isAr ? '(اختياري — إذا فارغ يستخدم النمط المحلي)' : '(Optional — uses local mode if empty)';
+      } else {
+        lbl.textContent = fl[labelKeys[i]];
+      }
+    }
+  });
+
+  // Placeholders
+  setAttr('#reportTitle', 'placeholder', isAr ? 'مثال: تقرير الأداء الأسبوعي — الأسبوع الأول مارس 2026' : 'e.g.: Weekly Performance Report — Week 1, March 2026');
+  setAttr('#reportDept', 'placeholder', isAr ? 'مثال: قسم العمليات' : 'e.g.: Operations Department');
+  setAttr('#reportPreparer', 'placeholder', isAr ? 'الاسم والمسمى الوظيفي' : 'Name and Job Title');
+  setAttr('#reportNotes', 'placeholder', isAr ? 'أي ملاحظات إضافية...' : 'Any additional notes...');
+  setAttr('#reportApprover', 'placeholder', isAr ? 'اسم المعتمد ومسماه' : 'Approver name and title');
+
+  // Micro buttons (template, clear)
+  const microBtns = document.querySelectorAll('#sectionCreate .micro-btn');
+  if (microBtns[0]) microBtns[0].textContent = isAr ? '📄 قالب' : '📄 Template';
+  if (microBtns[1]) microBtns[1].textContent = isAr ? '🗑️ مسح' : '🗑️ Clear';
+
+  // Add section button
+  const addSectionBtn = document.querySelector('.add-section-btn');
+  if (addSectionBtn) addSectionBtn.innerHTML = isAr ? '<span>+</span> إضافة قسم جديد' : '<span>+</span> Add New Section';
+
+  // Upload zones
+  setText('.upload-zone .upload-zone-title', isAr ? 'اسحب وأفلت الصور هنا' : 'Drag & drop images here');
+  setText('.upload-zone .upload-zone-sub', isAr ? 'أو انقر للتصفح — PNG, JPG, WEBP, GIF' : 'or click to browse — PNG, JPG, WEBP, GIF');
+  setText('.upload-zone-excel .upload-zone-title, #excelDropZone .upload-zone-title', isAr ? 'ارفع ملف Excel' : 'Upload Excel file');
+  const excelSub = document.querySelector('.upload-zone-excel .upload-zone-sub, #excelDropZone .upload-zone-sub');
+  if (excelSub) excelSub.textContent = isAr ? 'XLS, XLSX, CSV — سيتم استخراج البيانات تلقائياً' : 'XLS, XLSX, CSV — Data will be extracted automatically';
+
+  // Detail slider labels
+  const detailLabels = document.querySelectorAll('.detail-labels span');
+  if (detailLabels.length >= 3) {
+    detailLabels[0].textContent = isAr ? 'موجز' : 'Brief';
+    detailLabels[1].textContent = isAr ? 'متوازن' : 'Balanced';
+    detailLabels[2].textContent = isAr ? 'مفصّل' : 'Detailed';
+  }
+
+  // AI Tone select options
+  const aiTone = document.getElementById('aiTone');
+  if (aiTone) {
+    const toneTexts = isAr
+      ? ['رسمي واحترافي','تنفيذي مختصر','تحليلي مفصّل','ودّي وسلس']
+      : ['Professional & Formal','Executive & Brief','Analytical & Detailed','Friendly & Smooth'];
+    Array.from(aiTone.options).forEach((opt, i) => { if (toneTexts[i]) opt.textContent = toneTexts[i]; });
+  }
+
+  // Save API key checkbox
+  setText('#saveApiKey ~ span, .api-key-save-row .checkbox-label span', isAr ? 'حفظ المفتاح محلياً' : 'Save key locally');
+  const apiTestBtn = document.querySelector('.api-key-wrap .api-test-btn');
+  if (apiTestBtn) apiTestBtn.textContent = isAr ? 'اختبار' : 'Test';
+
+  // Generate button
+  setText('.generate-btn-text', isAr ? 'معالجة وإنشاء التقرير' : 'Process & Create Report');
+
+  // AI Actions panel
+  setText('.ai-actions-title', isAr ? '⚡ أدوات الذكاء الاصطناعي' : '⚡ AI Tools');
+  const aiActionLabels = document.querySelectorAll('.ai-actions-grid .ai-action-btn span:last-child');
+  const aiActionTexts = isAr ? ['ملخص تنفيذي','اقتراحات','تحليل Excel','تذكيرات'] : ['Executive Summary','Suggestions','Excel Analysis','Reminders'];
+  aiActionLabels.forEach((sp, i) => { if (aiActionTexts[i]) sp.textContent = aiActionTexts[i]; });
+
+  // Signature placeholders
+  setText('#sigPreparerPlaceholder', isAr ? 'اضغط لرفع صورة التوقيع' : 'Click to upload signature');
+  setText('#sigApproverPlaceholder', isAr ? 'اضغط لرفع التوقيع أو الختم' : 'Click to upload signature or stamp');
+  const approvalCheck = document.querySelector('#reportApproved ~ span');
+  if (approvalCheck) approvalCheck.textContent = isAr ? '✅ تم الاعتماد الرسمي' : '✅ Officially Approved';
+
+  // ============================
+  // PREVIEW PANEL
+  // ============================
+  setText('.preview-header h3', isAr ? '📄 معاينة التقرير' : '📄 Report Preview');
+  const prevBtns = document.querySelectorAll('.preview-actions .preview-action-btn');
+  const prevTexts = isAr
+    ? ['📋 نسخ','🖨️ طباعة','⬇️ PDF','📝 Word','📊 PPTX','👁️ معاينة','💾 حفظ','⛶']
+    : ['📋 Copy','🖨️ Print','⬇️ PDF','📝 Word','📊 PPTX','👁️ Preview','💾 Save','⛶'];
+  prevBtns.forEach((btn, i) => { if (prevTexts[i]) btn.textContent = prevTexts[i]; });
+
+  // Preview idle state
+  setText('.preview-idle h4', isAr ? 'معاينة التقرير ستظهر هنا' : 'Report preview will appear here');
+  setText('.preview-idle > p', isAr ? 'أدخل بياناتك واضغط "معالجة وإنشاء التقرير"' : 'Enter your data and click "Process & Create Report"');
+  const steps = document.querySelectorAll('.preview-step span:last-child');
+  const stepTexts = isAr
+    ? ['اختر نوع التقرير','أدخل المعلومات والنصوص','ارفع الصور والبيانات','اضغط "إنشاء التقرير"']
+    : ['Choose report type','Enter information and text','Upload images and data','Click "Create Report"'];
+  steps.forEach((sp, i) => { if (stepTexts[i]) sp.textContent = stepTexts[i]; });
+  const stepNums = document.querySelectorAll('.preview-step .step-num');
+  const nums = isAr ? ['١','٢','٣','٤'] : ['1','2','3','4'];
+  stepNums.forEach((sp, i) => { if (nums[i]) sp.textContent = nums[i]; });
+
+  // ============================
+  // HISTORY SECTION
+  // ============================
+  setText('#sectionHistory .section-header-bar h2', isAr ? '📁 التقارير المحفوظة' : '📁 Saved Reports');
+  setText('#sectionHistory .clear-history-btn', isAr ? '🗑️ مسح الكل' : '🗑️ Clear All');
+  setText('#historyEmpty h3', isAr ? 'لا توجد تقارير محفوظة' : 'No saved reports');
+  setText('#historyEmpty p', isAr ? 'أنشئ تقريراً وسيظهر هنا' : 'Create a report and it will appear here');
+
+  // ============================
+  // COMPARE SECTION
+  // ============================
+  setText('#sectionCompare .section-header-bar h2', isAr ? '🔄 مقارنة التقارير' : '🔄 Compare Reports');
+  const compareCards = document.querySelectorAll('#sectionCompare .compare-card h4');
+  if (compareCards[0]) compareCards[0].textContent = isAr ? '📄 التقرير الأول' : '📄 First Report';
+  if (compareCards[1]) compareCards[1].textContent = isAr ? '📄 التقرير الثاني' : '📄 Second Report';
+  const compareBtn = document.querySelector('#sectionCompare .generate-btn');
+  if (compareBtn) compareBtn.innerHTML = isAr ? '<span>🔍</span> مقارنة التقريرين' : '<span>🔍</span> Compare Reports';
+
+  // ============================
+  // AI TOOLBOX SECTION
+  // ============================
+  setText('.ai-tb-badge', isAr ? '🤖 مدعوم بـ GPT-4' : '🤖 Powered by GPT-4');
+  setText('.ai-tb-title', isAr ? '🧠 صندوق أدوات الذكاء' : '🧠 AI Toolbox');
+  setText('.ai-tb-sub', isAr ? '14 أداة ذكاء اصطناعي لتحسين تقاريرك وتحليل بياناتك' : '14 AI tools to enhance your reports and analyze your data');
+
+  // AI Group titles
+  const groupTitles = document.querySelectorAll('.ai-group-title');
+  const groupTexts = isAr
+    ? ['🧠 كتابة وتحرير ذكي','📊 تحليل البيانات','🎯 تجربة المستخدم','🏢 تقارير المرافق والأمن والسلامة','📊 تقارير الأقسام المتخصصة']
+    : ['🧠 Smart Writing & Editing','📊 Data Analysis','🎯 User Experience','🏢 Facilities, Security & Safety Reports','📊 Specialized Department Reports'];
+  groupTitles.forEach((el, i) => { if (groupTexts[i]) el.textContent = groupTexts[i]; });
+
+  // AI Tool cards — titles and descriptions
+  const toolTranslations = {
+    ar: {
+      toolAutoWrite: { t: '✍️ الكتابة التلقائية', d: 'اكتب نقاطاً مختصرة وسيكمل AI التقرير كاملاً', btn: '✍️ اكتب التقرير' },
+      toolSummary: { t: '📋 الملخص الذكي', d: 'ملخص تنفيذي احترافي للتقرير المكتوب بضغطة واحدة', btn: '📋 ولّد الملخص' },
+      toolTone: { t: '🎭 ضابط الأسلوب', d: 'حوّل أسلوب التقرير حسب الجمهور المستهدف', btn: '🎭 حوّل الأسلوب' },
+      toolCritic: { t: '🔍 ناقد التقارير', d: 'AI يراجع تقريرك ويعطيك 5 اقتراحات تحسين', btn: '🔍 راجع التقرير' },
+      toolImprove: { t: 'تحسين التقرير الحالي', d: 'يأخذ تقريرك الحالي ويحسّن الأسلوب، يقوّي الحجج، ويضيف الأرقام المفقودة' },
+      toolNarrator: { t: 'Data Narrator', d: 'أدخل أرقاماً وسيشرحها AI بلغة طبيعية', btn: '📣 اشرح الأرقام' },
+      toolAnomaly: { t: 'Anomaly Detection', d: 'اكتشف الشذوذ والانحرافات في بياناتك', btn: '⚠️ اكتشف الشذوذ' },
+      toolForecast: { t: 'AI Forecast', d: 'تنبّأ بالنتائج القادمة من بيانات السابق', btn: '🔮 تنبّأ بالمستقبل' },
+      toolVoice: { t: 'Voice Input', d: 'أملِ التقرير بصوتك — محوّل للنص تلقائياً' },
+      toolSchedule: { t: 'Auto Schedule', d: 'جدّول إنشاء التقارير تلقائياً وتلقّ تذكيرات ذكية', btn: '⏰ فعّل الجدولة' },
+      toolSmartTpl: { t: '🧩 القوالب الذكية', d: 'قوالب تتعلم من تقاريرك السابقة وتقترح محتوى' },
+      toolMeetingMinutes: { t: 'محضر اجتماع احترافي', d: 'الصق ملاحظات اجتماعك العشوائية وسيحولها AI لمحضر رسمي كامل' },
+      toolGoogleSheets: { t: 'Google Sheets → تقرير', d: 'الصق رابط Google Sheet وسيجلب البيانات تلقائياً ويولّد تقريراً' },
+      toolExcelAi: { t: 'Excel → تقرير', d: 'ارفع ملف Excel وسيولّد AI تقريراً كاملاً من بياناتك' },
+      toolTranslate: { t: 'Multi-Language', d: 'ترجم تقريرك لأي لغة بجودة احترافية', btn: '🌍 ترجم التقرير' },
+      toolMaintenanceReport: { t: '🔧 تقرير الصيانة', d: 'أدخل أعمال الصيانة المنجزة والمعلقة وسيكتب AI تقريراً شاملاً', btn: '🔧 توليد تقرير الصيانة' },
+      toolSecurityReport: { t: '🛡️ تقرير الأمن والحوادث', d: 'أدخل ملاحظات الأمن والبلاغات ويولّد AI تقريراً رسمياً', btn: '🛡️ توليد تقرير الأمن' },
+      toolSafetyReport: { t: '⛑️ تقرير السلامة المهنية', d: 'بيانات السلامة والتدريب والحوادث → تقرير مؤسسي احترافي', btn: '⛑️ توليد تقرير السلامة' },
+      toolInspectionReport: { t: '🔍 تقرير الجولة التفتيشية', d: 'حوّل ملاحظات الجولة إلى تقرير تفتيش رسمي', btn: '🔍 توليد تقرير التفتيش' },
+    },
+    en: {
+      toolAutoWrite: { t: '✍️ Auto Write', d: 'Write brief bullet points and AI will complete the report', btn: '✍️ Write Report' },
+      toolSummary: { t: '📋 Smart Summary', d: 'Professional executive summary of the written report in one click', btn: '📋 Generate Summary' },
+      toolTone: { t: '🎭 Tone Adjuster', d: 'Transform the report style for your target audience', btn: '🎭 Adjust Tone' },
+      toolCritic: { t: '🔍 Report Critic', d: 'AI reviews your report and gives 5 improvement suggestions', btn: '🔍 Review Report' },
+      toolImprove: { t: 'Improve Current Report', d: 'Takes your current report and enhances the style, strengthens arguments, and adds missing data' },
+      toolNarrator: { t: 'Data Narrator', d: 'Enter numbers and AI will explain them in natural language', btn: '📣 Explain Numbers' },
+      toolAnomaly: { t: 'Anomaly Detection', d: 'Detect anomalies and deviations in your data', btn: '⚠️ Detect Anomalies' },
+      toolForecast: { t: 'AI Forecast', d: 'Predict future results from historical data', btn: '🔮 Predict Future' },
+      toolVoice: { t: 'Voice Input', d: 'Dictate your report by voice — automatically converted to text' },
+      toolSchedule: { t: 'Auto Schedule', d: 'Schedule automatic report creation and receive smart reminders', btn: '⏰ Enable Schedule' },
+      toolSmartTpl: { t: '🧩 Smart Templates', d: 'Templates that learn from your past reports and suggest content' },
+      toolMeetingMinutes: { t: 'Meeting Minutes', d: 'Paste your random meeting notes and AI will convert them into official minutes' },
+      toolGoogleSheets: { t: 'Google Sheets → Report', d: 'Paste a Google Sheet link and it will automatically fetch data and generate a report' },
+      toolExcelAi: { t: 'Excel → Report', d: 'Upload an Excel file and AI will generate a complete report from your data' },
+      toolTranslate: { t: 'Multi-Language', d: 'Translate your report to any language with professional quality', btn: '🌍 Translate Report' },
+      toolMaintenanceReport: { t: '🔧 Maintenance Report', d: 'Enter completed and pending maintenance work and AI will write a comprehensive report', btn: '🔧 Generate Maintenance Report' },
+      toolSecurityReport: { t: '🛡️ Security & Incident Report', d: 'Enter security notes and reports, AI will generate an official report', btn: '🛡️ Generate Security Report' },
+      toolSafetyReport: { t: '⛑️ Occupational Safety Report', d: 'Safety, training, and incident data → professional institutional report', btn: '⛑️ Generate Safety Report' },
+      toolInspectionReport: { t: '🔍 Inspection Report', d: 'Convert inspection notes into an official inspection report', btn: '🔍 Generate Inspection Report' },
+    }
+  };
+
+  const tt = toolTranslations[currentLang];
+  Object.keys(tt).forEach(toolId => {
+    const card = document.getElementById(toolId);
+    if (!card) return;
+    const h4 = card.querySelector('h4');
+    const p = card.querySelector('p');
+    if (h4) h4.textContent = tt[toolId].t;
+    if (p) p.textContent = tt[toolId].d;
+    if (tt[toolId].btn) {
+      // Find the main action button (first .ai-tool-btn that is not inside a flex container)
+      const btns = card.querySelectorAll('.ai-tool-btn');
+      const mainBtn = btns[btns.length > 1 ? btns.length - 1 : 0]; // usually the last or only button
+      // Only update single-action buttons; multi-button cards are handled separately
+      if (btns.length === 1 && mainBtn) mainBtn.textContent = tt[toolId].btn;
+    }
+  });
+
+  // Improve card special buttons
+  const improveCard = document.getElementById('toolImprove');
+  if (improveCard) {
+    const iBtns = improveCard.querySelectorAll('.ai-tool-btn');
+    if (isAr) {
+      if (iBtns[0]) iBtns[0].textContent = '✨ تحسين الأسلوب';
+      if (iBtns[1]) iBtns[1].textContent = '📝 توسيع التقرير';
+      if (iBtns[2]) iBtns[2].textContent = '📊 ملخص تنفيذي احترافي';
+    } else {
+      if (iBtns[0]) iBtns[0].textContent = '✨ Improve Style';
+      if (iBtns[1]) iBtns[1].textContent = '📝 Expand Report';
+      if (iBtns[2]) iBtns[2].textContent = '📊 Executive Summary';
+    }
+  }
+
+  // Meeting minutes buttons
+  const minutesCard = document.getElementById('toolMeetingMinutes');
+  if (minutesCard) {
+    const mBtns = minutesCard.querySelectorAll('.ai-tool-btn');
+    if (isAr) {
+      if (mBtns[0]) mBtns[0].textContent = '📋 محضر رسمي';
+      if (mBtns[1]) mBtns[1].textContent = '✅ بنود الإجراءات';
+      if (mBtns[2]) mBtns[2].textContent = '💬 ملخص سريع';
+    } else {
+      if (mBtns[0]) mBtns[0].textContent = '📋 Formal Minutes';
+      if (mBtns[1]) mBtns[1].textContent = '✅ Action Items';
+      if (mBtns[2]) mBtns[2].textContent = '💬 Quick Summary';
+    }
+  }
+
+  // Smart Templates buttons
+  const tplCard = document.getElementById('toolSmartTpl');
+  if (tplCard) {
+    const tBtns = tplCard.querySelectorAll('.ai-tool-btn');
+    if (isAr) {
+      if (tBtns[0]) tBtns[0].textContent = '🧩 تعلّم من تقاريري';
+      if (tBtns[1]) tBtns[1].textContent = '💡 اقترح محتوى';
+    } else {
+      if (tBtns[0]) tBtns[0].textContent = '🧩 Learn from My Reports';
+      if (tBtns[1]) tBtns[1].textContent = '💡 Suggest Content';
+    }
+  }
+
+  // Voice buttons
+  setText('#voiceStartBtn', isAr ? '🎙️ ابدأ التسجيل' : '🎙️ Start Recording');
+  setText('#voiceStopBtn', isAr ? '⏹️ إيقاف' : '⏹️ Stop');
+
+  // Tone chips
+  const toneChips = document.querySelectorAll('#toolTone .ai-tone-chip');
+  const toneTexts = isAr
+    ? ['👔 رسمي','⚡ مختصر','📖 تفصيلي','💪 حازم','😊 ودّي','🎓 أكاديمي']
+    : ['👔 Formal','⚡ Brief','📖 Detailed','💪 Assertive','😊 Friendly','🎓 Academic'];
+  toneChips.forEach((chip, i) => { if (toneTexts[i]) chip.textContent = toneTexts[i]; });
+
+  // Summary radio labels
+  const summaryLabels = document.querySelectorAll('#toolSummary .ai-tool-options label');
+  const sumTexts = isAr ? [' مختصر',' متوسط',' تفصيلي'] : [' Brief',' Medium',' Detailed'];
+  summaryLabels.forEach((lbl, i) => {
+    const chk = lbl.querySelector('input');
+    if (chk && sumTexts[i]) { lbl.textContent = ''; lbl.appendChild(chk); lbl.appendChild(document.createTextNode(sumTexts[i])); }
+  });
+
+  // Critic checkboxes
+  const criticLabels = document.querySelectorAll('#toolCritic .ai-tool-options label');
+  const criticTexts = isAr
+    ? [' الأسلوب اللغوي',' الهيكل والتنظيم',' جودة المحتوى',' الأثر والإقناع']
+    : [' Language Style',' Structure & Organization',' Content Quality',' Impact & Persuasion'];
+  criticLabels.forEach((lbl, i) => {
+    const chk = lbl.querySelector('input');
+    if (chk && criticTexts[i]) { lbl.textContent = ''; lbl.appendChild(chk); lbl.appendChild(document.createTextNode(criticTexts[i])); }
+  });
+
+  // ============================
+  // SETTINGS SECTION (if visible)
+  // ============================
+  setText('#sectionSettings .section-header-bar h2, #sectionSettings h2:first-of-type', isAr ? '⚙️ الإعدادات' : '⚙️ Settings');
+
+  // ============================
+  // UTILITY TOOLTIPS
+  // ============================
+  setAttr('#navTheme', 'title', isAr ? 'المظهر' : 'Theme');
+  setAttr('#navLang', 'title', isAr ? 'اللغة' : 'Language');
+  setAttr('#navProfile', 'title', isAr ? 'ملفي' : 'Profile');
+  setAttr('#navSearch', 'title', isAr ? 'بحث' : 'Search');
+  setAttr('#navBell', 'title', isAr ? 'الإشعارات' : 'Notifications');
+  setAttr('#navDashboard2', 'title', isAr ? 'لوحة التحكم' : 'Dashboard');
+
+  // Lang toggle label
   const langIcon = document.getElementById('langIcon');
   const langLabel = document.getElementById('langLabel');
   if (langIcon) langIcon.textContent = '🌐';
@@ -5363,11 +5674,8 @@ function applyLanguage() {
   // Font
   document.documentElement.style.fontFamily = isAr ? "var(--font)" : "'Inter', 'Arial', sans-serif";
 
-  // AI Toolbox title
-  const aiBoxTitle = document.querySelector('#sectionAi .ai-title, #sectionAi h1');
-  if (aiBoxTitle) aiBoxTitle.textContent = t.aiToolboxTitle;
-  const aiBoxSub = document.querySelector('#sectionAi .ai-subtitle');
-  if (aiBoxSub) aiBoxSub.textContent = t.aiToolboxSub;
+  // Page title
+  document.title = isAr ? 'MBR Reports — التقارير الذكية' : 'MBR Reports — Smart Reports';
 
   showToast(isAr ? '🌐 اللغة: العربية' : '🌐 Language: English', 'success');
 }
