@@ -1808,28 +1808,22 @@ function getCurrentSession() {
 }
 
 function checkAuth() {
-  // Auto-login on localhost for admin
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    const adminEmail = 'moh.rafaah@gmail.com';
-    const users = getUsers();
-    if (!users[adminEmail] || !users[adminEmail].hash || users[adminEmail].firstTime) {
-      users[adminEmail] = { hash: 'local_admin', fullName: 'الادمن', role: 'admin', created: Date.now() };
-      saveUsers(users);
-    }
-    sessionStorage.setItem('mbrcst_session', JSON.stringify({ username: adminEmail, loginAt: Date.now() }));
-    loginSuccess(adminEmail, 'الادمن');
-    return;
+  // ====================================================
+  // 🔓 BYPASS MODE — تسجيل دخول تلقائي مؤقت
+  // ====================================================
+  const bypassUser = 'moh.rafaah@gmail.com';
+  const users = getUsers();
+  if (!users[bypassUser]) {
+    users[bypassUser] = { hash: 'bypass', fullName: 'المدير', role: 'admin', created: Date.now() };
+    saveUsers(users);
   }
-  const session = getCurrentSession();
-  if (session && session.username) {
-    const users = getUsers();
-    if (users[session.username]) {
-      loginSuccess(session.username, users[session.username].fullName);
-      return;
-    }
-  }
+  sessionStorage.setItem('mbrcst_session', JSON.stringify({ username: bypassUser, loginAt: Date.now() }));
+  loginSuccess(bypassUser, 'المدير');
+  // إخفاء أي overlay للدخول
   const overlay = document.getElementById('loginOverlay');
-  if (overlay) overlay.style.display = 'flex';
+  if (overlay) overlay.style.display = 'none';
+  return;
+  // ====================================================
 }
 
 async function doAuth() {
