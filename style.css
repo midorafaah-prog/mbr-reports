@@ -1800,33 +1800,44 @@ body.theme-corporate .generate-btn { background: linear-gradient(135deg, #0078d4
   min-height: 800px;
 }
 #sectionAi .ai-group-title {
-  color: #fff !important;
+  color: var(--text-primary, #fff) !important;
   font-size: 1.1rem !important;
 }
 #sectionAi .ai-tool-card {
-  background: #1a1a2e !important;
+  background: var(--card-bg, #1a1a2e) !important;
   border: 1px solid rgba(108,99,255,0.25) !important;
   min-height: 200px;
+  transition: background 0.3s ease;
 }
 #sectionAi .ai-tool-card h4 {
-  color: #ffffff !important;
+  color: var(--text-primary, #ffffff) !important;
 }
 #sectionAi .ai-tool-card p {
-  color: #a0a0c0 !important;
+  color: var(--text-muted, #a0a0c0) !important;
 }
 #sectionAi .ai-tb-title {
   font-size: 2rem !important;
   background: linear-gradient(135deg,#6c63ff,#00d4aa) !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
 }
 #sectionAi .ai-tb-sub {
-  color: #a0a0c0 !important;
+  color: var(--text-muted, #a0a0c0) !important;
 }
 #sectionAi .ai-key-bar {
   display: block !important;
   color: #f59e0b !important;
 }
+/* Light mode: override #sectionAi with higher specificity */
+body.light-mode #sectionAi .ai-tool-card {
+  background: #ffffff !important;
+  border-color: rgba(108,99,255,0.15) !important;
+}
+body.light-mode #sectionAi .ai-group-title { color: #6c63ff !important; }
+body.light-mode #sectionAi .ai-tool-card h4 { color: #1a1a2e !important; }
+body.light-mode #sectionAi .ai-tool-card p { color: #5a5a7e !important; }
+body.light-mode #sectionAi .ai-tb-sub { color: #6b6b8f !important; }
 
 
 
