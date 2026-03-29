@@ -5076,6 +5076,173 @@ const TRANSLATIONS = {
   }
 };
 
+// ============================================================
+// COMPREHENSIVE UI TEXT MAP for full language switch
+// ============================================================
+const UI_TEXT = {
+  ar: {
+    // Nav tabs
+    navCreate: '✏️ إنشاء',
+    navHistory: '📁 المكتبة',
+    navAi: '🤖 أدوات الذكاء',
+    navSettings: '⚙️ إعدادات',
+    // Dropdown buttons
+    dropAI: '🧠 AI',
+    dropExport: '📤 تصدير',
+    dropManage: '📂 إدارة',
+    // Dropdown AI menu
+    menuVoice: '🎙️ مساعد صوتي',
+    menuQuickReport: '⚡ تقرير سريع',
+    menuWritingAssist: '✍️ مساعد الكتابة',
+    menuPrompts: '💬 مكتبة Prompts',
+    menuCharts: '📈 رسوم بيانية',
+    menuTranslate: '🌍 ترجمة التقرير',
+    menuFocus: '🎯 وضع التركيز',
+    menuAllAI: '🔧 كل أدوات AI ←',
+    // Dropdown Export menu
+    menuPdf: '📄 تصدير PDF',
+    menuWord: '📝 Word (.doc)',
+    menuPPT: '🎯 PowerPoint',
+    menuCover: '🎨 غلاف + PDF',
+    menuEmail: '📧 إرسال بريد',
+    menuPrint: '🖨️ طباعة',
+    // Dropdown Manage menu
+    menuReading: '📖 وضع القراءة',
+    menuFavorites: '⭐ المفضلة',
+    menuAnalytics: '📊 تحليلاتي',
+    menuMerge: '🔀 دمج + نسخ',
+    menuCompare: '🔄 مقارنة تقريرين',
+    menuSchedule: '⏰ جدولة تلقائية',
+    menuTemplates: '📋 القوالب',
+    // Hero section
+    heroBadge: '🤖 مدعوم بالذكاء الاصطناعي',
+    heroTitle1: 'منصة التقارير الدورية',
+    heroTitle2: 'بالذكاء الاصطناعي',
+    heroSub: 'أضف بياناتك ونصوصك وصورك — يتولى الذكاء الاصطناعي تحسينها ودمجها في تقرير احترافي',
+    // Dashboard stat labels
+    dashTotal: 'إجمالي التقارير',
+    dashMonth: 'تقارير هذا الشهر',
+    dashFav: 'المفضلة',
+    dashAI: 'أدوات الذكاء',
+    // Quick actions
+    qkReport: '⚡ تقرير سريع',
+    qkLastReports: '📋 آخر التقارير',
+    qkGraphs: '✏ رسوم بيانية',
+    qkTranslate: '🌐 ترجمة',
+    qkMyAnalytics: '📊 تحليلاتي',
+    // Report form
+    reportTitle: 'عنوان التقرير',
+    reportTitlePH: 'مثال: تقرير الأداء الأسبوعي — الأسبوع الأول مارس 2026',
+    reportType: '📋 نوع التقرير',
+    addSection: '+ إضافة قسم جديد',
+    imagesTitle: '🖼️ الصور والمرفقات المرئية',
+    dropImages: 'اسحب وأفلت الصور هنا',
+    dropImagesNote: 'أو انقر للتصفح — PNG, JPG, WEBP, GIF',
+    excelTitle: '📊 ملف البيانات (Excel)',
+    // Preview panel
+    previewTitle: '📄 معاينة التقرير',
+    previewPlaceholder: 'معاينة التقرير ستظهر هنا',
+    previewNote: 'أدخل بياناتك واضغط "معالجة وإنشاء التقرير"',
+    step1: 'اختر نوع التقرير',
+    step2: 'أدخل المعلومات والنصوص',
+    step3: 'ارفع الصور والبيانات',
+    step4: 'اضغط "إنشاء التقرير"',
+    // Toolbar
+    btnCopy: '📋 نسخ',
+    btnPrint: '🖨️ طباعة',
+    btnPDF: '📄 PDF',
+    btnWord: '📝 Word',
+    btnPreview: '👁 معاينة',
+    btnSave: '💾 حفظ',
+    btnFullscreen: '⛶',
+    btnPPTX: '📊 PPTX',
+    // Utility icons
+    navThemeTitle: 'المظهر',
+    navLangTitle: 'اللغة',
+    navProfileTitle: 'ملفي',
+    navSearchTitle: 'بحث',
+    navBellTitle: 'الإشعارات',
+    navDashTitle: 'لوحة التحكم',
+    // AI Toolbox
+    aiToolboxTitle: '🧠 صندوق أدوات الذكاء',
+    aiToolboxSub: '14 أداة ذكاء اصطناعي لتحسين تقاريرك وتحليل بياناتك',
+  },
+  en: {
+    navCreate: '✏️ Create',
+    navHistory: '📁 Library',
+    navAi: '🤖 AI Tools',
+    navSettings: '⚙️ Settings',
+    dropAI: '🧠 AI',
+    dropExport: '📤 Export',
+    dropManage: '📂 Manage',
+    menuVoice: '🎙️ Voice Assistant',
+    menuQuickReport: '⚡ Quick Report',
+    menuWritingAssist: '✍️ Writing Assistant',
+    menuPrompts: '💬 Prompts Library',
+    menuCharts: '📈 Charts',
+    menuTranslate: '🌍 Translate Report',
+    menuFocus: '🎯 Focus Mode',
+    menuAllAI: '🔧 All AI Tools →',
+    menuPdf: '📄 Export PDF',
+    menuWord: '📝 Word (.doc)',
+    menuPPT: '🎯 PowerPoint',
+    menuCover: '🎨 Cover + PDF',
+    menuEmail: '📧 Send Email',
+    menuPrint: '🖨️ Print',
+    menuReading: '📖 Reading Mode',
+    menuFavorites: '⭐ Favorites',
+    menuAnalytics: '📊 Analytics',
+    menuMerge: '🔀 Merge + Copy',
+    menuCompare: '🔄 Compare Reports',
+    menuSchedule: '⏰ Schedule',
+    menuTemplates: '📋 Templates',
+    heroBadge: '🤖 Powered by AI',
+    heroTitle1: 'Smart Reports Platform',
+    heroTitle2: 'with Artificial Intelligence',
+    heroSub: 'Add your data, text, and images — AI will enhance and compile them into a professional report',
+    dashTotal: 'Total Reports',
+    dashMonth: 'This Month',
+    dashFav: 'Favorites',
+    dashAI: 'AI Tools',
+    qkReport: '⚡ Quick Report',
+    qkLastReports: '📋 Recent Reports',
+    qkGraphs: '✏ Charts',
+    qkTranslate: '🌐 Translate',
+    qkMyAnalytics: '📊 Analytics',
+    reportTitle: 'Report Title',
+    reportTitlePH: 'e.g.: Weekly Performance Report — Week 1, March 2026',
+    reportType: '📋 Report Type',
+    addSection: '+ Add New Section',
+    imagesTitle: '🖼️ Images & Visual Attachments',
+    dropImages: 'Drag & drop images here',
+    dropImagesNote: 'or click to browse — PNG, JPG, WEBP, GIF',
+    excelTitle: '📊 Data File (Excel)',
+    previewTitle: '📄 Report Preview',
+    previewPlaceholder: 'Report preview will appear here',
+    previewNote: 'Enter your data and click "Process & Create Report"',
+    step1: 'Choose report type',
+    step2: 'Enter information and text',
+    step3: 'Upload images and data',
+    step4: 'Click "Create Report"',
+    btnCopy: '📋 Copy',
+    btnPrint: '🖨️ Print',
+    btnPDF: '📄 PDF',
+    btnWord: '📝 Word',
+    btnPreview: '👁 Preview',
+    btnSave: '💾 Save',
+    btnFullscreen: '⛶',
+    btnPPTX: '📊 PPTX',
+    navThemeTitle: 'Theme',
+    navLangTitle: 'Language',
+    navProfileTitle: 'Profile',
+    navSearchTitle: 'Search',
+    navBellTitle: 'Notifications',
+    navDashTitle: 'Dashboard',
+    aiToolboxTitle: '🧠 AI Toolbox',
+    aiToolboxSub: '14 AI tools to enhance your reports and analyze your data',
+  }
+};
+
 function toggleLanguage() {
   currentLang = currentLang === 'ar' ? 'en' : 'ar';
   localStorage.setItem('mbrcst_lang', currentLang);
@@ -5084,21 +5251,124 @@ function toggleLanguage() {
 
 function applyLanguage() {
   const isAr = currentLang === 'ar';
+  const t = UI_TEXT[currentLang] || UI_TEXT.ar;
   document.documentElement.lang = currentLang;
   document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+
   // Update all i18n elements
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.dataset.i18n;
     const val = TRANSLATIONS[currentLang]?.[key];
     if (val) el.textContent = val;
   });
-  // Update nav labels
+
+  // Helper: set text for element's .tab-label child or the element itself
+  function setLabel(id, text) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const lbl = el.querySelector('.tab-label');
+    if (lbl) { lbl.textContent = text.replace(/^[^\s]+\s/, ''); } // strip emoji
+    else if (el.querySelector('.dd-arrow')) {
+      // dropdown button — keep the arrow
+      const arrow = el.querySelector('.dd-arrow');
+      el.textContent = '';
+      el.appendChild(document.createTextNode(text + ' '));
+      el.appendChild(arrow);
+    }
+  }
+
+  // Nav tabs
+  setLabel('navCreate', t.navCreate);
+  setLabel('navHistory', t.navHistory);
+  setLabel('navAi', t.navAi);
+  setLabel('navSettings', t.navSettings);
+
+  // Dropdown buttons
+  const dropAIBtn = document.querySelector('#dropAI > .nav-dropdown-btn');
+  const dropExportBtn = document.querySelector('#dropExport > .nav-dropdown-btn');
+  const dropManageBtn = document.querySelector('#dropManage > .nav-dropdown-btn');
+  function setDropBtn(btn, text) {
+    if (!btn) return;
+    const arrow = btn.querySelector('.dd-arrow');
+    btn.textContent = '';
+    btn.appendChild(document.createTextNode(text + ' '));
+    if (arrow) btn.appendChild(arrow);
+    else { const sp = document.createElement('span'); sp.className='dd-arrow'; sp.textContent='▾'; btn.appendChild(sp); }
+  }
+  setDropBtn(dropAIBtn, t.dropAI);
+  setDropBtn(dropExportBtn, t.dropExport);
+  setDropBtn(dropManageBtn, t.dropManage);
+
+  // Dropdown AI menu items
+  const aiMenu = document.querySelector('#dropAI .nav-dropdown-menu');
+  if (aiMenu) {
+    const items = aiMenu.querySelectorAll('button');
+    const aiTexts = [t.menuVoice, t.menuQuickReport, t.menuWritingAssist, t.menuPrompts, t.menuCharts, t.menuTranslate, t.menuFocus, null, t.menuAllAI];
+    let idx = 0;
+    items.forEach(btn => { if (aiTexts[idx] !== undefined && aiTexts[idx] !== null) btn.textContent = aiTexts[idx]; idx++; });
+  }
+
+  // Dropdown Export menu items
+  const exportMenu = document.querySelector('#dropExport .nav-dropdown-menu');
+  if (exportMenu) {
+    const items = exportMenu.querySelectorAll('button');
+    const exTexts = [t.menuPdf, t.menuWord, t.menuPPT, t.menuCover, t.menuEmail, t.menuPrint];
+    items.forEach((btn, i) => { if (exTexts[i]) btn.textContent = exTexts[i]; });
+  }
+
+  // Dropdown Manage menu items
+  const manageMenu = document.querySelector('#dropManage .nav-dropdown-menu');
+  if (manageMenu) {
+    const items = manageMenu.querySelectorAll('button');
+    const mgTexts = [t.menuReading, t.menuFavorites, t.menuAnalytics, t.menuMerge, t.menuCompare, t.menuSchedule, t.menuTemplates];
+    items.forEach((btn, i) => { if (mgTexts[i]) btn.textContent = mgTexts[i]; });
+  }
+
+  // Hero section
+  const heroBadge = document.querySelector('.hero-badge');
+  if (heroBadge) heroBadge.textContent = t.heroBadge;
+  const heroTitle = document.querySelector('.hero-title');
+  if (heroTitle) {
+    const grad = heroTitle.querySelector('.gradient-text');
+    if (grad) { grad.textContent = t.heroTitle2; heroTitle.childNodes[0].textContent = t.heroTitle1 + ' '; }
+  }
+  const heroSub = document.querySelector('.hero-sub');
+  if (heroSub) heroSub.textContent = t.heroSub;
+
+  // Dashboard stat labels
+  const dashLabels = document.querySelectorAll('.dash-stat-label');
+  const dashTexts = [t.dashTotal, t.dashMonth, t.dashFav, t.dashAI];
+  dashLabels.forEach((el, i) => { if (dashTexts[i]) el.textContent = dashTexts[i]; });
+
+  // Utility icon tooltips
+  const navTheme = document.getElementById('navTheme');
+  if (navTheme) navTheme.title = t.navThemeTitle;
+  const navLang = document.getElementById('navLang');
+  if (navLang) navLang.title = t.navLangTitle;
+  const navProfile = document.getElementById('navProfile');
+  if (navProfile) navProfile.title = t.navProfileTitle;
+  const navSearch = document.getElementById('navSearch');
+  if (navSearch) navSearch.title = t.navSearchTitle;
+  const navBell = document.getElementById('navBell');
+  if (navBell) navBell.title = t.navBellTitle;
+  const navDashboard2 = document.getElementById('navDashboard2');
+  if (navDashboard2) navDashboard2.title = t.navDashTitle;
+
+  // Update lang icon/label
   const langIcon = document.getElementById('langIcon');
   const langLabel = document.getElementById('langLabel');
   if (langIcon) langIcon.textContent = '🌐';
   if (langLabel) langLabel.textContent = isAr ? 'EN' : 'عر';
+
   // Font
   document.documentElement.style.fontFamily = isAr ? "var(--font)" : "'Inter', 'Arial', sans-serif";
+
+  // AI Toolbox title
+  const aiBoxTitle = document.querySelector('#sectionAi .ai-title, #sectionAi h1');
+  if (aiBoxTitle) aiBoxTitle.textContent = t.aiToolboxTitle;
+  const aiBoxSub = document.querySelector('#sectionAi .ai-subtitle');
+  if (aiBoxSub) aiBoxSub.textContent = t.aiToolboxSub;
+
   showToast(isAr ? '🌐 اللغة: العربية' : '🌐 Language: English', 'success');
 }
 
