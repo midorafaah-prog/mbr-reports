@@ -3410,3 +3410,222 @@ body.light-mode ::-webkit-scrollbar-thumb { background: rgba(108,99,255,0.3); }
 
 /* Theme icon update */
 body.light-mode #themeIcon::before { content: '☀️'; }
+
+/* =====================================================
+   ☀️ LIGHT MODE — COMPREHENSIVE FIX (v2)
+   Covers every element that remained dark in the audit
+   ===================================================== */
+
+/* === DASHBOARD OVERLAY === */
+body.light-mode #dashboardOverlay,
+body.light-mode .dashboard-overlay,
+body.light-mode [id*="dashOverlay"],
+body.light-mode [id*="Dashboard"] {
+  background: #f4f5f7 !important;
+  color: #1a1a2e !important;
+}
+body.light-mode .dash-stat-card,
+body.light-mode .stat-card {
+  background: #ffffff !important;
+  border-color: rgba(108,99,255,0.15) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07) !important;
+}
+body.light-mode .dash-stat-card *,
+body.light-mode .stat-card * { color: #1a1a2e !important; }
+body.light-mode .dash-stat-value,
+body.light-mode .stat-value { color: #6c63ff !important; }
+body.light-mode .chart-container,
+body.light-mode canvas { filter: brightness(0.92) hue-rotate(0deg); }
+
+/* === AI TOOLBOX FULL OVERLAY === */
+body.light-mode #aiToolsOverlay,
+body.light-mode .ai-fullpage-overlay,
+body.light-mode .ai-toolbox-wrap,
+body.light-mode [id*="aiOverlay"],
+body.light-mode [id*="toolbox"] {
+  background: #f0f1f8 !important;
+  color: #1a1a2e !important;
+}
+body.light-mode .ai-tool-card {
+  background: #ffffff !important;
+  border-color: rgba(108,99,255,0.15) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07) !important;
+  color: #1a1a2e !important;
+}
+body.light-mode .ai-tool-card * { color: #2d2d4e !important; }
+body.light-mode .ai-tool-card h3,
+body.light-mode .ai-tool-card h4 { color: #1a1a2e !important; }
+body.light-mode .ai-tool-card p,
+body.light-mode .ai-tool-card .tool-desc { color: #5a5a7e !important; }
+body.light-mode .ai-group-title,
+body.light-mode .tool-section-title { color: #6c63ff !important; }
+body.light-mode .ai-section-header {
+  background: rgba(255,255,255,0.9) !important;
+  border-color: rgba(0,0,0,0.08) !important;
+  color: #1a1a2e !important;
+}
+
+/* API Key banner in AI Tools */
+body.light-mode .api-key-banner,
+body.light-mode [class*="api-banner"],
+body.light-mode .openai-status {
+  background: rgba(0,212,170,0.1) !important;
+  border-color: rgba(0,212,170,0.3) !important;
+  color: #007a5e !important;
+}
+
+/* === SETTINGS PAGE === */
+body.light-mode .settings-wrap,
+body.light-mode #settingsSection,
+body.light-mode .settings-section {
+  background: #f4f5f7 !important;
+}
+body.light-mode .settings-card,
+body.light-mode .settings-panel,
+body.light-mode [class*="settings-card"] {
+  background: #ffffff !important;
+  border-color: rgba(0,0,0,0.08) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+}
+body.light-mode .settings-card h3,
+body.light-mode .settings-card h4,
+body.light-mode .settings-card label { color: #1a1a2e !important; }
+body.light-mode .settings-card p,
+body.light-mode .settings-card small { color: #6b6b8f !important; }
+
+/* === REPORT CREATION FORM === */
+body.light-mode .create-wrap,
+body.light-mode #createSection,
+body.light-mode .report-form-wrap {
+  background: #f4f5f7 !important;
+}
+body.light-mode .form-section,
+body.light-mode .form-block,
+body.light-mode .content-section-block {
+  background: #ffffff !important;
+  border-color: rgba(0,0,0,0.08) !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
+}
+body.light-mode .form-section h3,
+body.light-mode .form-section h4,
+body.light-mode .form-block h3,
+body.light-mode .form-block h4,
+body.light-mode .content-section-block h3,
+body.light-mode .content-section-block h4 { color: #1a1a2e !important; }
+
+/* Upload zones */
+body.light-mode .upload-zone,
+body.light-mode .drop-zone,
+body.light-mode [class*="upload"],
+body.light-mode [class*="dropzone"] {
+  background: rgba(108,99,255,0.04) !important;
+  border-color: rgba(108,99,255,0.25) !important;
+  color: #4a4a6e !important;
+}
+body.light-mode .upload-zone p,
+body.light-mode .drop-zone p { color: #6b6b8f !important; }
+
+/* === BOTTOM FILE DROP BAR === */
+body.light-mode .bottom-drop-bar,
+body.light-mode .file-drop-footer,
+body.light-mode [class*="drop-bar"],
+body.light-mode .ai-drop-zone {
+  background: rgba(240,241,248,0.97) !important;
+  border-color: rgba(108,99,255,0.2) !important;
+  color: #4a4a6e !important;
+}
+
+/* === HISTORY / LIBRARY PAGE === */
+body.light-mode .history-wrap,
+body.light-mode #historySection,
+body.light-mode .library-wrap {
+  background: #f4f5f7 !important;
+}
+body.light-mode .hist-card,
+body.light-mode .report-hist-card {
+  background: #ffffff !important;
+  border-color: rgba(0,0,0,0.08) !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
+}
+
+/* === BOTTOM NAVIGATION BAR === */
+body.light-mode .bottom-nav,
+body.light-mode .mobile-bottom-nav,
+body.light-mode [class*="bottom-nav"] {
+  background: rgba(255,255,255,0.97) !important;
+  border-top-color: rgba(0,0,0,0.1) !important;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.08) !important;
+}
+body.light-mode .bottom-nav-item,
+body.light-mode .mobile-nav-item { color: rgba(0,0,0,0.5) !important; }
+body.light-mode .bottom-nav-item.active,
+body.light-mode .mobile-nav-item.active { color: #6c63ff !important; }
+
+/* === PWA INSTALL BANNER === */
+body.light-mode .pwa-banner,
+body.light-mode .install-banner,
+body.light-mode [id*="pwa"],
+body.light-mode [id*="install"] {
+  background: #ffffff !important;
+  border-color: rgba(108,99,255,0.2) !important;
+  color: #1a1a2e !important;
+}
+
+/* === TOAST NOTIFICATIONS === */
+body.light-mode .toast,
+body.light-mode [class*="toast"] {
+  background: #1a1a2e !important;
+  color: #fff !important;
+}
+
+/* === ACTION BUTTONS IN DARK CARDS === */
+body.light-mode .btn-outline,
+body.light-mode .btn-ghost {
+  border-color: rgba(108,99,255,0.3) !important;
+  color: #6c63ff !important;
+}
+body.light-mode .btn-outline:hover,
+body.light-mode .btn-ghost:hover { background: rgba(108,99,255,0.08) !important; }
+
+/* === SECTION SWITCHER TABS === */
+body.light-mode .section-tabs,
+body.light-mode .tab-switcher {
+  background: rgba(0,0,0,0.04) !important;
+  border-color: rgba(0,0,0,0.08) !important;
+}
+body.light-mode .section-tab,
+body.light-mode .tab-btn {
+  color: #4a4a6e !important;
+}
+body.light-mode .section-tab.active,
+body.light-mode .tab-btn.active {
+  background: #6c63ff !important;
+  color: #fff !important;
+}
+
+/* === REPORT PREVIEW LEFT PANEL === */
+body.light-mode .preview-panel,
+body.light-mode .report-preview {
+  background: #f8f8fc !important;
+  border-color: rgba(0,0,0,0.08) !important;
+  color: #1a1a2e !important;
+}
+body.light-mode .preview-panel * { color: #1a1a2e !important; }
+
+/* === HERO / HEADER GRADIENT === */
+body.light-mode .hero-section {
+  background: linear-gradient(135deg, #eef0ff 0%, #f5f3ff 50%, #e8f4fd 100%) !important;
+  border-bottom: 1px solid rgba(108,99,255,0.15) !important;
+}
+body.light-mode .hero-title { color: #1a1a2e !important; }
+body.light-mode .hero-sub { color: #4a4a6e !important; }
+
+/* === ENSURE GLOBAL TEXT READABILITY === */
+body.light-mode { color: #1a1a2e !important; }
+body.light-mode strong { color: #1a1a2e !important; }
+body.light-mode small { color: #6b6b8f !important; }
+body.light-mode a:not(.btn):not([class*="btn"]) { color: #6c63ff !important; }
+body.light-mode hr { border-color: rgba(0,0,0,0.1) !important; }
+body.light-mode .separator { background: rgba(0,0,0,0.1) !important; }
+body.light-mode [class*="divider"] { background: rgba(0,0,0,0.1) !important; }
+
