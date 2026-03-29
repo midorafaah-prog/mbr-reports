@@ -1007,7 +1007,7 @@ function showAIResult(title, html) {
   const panel = document.createElement('div');
   panel.className = 'ai-result-panel';
   panel.onclick = (e) => { if(e.target===panel) panel.remove(); };
-  panel.innerHTML = '<div class="ai-result-box"><h3>' + title + '</h3><div>' + html + '</div><button class="ai-result-close" onclick="this.closest('.ai-result-panel').remove()">✓ حسناً</button></div>';
+  panel.innerHTML = `<div class="ai-result-box"><h3>${title}</h3><div>${html}</div><button class="ai-result-close" onclick="this.closest('.ai-result-panel').remove()">✓ حسناً</button></div>`;
   document.body.appendChild(panel);
 }
 
@@ -2691,7 +2691,7 @@ function startVoice() {
   recognition.onresult = (e) => {
     let transcript = Array.from(e.results).map(r => r[0].transcript).join('');
     const el = document.getElementById('voiceTranscript');
-    if (el) { el.style.display = 'block'; el.innerHTML = transcript + '<button class="ai-copy-btn" onclick='navigator.clipboard.writeText(this.previousSibling.data||this.parentElement.innerText.replace(this.innerText,""))'>📋 نسخ</button>'; }
+    if (el) { el.style.display = 'block'; el.innerHTML = transcript + `<button class="ai-copy-btn" onclick="navigator.clipboard.writeText(this.previousSibling.data||this.parentElement.innerText.replace(this.innerText,''))">📋 نسخ</button>`; }
   };
   recognition.start();
   document.getElementById('voiceVisualizer')?.classList.add('active');
@@ -7097,10 +7097,10 @@ function selTransDir(el, val) {
 })();
 
 // Override showSection to hide settings button when leaving settings
-const _origShowSection = typeof showSection === 'function' ? showSection : null;
-if (_origShowSection) {
+const _origShowSection2 = typeof showSection === 'function' ? showSection : null;
+if (_origShowSection2) {
   window.showSection = function(sec) {
-    _origShowSection(sec);
+    _origShowSection2(sec);
     // Keep settings tab hidden always (even when active)
     const navSettings = document.getElementById('navSettings');
     if (navSettings) navSettings.style.display = 'none';
