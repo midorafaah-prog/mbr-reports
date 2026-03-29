@@ -2042,9 +2042,21 @@ doAuth = async function() {
 // ===========================
 // GOOGLE SIGN-IN — Mobile-aware
 // ===========================
+
+// ✅ Client ID مُضمَّن مباشرة — يعمل على جميع الأجهزة بدون إعداد
+const _GOOGLE_CLIENT_ID = '556231032867-43st8n4irtj67g0l467e5hncudbs9ra2.apps.googleusercontent.com';
+
 function getGoogleClientId() {
-  return localStorage.getItem('mbrcst_google_client_id') || '';
+  // Use hardcoded ID as primary, localStorage override for custom deployments
+  return localStorage.getItem('mbrcst_google_client_id') || _GOOGLE_CLIENT_ID;
 }
+
+// Pre-save default ID to localStorage so it's always available
+(function() {
+  if (!localStorage.getItem('mbrcst_google_client_id')) {
+    localStorage.setItem('mbrcst_google_client_id', _GOOGLE_CLIENT_ID);
+  }
+})();
 
 let _gTokenClient = null;
 let _gInitialized = false;
