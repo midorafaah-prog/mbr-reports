@@ -931,6 +931,26 @@ function generateReportNumber() {
 }
 
 // ===========================
+// COLLAPSIBLE FORM SECTIONS
+// ===========================
+function toggleAdvanced() {
+  const fields = document.getElementById('advancedFields');
+  const btn = document.getElementById('advancedToggle');
+  if (!fields || !btn) return;
+  const isOpen = fields.style.display !== 'none';
+  fields.style.display = isOpen ? 'none' : '';
+  btn.classList.toggle('open', !isOpen);
+}
+
+function toggleCard(headerEl) {
+  const body = headerEl.parentElement.querySelector('.collapsible-body');
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  headerEl.classList.toggle('open', !isOpen);
+}
+
+// ===========================
 // FULLSCREEN
 // ===========================
 function toggleFullscreen() {

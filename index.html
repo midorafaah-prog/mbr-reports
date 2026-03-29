@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=1774794541" />
+  <link rel="stylesheet" href="style.css?v=1774807855" />
   <!-- SheetJS for Excel parsing -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <!-- html2pdf for PDF export -->
@@ -385,51 +385,61 @@
               <h3>معلومات التقرير</h3>
             </div>
             <div class="form-grid">
+              <!-- === ESSENTIAL FIELDS (always visible) === -->
               <div class="form-group">
                 <label>عنوان التقرير</label>
                 <input type="text" id="reportTitle" placeholder="مثال: تقرير الأداء الأسبوعي — الأسبوع الأول مارس 2026" />
               </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>الجهة / القسم</label>
-                  <input type="text" id="reportDept" placeholder="مثال: قسم العمليات" />
-                </div>
-                <div class="form-group">
-                  <label>الفترة الزمنية</label>
-                  <div class="date-range-wrap">
-                    <input type="date" id="reportPeriodFrom" title="من" />
-                    <span class="date-range-sep">→</span>
-                    <input type="date" id="reportPeriodTo" title="إلى" />
-                  </div>
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>معد التقرير</label>
-                  <input type="text" id="reportPreparer" placeholder="الاسم والمسمى الوظيفي" />
-                </div>
-                <div class="form-group">
-                  <label>لغة التقرير</label>
-                  <div class="lang-toggle-wrap">
-                    <button class="lang-toggle-btn active" id="langBtnAr" onclick="setReportLang('ar', this)">🇸🇦 عربي</button>
-                    <button class="lang-toggle-btn" id="langBtnEn" onclick="setReportLang('en', this)">🇬🇧 English</button>
-                    <button class="lang-toggle-btn" id="langBtnBoth" onclick="setReportLang('both', this)">🌐 ثنائي</button>
-                  </div>
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>رقم التقرير</label>
-                  <input type="text" id="reportNumber" placeholder="RPT-2026-001" readonly style="color:var(--accent);font-weight:700" />
-                </div>
-                <div class="form-group">
-                  <label>تاريخ الاعتماد</label>
-                  <input type="date" id="reportApprovalDate" />
-                </div>
-              </div>
               <div class="form-group">
-                <label>ملاحظات عامة</label>
-                <input type="text" id="reportNotes" placeholder="أي ملاحظات إضافية..." />
+                <label>الجهة / القسم</label>
+                <input type="text" id="reportDept" placeholder="مثال: قسم العمليات" />
+              </div>
+
+              <!-- === ADVANCED FIELDS (collapsed by default) === -->
+              <button type="button" class="advanced-toggle" id="advancedToggle" onclick="toggleAdvanced()">
+                <span class="advanced-toggle-icon">▸</span>
+                <span class="advanced-toggle-text">خيارات متقدمة</span>
+                <span class="advanced-toggle-count">6 حقول إضافية</span>
+              </button>
+              <div class="advanced-fields" id="advancedFields" style="display:none">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>الفترة الزمنية</label>
+                    <div class="date-range-wrap">
+                      <input type="date" id="reportPeriodFrom" title="من" />
+                      <span class="date-range-sep">→</span>
+                      <input type="date" id="reportPeriodTo" title="إلى" />
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>معد التقرير</label>
+                    <input type="text" id="reportPreparer" placeholder="الاسم والمسمى الوظيفي" />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>لغة التقرير</label>
+                    <div class="lang-toggle-wrap">
+                      <button class="lang-toggle-btn active" id="langBtnAr" onclick="setReportLang('ar', this)">🇸🇦 عربي</button>
+                      <button class="lang-toggle-btn" id="langBtnEn" onclick="setReportLang('en', this)">🇬🇧 English</button>
+                      <button class="lang-toggle-btn" id="langBtnBoth" onclick="setReportLang('both', this)">🌐 ثنائي</button>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>رقم التقرير</label>
+                    <input type="text" id="reportNumber" placeholder="RPT-2026-001" readonly style="color:var(--accent);font-weight:700" />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>تاريخ الاعتماد</label>
+                    <input type="date" id="reportApprovalDate" />
+                  </div>
+                  <div class="form-group">
+                    <label>ملاحظات عامة</label>
+                    <input type="text" id="reportNotes" placeholder="أي ملاحظات إضافية..." />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -474,73 +484,82 @@
           </div>
 
           <!-- Image Upload -->
-          <div class="panel-card">
-            <div class="panel-card-header">
+          <div class="panel-card collapsible-card">
+            <div class="panel-card-header collapsible-header" onclick="toggleCard(this)">
               <span class="panel-card-icon">🖼️</span>
               <h3>الصور والمرفقات المرئية</h3>
+              <span class="collapse-arrow">▸</span>
             </div>
-            <div class="upload-zone" id="imageDropZone" onclick="triggerImageUpload()" ondragover="dragOver(event, this)" ondragleave="dragLeave(this)" ondrop="dropImages(event, this)">
-              <div class="upload-zone-icon">🖼️</div>
-              <div class="upload-zone-title">اسحب وأفلت الصور هنا</div>
-              <div class="upload-zone-sub">أو انقر للتصفح — PNG, JPG, WEBP, GIF</div>
-              <input type="file" id="imageInput" multiple accept="image/*" onchange="handleImageUpload(this.files)" style="display:none" />
+            <div class="collapsible-body" style="display:none">
+              <div class="upload-zone" id="imageDropZone" onclick="triggerImageUpload()" ondragover="dragOver(event, this)" ondragleave="dragLeave(this)" ondrop="dropImages(event, this)">
+                <div class="upload-zone-icon">🖼️</div>
+                <div class="upload-zone-title">اسحب وأفلت الصور هنا</div>
+                <div class="upload-zone-sub">أو انقر للتصفح — PNG, JPG, WEBP, GIF</div>
+                <input type="file" id="imageInput" multiple accept="image/*" onchange="handleImageUpload(this.files)" style="display:none" />
+              </div>
+              <div class="image-previews" id="imagePreviews"></div>
             </div>
-            <div class="image-previews" id="imagePreviews"></div>
           </div>
 
           <!-- Excel Upload -->
-          <div class="panel-card">
-            <div class="panel-card-header">
+          <div class="panel-card collapsible-card">
+            <div class="panel-card-header collapsible-header" onclick="toggleCard(this)">
               <span class="panel-card-icon">📊</span>
               <h3>ملف البيانات (Excel)</h3>
+              <span class="collapse-arrow">▸</span>
             </div>
-            <div class="upload-zone upload-zone-excel" id="excelDropZone" onclick="triggerExcelUpload()" ondragover="dragOver(event, this)" ondragleave="dragLeave(this)" ondrop="dropExcel(event, this)">
-              <div class="upload-zone-icon">📊</div>
-              <div class="upload-zone-title">ارفع ملف Excel</div>
-              <div class="upload-zone-sub">XLS, XLSX, CSV — سيتم استخراج البيانات تلقائياً</div>
-              <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(this.files[0])" style="display:none" />
+            <div class="collapsible-body" style="display:none">
+              <div class="upload-zone upload-zone-excel" id="excelDropZone" onclick="triggerExcelUpload()" ondragover="dragOver(event, this)" ondragleave="dragLeave(this)" ondrop="dropExcel(event, this)">
+                <div class="upload-zone-icon">📊</div>
+                <div class="upload-zone-title">ارفع ملف Excel</div>
+                <div class="upload-zone-sub">XLS, XLSX, CSV — سيتم استخراج البيانات تلقائياً</div>
+                <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(this.files[0])" style="display:none" />
+              </div>
+              <div id="excelPreview" class="excel-preview" style="display:none"></div>
             </div>
-            <div id="excelPreview" class="excel-preview" style="display:none"></div>
           </div>
 
           <!-- AI Settings -->
-          <div class="panel-card">
-            <div class="panel-card-header">
+          <div class="panel-card collapsible-card">
+            <div class="panel-card-header collapsible-header" onclick="toggleCard(this)">
               <span class="panel-card-icon">🤖</span>
               <h3>إعدادات الذكاء الاصطناعي</h3>
+              <span class="collapse-arrow">▸</span>
             </div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>أسلوب الكتابة</label>
-                <select id="aiTone">
-                  <option value="professional">رسمي واحترافي</option>
-                  <option value="executive">تنفيذي مختصر</option>
-                  <option value="detailed">تحليلي مفصّل</option>
-                  <option value="friendly">ودّي وسلس</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>مستوى التفصيل</label>
-                <div class="detail-slider-wrap">
-                  <input type="range" id="aiDetail" min="1" max="3" value="2" class="detail-slider" oninput="updateDetailLabel(this.value)" />
-                  <div class="detail-labels">
-                    <span>موجز</span>
-                    <span id="detailLabel" class="detail-label-center">متوازن</span>
-                    <span>مفصّل</span>
+            <div class="collapsible-body" style="display:none">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>أسلوب الكتابة</label>
+                  <select id="aiTone">
+                    <option value="professional">رسمي واحترافي</option>
+                    <option value="executive">تنفيذي مختصر</option>
+                    <option value="detailed">تحليلي مفصّل</option>
+                    <option value="friendly">ودّي وسلس</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>مستوى التفصيل</label>
+                  <div class="detail-slider-wrap">
+                    <input type="range" id="aiDetail" min="1" max="3" value="2" class="detail-slider" oninput="updateDetailLabel(this.value)" />
+                    <div class="detail-labels">
+                      <span>موجز</span>
+                      <span id="detailLabel" class="detail-label-center">متوازن</span>
+                      <span>مفصّل</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div class="form-group">
-                <label>OpenAI API Key <span class="optional-tag">(اختياري — إذا فارغ يستخدم النمط المحلي)</span></label>
-                <div class="api-key-wrap">
-                  <input type="password" id="apiKeyInput" placeholder="sk-..." class="api-key-input" />
-                  <button class="api-test-btn" onclick="testApiKey()">اختبار</button>
-                </div>
-                <div class="api-key-save-row">
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="saveApiKey" onchange="toggleSaveKey(this)" />
-                    <span>حفظ المفتاح محلياً</span>
-                  </label>
+                <div class="form-group">
+                  <label>OpenAI API Key <span class="optional-tag">(اختياري — إذا فارغ يستخدم النمط المحلي)</span></label>
+                  <div class="api-key-wrap">
+                    <input type="password" id="apiKeyInput" placeholder="sk-..." class="api-key-input" />
+                    <button class="api-test-btn" onclick="testApiKey()">اختبار</button>
+                  </div>
+                  <div class="api-key-save-row">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="saveApiKey" onchange="toggleSaveKey(this)" />
+                      <span>حفظ المفتاح محلياً</span>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -574,46 +593,49 @@
           </div>
 
           <!-- Signature & Approval -->
-          <div class="panel-card">
-            <div class="panel-card-header">
+          <div class="panel-card collapsible-card">
+            <div class="panel-card-header collapsible-header" onclick="toggleCard(this)">
               <span class="panel-card-icon">✍️</span>
               <h3>التوقيع والاعتماد</h3>
+              <span class="collapse-arrow">▸</span>
             </div>
-            <div class="form-grid">
-              <div class="form-row">
-                <div class="form-group">
-                  <label>معتمد من</label>
-                  <input type="text" id="reportApprover" placeholder="اسم المعتمد ومسماه" />
-                </div>
-                <div class="form-group">
-                  <label>تاريخ الاعتماد</label>
-                  <input type="date" id="reportApprovalDate" />
-                </div>
-              </div>
-              <!-- Signature Uploads -->
-              <div class="form-row">
-                <div class="form-group">
-                  <label>توقيع المعد 🖊️</label>
-                  <div class="sig-upload-zone" onclick="document.getElementById('sigPreparer').click()" id="sigPreparerZone">
-                    <img id="sigPreparerImg" class="sig-preview" style="display:none" />
-                    <span id="sigPreparerPlaceholder">اضغط لرفع صورة التوقيع</span>
+            <div class="collapsible-body" style="display:none">
+              <div class="form-grid">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>معتمد من</label>
+                    <input type="text" id="reportApprover" placeholder="اسم المعتمد ومسماه" />
                   </div>
-                  <input type="file" id="sigPreparer" accept="image/*" style="display:none" onchange="handleSignatureUpload('preparer', this.files[0])" />
+                  <div class="form-group">
+                    <label>تاريخ الاعتماد</label>
+                    <input type="date" id="reportApprovalDate" />
+                  </div>
+                </div>
+                <!-- Signature Uploads -->
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>توقيع المعد 🖊️</label>
+                    <div class="sig-upload-zone" onclick="document.getElementById('sigPreparer').click()" id="sigPreparerZone">
+                      <img id="sigPreparerImg" class="sig-preview" style="display:none" />
+                      <span id="sigPreparerPlaceholder">اضغط لرفع صورة التوقيع</span>
+                    </div>
+                    <input type="file" id="sigPreparer" accept="image/*" style="display:none" onchange="handleSignatureUpload('preparer', this.files[0])" />
+                  </div>
+                  <div class="form-group">
+                    <label>توقيع المعتمد / الختم 📛</label>
+                    <div class="sig-upload-zone" onclick="document.getElementById('sigApprover').click()" id="sigApproverZone">
+                      <img id="sigApproverImg" class="sig-preview" style="display:none" />
+                      <span id="sigApproverPlaceholder">اضغط لرفع التوقيع أو الختم</span>
+                    </div>
+                    <input type="file" id="sigApprover" accept="image/*" style="display:none" onchange="handleSignatureUpload('approver', this.files[0])" />
+                  </div>
                 </div>
                 <div class="form-group">
-                  <label>توقيع المعتمد / الختم 📛</label>
-                  <div class="sig-upload-zone" onclick="document.getElementById('sigApprover').click()" id="sigApproverZone">
-                    <img id="sigApproverImg" class="sig-preview" style="display:none" />
-                    <span id="sigApproverPlaceholder">اضغط لرفع التوقيع أو الختم</span>
-                  </div>
-                  <input type="file" id="sigApprover" accept="image/*" style="display:none" onchange="handleSignatureUpload('approver', this.files[0])" />
+                  <label class="checkbox-label" style="cursor:pointer">
+                    <input type="checkbox" id="reportApproved" style="width:16px;height:16px;accent-color:var(--accent)" />
+                    <span>✅ تم الاعتماد الرسمي</span>
+                  </label>
                 </div>
-              </div>
-              <div class="form-group">
-                <label class="checkbox-label" style="cursor:pointer">
-                  <input type="checkbox" id="reportApproved" style="width:16px;height:16px;accent-color:var(--accent)" />
-                  <span>✅ تم الاعتماد الرسمي</span>
-                </label>
               </div>
             </div>
           </div>
@@ -1773,7 +1795,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=1774794541"></script>
+  <script src="app.js?v=1774807855"></script>
 
   <!-- ===== DASHBOARD OVERLAY ===== -->
   <div id="dashboardOverlay" class="ai-fullpage-overlay" style="display:none">
