@@ -4644,68 +4644,90 @@ async function processDroppedFile(file) {
 
     // PDF files → use PDF.js for proper text extraction
     if (ext === 'pdf') {
-      const reader = new FileReader();
-      reader.onload = async e => {
-        try {
-          if (typeof pdfjsLib === 'undefined') {
-            resultEl.innerHTML = `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:1rem;font-size:0.82rem;color:#f59e0b">
-              ⚠️ مكتبة PDF.js لم تُحمل بعد. أعد تحميل الصفحة وحاول مجدداً.
-            </div>`;
-            return;
-          }
-          const typedArray = new Uint8Array(e.target.result);
+      try {
+        // Method 1: Use PDF.js if available
+        if (typeof pdfjsLib !== 'undefined') {
           resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>📄 يفتح ملف PDF...</span></div>`;
-          const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
-          let fullText = '';
-          const numPages = Math.min(pdf.numPages, 20); // Limit to 20 pages
-          resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>📄 يقرأ ${numPages} من ${pdf.numPages} صفحة...</span></div>`;
-          for (let i = 1; i <= numPages; i++) {
-            const page = await pdf.getPage(i);
-            const content = await page.getTextContent();
-            const strings = content.items.map(item => item.str);
-            fullText += strings.join(' ') + '\n\n';
+          // Use URL.createObjectURL to avoid passing large arrays (prevents stack overflow)
+          const blob = new Blob([file], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          try {
+            const pdf = await pdfjsLib.getDocument(url).promise;
+            let fullText = '';
+            const numPages = Math.min(pdf.numPages, 15);
+            resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>📄 يقرأ ${numPages} من ${pdf.numPages} صفحة...</span></div>`;
+            for (let i = 1; i <= numPages; i++) {
+              try {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                const pageText = content.items.map(item => item.str).join(' ');
+                fullText += pageText + '\n\n';
+              } catch(pageErr) { console.warn('Skip page', i, pageErr); }
+            }
+            URL.revokeObjectURL(url);
+            if (fullText.trim().length > 30) {
+              resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>🤖 AI يحلل ${fullText.length.toLocaleString()} حرف...</span></div>`;
+              const sample = fullText.substring(0, 5000);
+              const result = await callAI(
+                `حلّل هذا المحتوى المستخرج من ملف PDF (${pdf.numPages} صفحة) وأنشئ تقريراً احترافياً مفصلاً:\n\n${sample}`,
+                'أنت محلل مستندات احترافي. قدّم تحليلاً شاملاً يتضمن: ملخص المحتوى، النقاط الرئيسية، الأرقام والإحصائيات، والتوصيات.'
+              );
+              if (result) { showDropResult(resultEl, result, file.name); return; }
+            }
+            // If text extraction got little text, fall through to OCR
+          } catch(pdfErr) {
+            console.warn('PDF.js failed, trying OCR fallback:', pdfErr.message);
+            URL.revokeObjectURL(url);
           }
-          if (fullText.trim().length < 30) {
-            // PDF might be image-based, try OCR via Vision API
-            resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>🔍 PDF يحتوي صور — يحاول التحليل بالرؤية...</span></div>`;
-            // Try sending first page as image
-            const page1 = await pdf.getPage(1);
-            const viewport = page1.getViewport({ scale: 2 });
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const ctx = canvas.getContext('2d');
-            await page1.render({ canvasContext: ctx, viewport }).promise;
-            const base64 = canvas.toDataURL('image/png').split(',')[1];
-            const key = localStorage.getItem('mbrcst_openai_key') || '';
-            if (!key) { resultEl.innerHTML = '<div style="color:#ef4444;padding:1rem">❌ أضف مفتاح OpenAI أولاً من إعدادات AI</div>'; return; }
+        }
+        // Method 2: Fallback — render first page as image and use AI Vision OCR
+        resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>🔍 يحلل PDF كصورة بالذكاء الاصطناعي...</span></div>`;
+        const key = localStorage.getItem('mbrcst_openai_key') || '';
+        if (!key) {
+          resultEl.innerHTML = '<div style="color:#ef4444;padding:1rem">❌ أضف مفتاح OpenAI أولاً من إعدادات AI</div>';
+          return;
+        }
+        // Read as base64 and send to Vision API
+        const reader2 = new FileReader();
+        reader2.onload = async ev => {
+          const base64 = ev.target.result.split(',')[1];
+          // If file is too large for vision API (>20MB base64), take first chunk
+          const base64Chunk = base64.substring(0, 10000000); // ~7.5MB limit
+          try {
             const res = await fetch('https://api.openai.com/v1/chat/completions', {
-              method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-              body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{
-                role: 'user', content: [
-                  { type: 'text', text: 'حلّل هذا المستند واستخرج منه تقريراً احترافياً مفصلاً بالعربية. اذكر جميع البيانات والأرقام والمعلومات.' },
-                  { type: 'image_url', image_url: { url: `data:image/png;base64,${base64}` } }
-                ]
-              }], max_tokens: 2000 })
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [{
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: 'حلّل هذا المستند PDF واستخرج منه تقريراً احترافياً مفصلاً بالعربية. اذكر جميع البيانات والأرقام والمعلومات الموجودة. إذا كان يحتوي جداول فحوّلها لنص منظم.' },
+                    { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64Chunk}` } }
+                  ]
+                }],
+                max_tokens: 3000
+              })
             });
             const data = await res.json();
             const report = data.choices?.[0]?.message?.content || '';
-            if (report) { showDropResult(resultEl, report, file.name); }
-            else { resultEl.innerHTML = '<div style="color:#ef4444;padding:1rem">❌ لم يتمكن AI من تحليل هذا الملف</div>'; }
-            return;
+            if (report && report.length > 20) {
+              showDropResult(resultEl, report, file.name);
+            } else {
+              const errMsg = data.error?.message || 'لم يتمكن AI من قراءة الملف';
+              resultEl.innerHTML = `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:1rem;font-size:0.82rem;color:#f59e0b">
+                ⚠️ ${errMsg}<br>
+                💡 <strong>الحل:</strong> افتح الـ PDF وانسخ النص ثم الصقه في المحرر مباشرة.
+              </div>`;
+            }
+          } catch(visionErr) {
+            resultEl.innerHTML = `<div style="color:#ef4444;padding:1rem">❌ خطأ في تحليل PDF: ${visionErr.message}</div>`;
           }
-          resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>🤖 AI يحلل ${fullText.length.toLocaleString()} حرف...</span></div>`;
-          const sample = fullText.substring(0, 5000);
-          const result = await callAI(
-            `حلّل هذا المحتوى المستخرج من ملف PDF (${pdf.numPages} صفحة) وأنشئ تقريراً احترافياً مفصلاً:\n\n${sample}`,
-            'أنت محلل مستندات احترافي. قدّم تحليلاً شاملاً يتضمن: ملخص المحتوى، النقاط الرئيسية، الأرقام والإحصائيات، والتوصيات.'
-          );
-          if (result) showDropResult(resultEl, result, file.name);
-        } catch(err) {
-          resultEl.innerHTML = `<div style="color:#ef4444;padding:1rem">❌ خطأ في قراءة PDF: ${err.message}</div>`;
-        }
-      };
-      reader.readAsArrayBuffer(file);
+        };
+        reader2.readAsDataURL(file);
+      } catch(err) {
+        resultEl.innerHTML = `<div style="color:#ef4444;padding:1rem">❌ خطأ في قراءة PDF: ${err.message}</div>`;
+      }
       return;
     }
 
