@@ -4609,25 +4609,129 @@ async function processDroppedFile(file) {
       return;
     }
 
-    // Excel, Word, PDF (read as text best we can)
-    if (['xlsx','xls','doc','docx','pdf'].includes(ext)) {
-      // For xlsx, use the Sheets API approach if available; otherwise prompt user
+    // Excel files (.xlsx, .xls) → use SheetJS
+    if (['xlsx','xls'].includes(ext)) {
+      const reader = new FileReader();
+      reader.onload = async e => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, { type: 'array' });
+          let text = '';
+          wb.SheetNames.forEach(name => {
+            const ws = wb.Sheets[name];
+            text += `=== ${name} ===\n`;
+            text += XLSX.utils.sheet_to_csv(ws) + '\n\n';
+          });
+          if (text.trim().length < 20) {
+            resultEl.innerHTML = `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:1rem;font-size:0.82rem;color:#f59e0b">
+              ⚠️ الملف فارغ أو لا يحتوي على بيانات نصية كافية.
+            </div>`;
+            return;
+          }
+          const sample = text.substring(0, 4000);
+          const result = await callAI(
+            `حلّل هذه البيانات من ملف Excel وأنشئ تقريراً احترافياً مفصلاً:\n\n${sample}`,
+            'أنت محلل بيانات متخصص في إنشاء تقارير من ملفات Excel. قدّم تحليلاً شاملاً مع إحصائيات ورسوم بيانية نصية.'
+          );
+          if (result) showDropResult(resultEl, result, file.name);
+        } catch(err) {
+          resultEl.innerHTML = `<div style="color:#ef4444;padding:1rem">❌ خطأ في قراءة ملف Excel: ${err.message}</div>`;
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+
+    // PDF files → use PDF.js for proper text extraction
+    if (ext === 'pdf') {
+      const reader = new FileReader();
+      reader.onload = async e => {
+        try {
+          if (typeof pdfjsLib === 'undefined') {
+            resultEl.innerHTML = `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:1rem;font-size:0.82rem;color:#f59e0b">
+              ⚠️ مكتبة PDF.js لم تُحمل بعد. أعد تحميل الصفحة وحاول مجدداً.
+            </div>`;
+            return;
+          }
+          const typedArray = new Uint8Array(e.target.result);
+          const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+          let fullText = '';
+          const numPages = Math.min(pdf.numPages, 30); // Limit to 30 pages
+          resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>📄 يقرأ ${pdf.numPages} صفحة من PDF...</span></div>`;
+          for (let i = 1; i <= numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            const strings = content.items.map(item => item.str);
+            fullText += strings.join(' ') + '\n\n';
+          }
+          if (fullText.trim().length < 30) {
+            // PDF might be image-based, try OCR via Vision API
+            resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>🔍 PDF يحتوي صور — يحاول التحليل بالرؤية...</span></div>`;
+            // Try sending first page as image
+            const page1 = await pdf.getPage(1);
+            const viewport = page1.getViewport({ scale: 2 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            await page1.render({ canvasContext: ctx, viewport }).promise;
+            const base64 = canvas.toDataURL('image/png').split(',')[1];
+            const key = localStorage.getItem('mbrcst_openai_key') || '';
+            if (!key) { resultEl.innerHTML = '<div style="color:#ef4444;padding:1rem">❌ أضف مفتاح OpenAI أولاً من إعدادات AI</div>'; return; }
+            const res = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+              body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{
+                role: 'user', content: [
+                  { type: 'text', text: 'حلّل هذا المستند واستخرج منه تقريراً احترافياً مفصلاً بالعربية. اذكر جميع البيانات والأرقام والمعلومات.' },
+                  { type: 'image_url', image_url: { url: `data:image/png;base64,${base64}` } }
+                ]
+              }], max_tokens: 2000 })
+            });
+            const data = await res.json();
+            const report = data.choices?.[0]?.message?.content || '';
+            if (report) { showDropResult(resultEl, report, file.name); }
+            else { resultEl.innerHTML = '<div style="color:#ef4444;padding:1rem">❌ لم يتمكن AI من تحليل هذا الملف</div>'; }
+            return;
+          }
+          resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>🤖 AI يحلل ${fullText.length.toLocaleString()} حرف...</span></div>`;
+          const sample = fullText.substring(0, 5000);
+          const result = await callAI(
+            `حلّل هذا المحتوى المستخرج من ملف PDF (${pdf.numPages} صفحة) وأنشئ تقريراً احترافياً مفصلاً:\n\n${sample}`,
+            'أنت محلل مستندات احترافي. قدّم تحليلاً شاملاً يتضمن: ملخص المحتوى، النقاط الرئيسية، الأرقام والإحصائيات، والتوصيات.'
+          );
+          if (result) showDropResult(resultEl, result, file.name);
+        } catch(err) {
+          resultEl.innerHTML = `<div style="color:#ef4444;padding:1rem">❌ خطأ في قراءة PDF: ${err.message}</div>`;
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+
+    // Word files (.doc, .docx) → extract text
+    if (['doc','docx'].includes(ext)) {
       const reader = new FileReader();
       reader.onload = async e => {
         let text = '';
-        // Try to extract some text (works better for .doc/.txt embedded in docx)
         try {
           const arr = new Uint8Array(e.target.result);
-          text = String.fromCharCode(...arr.slice(0, 5000)).replace(/[^\u0020-\u007E\u0600-\u06FF\n\r\t ]/g, ' ').replace(/\s{3,}/g,' ');
+          // For .docx, try to find XML content
+          if (ext === 'docx') {
+            const blob = new Blob([arr], { type: 'application/zip' });
+            // Simple extraction: look for readable text
+            text = String.fromCharCode(...arr.slice(0, 8000)).replace(/[^\u0020-\u007E\u0600-\u06FF\n\r\t ]/g, ' ').replace(/\s{3,}/g,' ');
+          } else {
+            text = String.fromCharCode(...arr.slice(0, 8000)).replace(/[^\u0020-\u007E\u0600-\u06FF\n\r\t ]/g, ' ').replace(/\s{3,}/g,' ');
+          }
         } catch {}
-        if (text.length < 50) {
+        if (text.trim().length < 50) {
           resultEl.innerHTML = `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:1rem;font-size:0.82rem;color:#f59e0b">
-            ⚠️ ملفات ${ext.toUpperCase()} تحتاج معالجة خاصة.<br>
-            💡 <strong>الحل:</strong> افتح الملف وانسخ النص ثم الصقه في المحرر، أو حوّله لـ CSV وارفعه مجدداً.
+            ⚠️ تعذر استخراج النص من ملف Word.<br>
+            💡 <strong>الحل:</strong> افتح الملف في Word وانسخ النص ثم الصقه في المحرر.
           </div>`;
           return;
         }
-        const result = await callAI(`حلّل هذا المحتوى من ملف ${ext.toUpperCase()} وأنشئ تقريراً:\n${text}`, 'أنت محلل بيانات احترافي.');
+        const result = await callAI(`حلّل هذا المحتوى من ملف Word وأنشئ تقريراً احترافياً:\n${text.substring(0,4000)}`, 'أنت محلل مستندات احترافي.');
         if (result) showDropResult(resultEl, result, file.name);
       };
       reader.readAsArrayBuffer(file);
