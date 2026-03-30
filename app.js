@@ -4654,10 +4654,11 @@ async function processDroppedFile(file) {
             return;
           }
           const typedArray = new Uint8Array(e.target.result);
+          resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>📄 يفتح ملف PDF...</span></div>`;
           const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
           let fullText = '';
-          const numPages = Math.min(pdf.numPages, 30); // Limit to 30 pages
-          resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>📄 يقرأ ${pdf.numPages} صفحة من PDF...</span></div>`;
+          const numPages = Math.min(pdf.numPages, 20); // Limit to 20 pages
+          resultEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>📄 يقرأ ${numPages} من ${pdf.numPages} صفحة...</span></div>`;
           for (let i = 1; i <= numPages; i++) {
             const page = await pdf.getPage(i);
             const content = await page.getTextContent();
@@ -4715,14 +4716,13 @@ async function processDroppedFile(file) {
         let text = '';
         try {
           const arr = new Uint8Array(e.target.result);
-          // For .docx, try to find XML content
-          if (ext === 'docx') {
-            const blob = new Blob([arr], { type: 'application/zip' });
-            // Simple extraction: look for readable text
-            text = String.fromCharCode(...arr.slice(0, 8000)).replace(/[^\u0020-\u007E\u0600-\u06FF\n\r\t ]/g, ' ').replace(/\s{3,}/g,' ');
-          } else {
-            text = String.fromCharCode(...arr.slice(0, 8000)).replace(/[^\u0020-\u007E\u0600-\u06FF\n\r\t ]/g, ' ').replace(/\s{3,}/g,' ');
+          // Safe conversion without spread operator (avoids stack overflow)
+          const chunk = arr.slice(0, 8000);
+          const parts = [];
+          for (let i = 0; i < chunk.length; i += 512) {
+            parts.push(String.fromCharCode.apply(null, chunk.slice(i, i + 512)));
           }
+          text = parts.join('').replace(/[^\u0020-\u007E\u0600-\u06FF\n\r\t ]/g, ' ').replace(/\s{3,}/g,' ');
         } catch {}
         if (text.trim().length < 50) {
           resultEl.innerHTML = `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:1rem;font-size:0.82rem;color:#f59e0b">
@@ -4741,23 +4741,29 @@ async function processDroppedFile(file) {
   }
 }
 
+// Store last drop result globally to avoid huge data attributes
+var _lastDropResult = '';
+
 function showDropResult(el, text, fileName) {
+  _lastDropResult = text;
+  const preview = text.substring(0, 1200).replace(/</g,'&lt;').replace(/>/g,'&gt;');
   el.innerHTML = `
     <div style="background:#1a1a2e;border:1px solid rgba(108,99,255,0.2);border-radius:12px;padding:1rem;margin-top:0.5rem">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.7rem">
         <span style="color:#00d4aa;font-size:0.78rem;font-weight:700">✅ تم تحليل: ${fileName}</span>
-        <button onclick="applyDropResult(this)" data-text="${encodeURIComponent(text)}" class="ai-tool-btn" style="padding:0.3rem 0.8rem;font-size:0.75rem">📋 نقل للمحرر</button>
+        <button onclick="applyDropResult()" class="ai-tool-btn" style="padding:0.3rem 0.8rem;font-size:0.75rem">📋 نقل للمحرر</button>
       </div>
-      <div style="white-space:pre-wrap;color:var(--text-secondary);font-size:0.78rem;line-height:1.7;max-height:200px;overflow:auto">${text.substring(0,800)}${text.length>800?'...':''}</div>
+      <div style="white-space:pre-wrap;color:var(--text-secondary);font-size:0.78rem;line-height:1.7;max-height:250px;overflow:auto">${preview}${text.length>1200?'\n\n...':''}  </div>
     </div>`;
-  saveReportToHistory('تحليل: ' + fileName, text, 'general');
+  try { saveReportToHistory('تحليل: ' + fileName, text, 'general'); } catch(e) {}
   showToast(`✅ تم تحليل ${fileName}`, 'success');
 }
 
-function applyDropResult(btn) {
-  const text = decodeURIComponent(btn.dataset.text);
+function applyDropResult() {
+  const text = _lastDropResult;
+  if (!text) { showToast('لا يوجد نتيجة للنقل', 'error'); return; }
   const ta = document.getElementById('reportNotes') || document.getElementById('reportObjectives') || document.querySelector('textarea');
-  if (ta) { ta.value = text; updateWritingStats(text); }
+  if (ta) { ta.value = text; if(typeof updateWritingStats==='function') updateWritingStats(text); }
   showToast('✅ تم نقل النتيجة للمحرر', 'success');
 }
 
