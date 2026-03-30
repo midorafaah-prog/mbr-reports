@@ -4212,3 +4212,12 @@ body.light-mode .advanced-toggle {
 body.light-mode .collapsible-header:hover {
   background: rgba(108,99,255,0.05);
 }
+
+/* ===== FORCE HIDE LOGIN OVERLAY (bypass active) ===== */
+#loginOverlay,
+.login-overlay {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
